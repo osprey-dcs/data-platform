@@ -32,7 +32,7 @@ The "data-platform/config" directory includes template config files for the inst
 
 ## start ecosystem processes
 
-The "data-platform/dp-support/current/bin" directory includes a set of scripts for managing the data platform ecosystem.  These can be used to quickly get the system up and running.  See the section [running data platform services and applications]() for more details about using these scripts.
+The "data-platform/dp-support/current/bin" directory includes a set of scripts for managing the data platform ecosystem.  These can be used to quickly get the system up and running.  See the section [running data platform services and applications](https://github.com/osprey-dcs/data-platform/tree/main#dp-support-ecosystem-scripts) for more details about using these scripts.
 
 ## next steps
 
