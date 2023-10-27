@@ -1,0 +1,2 @@
+Contains ".pid" lock files that contain the process id of running dp servers for use by admin scripts.
+

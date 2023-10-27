@@ -1,0 +1,3 @@
+Contains version-numbered jar files for the dp-query repo, with a symbolic link "dp-ingest.jar" that points to the desired version.
+
+To update to a new version of dp-query, download the desired version-numbered jar and change the "dp-ingest.jar" link to point to it.

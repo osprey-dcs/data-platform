@@ -1,0 +1,11 @@
+dp-support/current
+dp-support/dp-support*
+
+lib/dp-ingest/*.jar
+lib/dp-query/*.jar
+
+var/log/*.log
+var/lock/*.pid
+
+.idea
+
