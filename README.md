@@ -4,41 +4,35 @@ This section will help you get the data platform up and running as quickly as po
 
 ## preinstallation
 
-- [install Java 16 or 17](https://github.com/osprey-dcs/dp-support#java-installation)
-- [install MongoDB version 6, create database user and password](https://github.com/osprey-dcs/dp-support#mongodb-installation)
-- [optionally install mongo-express](https://github.com/osprey-dcs/dp-support#mongo-express-installation)
+- [install Java 16 or 17](https://github.com/osprey-dcs/data-platform#java-installation)
+- [install MongoDB version 6, create database user and password](https://github.com/osprey-dcs/data-platform#mongodb-installation)
+- [optionally install mongo-express](https://github.com/osprey-dcs/data-platform#mongo-express-installation)
 
-## clone dp-support repo
+## extract data plaform installer
 
-This dp-support repo includes everything needed to run the data platform, including jar files for the Java server applications, configuration files, and scripts to manage the ecosystem.  To clone the repo, change to the desired parent directory for the installation, and use the following command:
+The data-platform github repo includes an installer that contains everything needed to run the Data Platform.  Navigate to the [most recent data-platform release](https://github.com/osprey-dcs/data-platform/releases/latest) and download the file "data-platform-installer.tar.gz" to the desired installation location (e.g., the user's home directory).  Extract the installer using:
 
 ```
-git clone https://github.com/osprey-dcs/dp-support.git
+tar xvf data-platform-installer.tar.gz
 ```
 
-Cloning the github repo is a quick way to install the data platform for evaluation purposes, or to jump start a development, test, or production system.  Create a fork of the repo to track your changes to the scripts, make an official branch of the repo if appropriate, or break the connection with git after cloning to go your own direction.
+## create data platform environment config file
+
+The dp-support scripts require an environment configuration file in the user's home directory that specifies the location of the data platform installation.  The file must be called ".dp.env" (note the leading "dot" character).  The file contents should look like this (for an installation in the user's home directory):
+
+```
+export DP_HOME=~/data-platform
+```
+
+If the data-platform installer was extracted in a different location, use the appropriate installation path for DP_HOME.
 
 ## customize config files
 
-The "dp-support/config" directory includes template config files for the installation.  Minimally, you'll need to edit "dp-ingest.yml" to include the proper "dbUser" and "dbPassword" for your MongoDB installation.  The included log4j config file sets up logging output to the console and can be customized as desired.
+The "data-platform/config" directory includes template config files for the installation.  Minimally, you'll need to edit "dp-ingest.yml" to include the proper "dbUser" and "dbPassword" for your MongoDB installation.  The included log4j config file sets up logging output to the console and can be customized as desired.
 
 ## start ecosystem processes
 
-The "dp-support/bin" directory includes a set of scripts for managing the data platform ecosystem.  These can be used to quickly get the system up and running.  Relevant scripts include:
-
-### MongoDB scripts
-- _mongodb-start_: Starts standard MongoDB installation using systemctl.
-- _mongodb-stop_: Stops MongoDB.
-- _mongodb-status_: Checks MongoDB status.
-- _mongodb-enable_: Enables MongoDB auto-start after reboot.
-
-### data platform server scripts
-- _server-start-ingest_: Starts the ingestion server application using the util-pm-start script.
-- _server-stop-ingest_: Stops the running ingestion server application using the util-pm-stop script.
-- _server-status-ingest_: Checks the status of the ingestion server application using util-pm-status.
-
-### other data platform applications
-- _app-run-ingestion-benchmark_: Runs the data platform ingestion service performance benchmark application against the running ingestion server.  Displays an error if the server is not running.  Uploads one minute's data for 4,000 data sources sampled at 1 KHz.  This is a good way to test the installation.  Confirm that data is written to MongoDB by the ingestion server.
+The "data-platform/dp-support/current/bin" directory includes a set of scripts for managing the data platform ecosystem.  These can be used to quickly get the system up and running.  See the section [running data platform services and applications]() for more details about using these scripts.
 
 ## next steps
 
@@ -98,7 +92,7 @@ The other primary technology element is [MongoDB](https://www.mongodb.com/).  Mo
 - [dp-grpc](https://github.com/osprey-dcs/dp-grpc) - Includes the gRPC API definition for the Ingestion and Query Services (in "proto" files).
 - [dp-common](https://github.com/osprey-dcs/dp-common) - Includes features in common to both the Ingestion and Query Services, such as the configuration mechanism.
 - [dp-ingest](https://github.com/osprey-dcs/dp-ingest) - Includes the initial implementation of the Ingestion Service, as well as the performance benchmark application.
-- [dp-support](https://github.com/osprey-dcs/dp-support) - (this repo) Includes tools for installing, configuring, and managing the Data Platform ecosystem.
+- [dp-support](https://github.com/osprey-dcs/dp-support) - Includes tools for installing, configuring, and managing the Data Platform ecosystem.
 - [dp-benchmark](https://github.com/osprey-dcs/dp-benchmark) - Includes the performance benchmark applications, not part of the Data Platform.
 
 # Data Platform Installation
@@ -168,17 +162,15 @@ module.exports = {
 
 There are three main options for installing the Data Platform.  
 
-1. This dp-support repo contains everything needed to run the Data Platform and is the easiest way to get started.  See the [Quick Start](https://github.com/osprey-dcs/dp-support#data-platform-quick-start) for details on installing and using this repo.  
+1. This data-platform repo contains everything needed to run the Data Platform and is the easiest way to get started.  See the [Quick Start](https://github.com/osprey-dcs/data-platform#data-platform-quick-start) for details on installing and using this repo.  
 
-2. To learn more about installing the Data Platform in your development environment, see the instructions for [development installation](https://github.com/osprey-dcs/dp-support#development-installation).
+2. To learn more about installing the Data Platform in your development environment, see the instructions for [development installation](https://github.com/osprey-dcs/data-platform#development-installation).
 
-3. The [jar installation] section describes the process for downloading the latest Data Platform jar files.
+3. The [jar installation section](https://github.com/osprey-dcs/data-platform#jar-installation) describes the process for downloading the latest Data Platform jar files.
 
 ### development installation
 
 Developer installation consists of cloning the first 3 github repos listed above. The dp-support repo is optional, and the dp-benchmark is probably not useful unless you are interested in performance benchmarks outside the Data Platform).  After cloning the repos, use maven to "install" the dp-grpc and dp-common projects (either from the command line or using your Java IDE).  Then use maven to compile the dp-ingest project.
-
-There is no requirement for the directory structure used, however, the dp-support repo will probably make some assumptions about the directory structure for a deployed system.  I'm using the convention of a root deployment directory "~/dp" with subdirectories "~/dp/dp-support" (where the dp-support repo is cloned), and "~/dp/dp-java" (where the 3 java repos are cloned).  This will probably be reflected in the scripts and utilites created in dp-support.
 
 To run the ingestion service, execute IngestionGrpcServer.main().  To run the performance benchmark (with the server running), execute IngestionPerformanceBenchmark.main().
 
@@ -186,7 +178,7 @@ There are jUnit tests for the elements of the service in dp-ingest/src/test/java
 
 ### jar installation
 
-In situations where the Data Platform code will be used without the ecosystem support provided by this dp-support repo or for Java development, source code and/or jar files can be installed directly by using the desired github release.  Here are links to the releases page for each repo: [dp-grpc](https://github.com/osprey-dcs/dp-grpc/releases), [dp-common](https://github.com/osprey-dcs/dp-common/releases), and [dp-ingest](https://github.com/osprey-dcs/dp-ingest/releases).
+In situations where the Data Platform code will be used without the ecosystem support provided by the dp-support repo or for Java development, source code and/or jar files can be installed directly by using the desired github release.  Here are links to the releases page for each repo: [dp-grpc](https://github.com/osprey-dcs/dp-grpc/releases), [dp-common](https://github.com/osprey-dcs/dp-common/releases), and [dp-ingest](https://github.com/osprey-dcs/dp-ingest/releases).
 
 # Configuring and Running the Data Platform
 
@@ -226,30 +218,48 @@ To specify an alternative via an envoronment variable, define a variable in the 
 
 In addition to overriding the default config file, individual configuration settings can be overridden on the command line.  To do so, use a VM option (in the java command line BEFORE the class name), prefixing the configuration setting name with "dp.".  For example, to override the gRPC port, use "-Ddp.GrpcServer.port=50052".
 
-## running data platform services
+## running data platform services and applications
+
+### dp-support ecosystem scripts
+
+The dp-support repo includes scripts to manage the Data Platform ecosystem, including MongoDB, the Java server applications, and other applications.  These are installed by the Data Platform installer in "data-platform/dp-support/current/bin".  Each is described in more detail below.
+
+#### MongoDB scripts
+- _mongodb-start_: Starts standard MongoDB installation using systemctl.
+- _mongodb-stop_: Stops MongoDB.
+- _mongodb-status_: Checks MongoDB status.
+- _mongodb-enable_: Enables MongoDB auto-start after reboot.
+
+#### data platform server scripts
+- _server-start-ingest_: Starts the ingestion server application using the util-pm-start script.
+- _server-stop-ingest_: Stops the running ingestion server application using the util-pm-stop script.
+- _server-status-ingest_: Checks the status of the ingestion server application using util-pm-status.
+
+#### other data platform applications
+- _app-run-ingestion-benchmark_: Runs the data platform ingestion service performance benchmark application against the running ingestion server.  Displays an error if the server is not running.  Uploads one minute's data for 4,000 data sources sampled at 1 KHz.  This is a good way to test the installation.  Confirm that data is written to MongoDB by the ingestion server.
 
 ### running the ingestion server application
 
-To run the ingestion server using the dp-support ecosystem scripts in "dp-support/bin", use:
+To run the ingestion server using the dp-support ecosystem scripts in "data-platform/dp-support/current/bin", use:
 ```
 server-start-ingest
 ```
 
 Here is the Java command line to run the server directly (update file paths as appropriate for your installation):
 ```
-java -Ddp.config=../config/dp-ingest.yml -Dlog4j.configurationFile=../config/log4j2.xml -jar ../lib/dp-ingest.jar
+java -Ddp.config=~/data-platform/config/dp-ingest.yml -Dlog4j.configurationFile=~/data-platform/config/log4j2.xml -jar ~/data-platform/lib/dp-ingest/dp-ingest.jar
 ```
 
 ### running the ingestion performance benchmark application
 
-To run the ingestion performance benchmark application using the dp-support ecosystem scripts in "dp-support/bin", use:
+To run the ingestion performance benchmark application using the dp-support ecosystem scripts in "data-platform/dp-support/current/bin", use:
 ```
 app-run-ingestion-benchmark
 ```
 
 Here is the Java command line to run the application directly (update file paths as appropriate for your installation):
 ```
-java -Ddp.config=../config/dp-ingest.yml -Dlog4j.configurationFile=../config/log4j2.xml -cp ../lib/dp-ingest.jar com.ospreydcs.dp.ingest.benchmark.IngestionPerformanceBenchmark
+java -Ddp.config=~/data-platform/config/dp-ingest.yml -Dlog4j.configurationFile=~/data-platform/config/log4j2.xml -cp ~/data-platform/lib/dp-ingest/dp-ingest.jar com.ospreydcs.dp.ingest.benchmark.IngestionPerformanceBenchmark
 ```
 
 # Data Platform API
