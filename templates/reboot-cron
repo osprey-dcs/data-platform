@@ -1,0 +1,1 @@
+@reboot sleep 30 && ~/data-platform/dp-support/current/bin/server-start-ingest > ~/data-platform/var/log/ingest-start.out 2>&1
