@@ -765,6 +765,16 @@ The dp-ingest project includes pretty thorough jUnit test coverage in its "test/
 
 [IngestionConfigurationmanagerTest](https://github.com/osprey-dcs/dp-ingest/blob/main/src/test/java/com/ospreydcs/dp/ingest/config/IngestionConfigurationManagerTest.java) covers use of the *ConfigurationManager* within the Ingestion Service.  It includes test cases that check for handling and default values for three ingestion components that use config resources, server, handler, and benchmark.
 
+#### December 2023: refactoring ingestion service implementation to separate handler logic from database code
+
+Before adding query handling logic to the query service, I wanted to refactor some code from the ingestion service so that common code for interacting with MongoDB can be shared by both service implementations (e.g., Ingestion and Query).
+
+The primary refactoring that I performed was to separate the Mongo-specific database code from the service-specific request handling logic.  My thinking is that we want to share (and extend) the code for connecting to the database, creating collections and building indexes with all service implementations, but allow each service implementation to use appropriate control and data structures for handling requests that are probably unique to that service.  Previously, the class _MongoHandlerBase_ included both database code and the logic for handling incoming requests.  
+
+I moved the database code into a new hierarchy in the shared _common.mongo_ package.  The new database interface framework includes three classes.  The core logic from _MongoHandlerBase_ was moved to _MongoClientBase_, which defines a set of abstract methods and includes logic for initializing a database connection and creating the containers in the database that uses those abstract methods.  Two subclasses implement the abstract method interface to provide concrete implementations using the MongoDB sync and async (reactivestreams) drivers.  The subclass _MongoSyncClient_ uses the sync driver for interacting with the database and contains logic moved from the ingestion server class _MongoSyncHandler_.  _MongoAsyncClient_ uses the async / reactivestreams driver for interacting with the database and contains logic moved from the ingestion server class _MongoAsyncHandler_.
+
+The ingestion service logic for handling incoming requests by using a pool of workers to service a queue of incoming requests is moved to the new class _ingest.handler.mongo.MongoIngestionHandler_.  The handler uses an ingestion database client for interacting with the database.  The operations required of the ingestion database client by the handler are defined in the _MongoIngestionClientInterface_.  The two concrete implementations of that interface, _MongoSyncIngestionClient_ and _MongoAsyncIngestionClient_, derive from the corresponding client base classes, _MongoSyncClient_ and _MongoAsyncClient_, respectively, to provide the required database operations using the sync and async mongodb drivers.
+
 ## mongodb schema
 
 This section includes some details about the schema used to store data in MongoDB.  Please note that this is all subject to change at this point in our project!
