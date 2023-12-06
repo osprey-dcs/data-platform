@@ -775,6 +775,50 @@ I moved the database code into a new hierarchy in the shared _common.mongo_ pack
 
 The ingestion service logic for handling incoming requests by using a pool of workers to service a queue of incoming requests is moved to the new class _ingest.handler.mongo.MongoIngestionHandler_.  The handler uses an ingestion database client for interacting with the database.  The operations required of the ingestion database client by the handler are defined in the _MongoIngestionClientInterface_.  The two concrete implementations of that interface, _MongoSyncIngestionClient_ and _MongoAsyncIngestionClient_, derive from the corresponding client base classes, _MongoSyncClient_ and _MongoAsyncClient_, respectively, to provide the required database operations using the sync and async mongodb drivers.
 
+Below are more detailed descriptions of some of the relevant classes:
+
+##### common.bson.BsonConstants.java
+- file: Added new class in common.bson package to contain constants for field names used in mongo BSON documents.
+
+##### common.mongo.MongoClientBase.java
+- file: Added new class in common.mongo package to contain core logic for initializing mongodb client database connection, and creating containers/indexes within the database.
+- abstract methods: Defines an abstract method interface for concrete subclasses that includes: initMongoClient(), initMongoDatabase(), initMongoCollectionBuckets(), createMongoIndexBuckets(), initMongoCollectionRequestStatus(), createMongoIndexRequestStatus().
+- constants: Defines constants for MONGO_DATABASE_NAME, COLLECTION_NAME_BUCKETS, COLLECTION_NAME_REQUEST_STATUS.
+- configuration: Defines constants for configuration resource names and default values for database host, port, user, and password.
+- configMgr(): Convenience method for accessing ConfigurationManager singleton.
+- getPojoCodecRegistry(): Sets up codec registry so mongo clients can find the user-defined POJO codec classes for our BSON bucket document hierarchy.
+- init(), fini(), getMongoConnectString(), getMongoDatabaseName(), getCollectionNameBuckets(), getCollectionNameRequestStatus(), createMongoIndexesBuckets(), createMongoIndexesRequestStatus(): framework of methods to initialize the mongo client connection, database, collections, and indexes using the abstract methods defined above.
+
+##### common.mongo.MongoSyncClient.java
+- file: Added new concrete subclass of MongoClientBase to provide implementations of abstract method interface using the mongodb "sync" driver.
+
+##### common.mongo.MongoAsyncClient.java
+- file: Added new concrete subclass of MongoClientBase to provide implementations of abstract method interface using the mongodb "async (reactive streams)" driver.
+
+##### ingest.handler.mongo.MongoIngestionHandler.java
+- file: Added new class with core control structures and data structures for ingestion service request handling, with a pool of worker threads consuming ingestion tasks from a queue, and using a concrete implementation of the mongo client interface for database operations.
+- constants: Includes TIMEOUT_SECONDS, MAX_INGESTION_QUEUE_SIZE, POLL_TIMEOUT_SECONDS.
+- configuration: Includes constants for configuration resource name and default value for number of thread pool workers.
+- instance variables: mongoIngestionClientInterface is the concrete implementation of the MongoIngestionClientInterface and extension of MongoClientBase. executorService is used to manage and execute the thread pool workers.  ingestionQueue is a BlockingQueue of HandlerIngestionRequest objects to be serviced by worker threads.  shutdownRequested is a boolean flag used to inform the worker threads to shut down.
+- constructor, newMongoSyncIngestionHandler(), newMongoAsyncIngestionHandler(): Constructor and static factory methods used to create new handler instances initialized with appropriate client implementation.
+- configMgr(): Convenience method for accessing ConfigurationManager singleton.
+- IngestionTaskResult: Nested class used to encapsulate the result of an ingestion task.
+- IngestionWorker: Implementation of Runnable interface to contain logic for worker threads.  The run() method polls the task queue for the next task with a timeout, and handles the task retrieved from the queue.
+- generateBucketsFromRequest(): Generates a list of bucket documents for a given IngestionRequest, used for writing the buckets to the database.
+- init(): Initializes the handler, including the database client interface implementation, creates ExecutorService with worker thread pool of specified size, creates pool of ingestion workers and executes them in the executorService, and register shutdownHook to perform necessary cleanup.
+- fini(): Cleans up the handler, shutting down and waiting for executor service, and shutting down database client interface.
+- handleIngestionRequest(): Used by worker threads to handle an ingestion request from the queue.  Generates batch of bucket documents for request, inserts them to database using client database interface, checks for successful handling, and inserts request status details in mongo describing the handling of the request with any error-related details.
+- onNext(): Used by producers (threads handling grpc ingestion request stream) to add an ingestion request to the queue for servicing by a worker thread.
+
+##### ingest.handler.mongo.MongoIngestionClientInterface.java
+- file: Added new interface defining the operations required of concrete database client implementations, including init(), fini(), insertBatch(), and insertRequestStatus().
+
+##### ingest.handler.mongo.MongoSyncIngestionClient.java
+- file: Added new concrete extension of MongoSyncClient that implements the MongoIngestionClientInterface by using the mongodb sync driver.
+
+##### ingest.handler.mongo.MongoAsyncIngestionClient.java
+- file: Added new concrete extension of MongoAsyncClient that implements the MongoIngestionClientInterface by using the mongodb async/reactivestreams driver.
+
 ## mongodb schema
 
 This section includes some details about the schema used to store data in MongoDB.  Please note that this is all subject to change at this point in our project!
