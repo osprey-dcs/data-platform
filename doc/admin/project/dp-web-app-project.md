@@ -33,7 +33,8 @@ For commercialization of the Web Application, additional features are recommende
 * Requirements: clarify and prioritize.
   * Ability to identify and isolate data is core feature.  How should it work?  We have a starting place in the prototype application.
     * Table Navigation: Paging buttons vs. infinite scroll?
-  * Refine ideas about export, annotation, and data science, and relationship to the core "isolation" feature.  How should these features be integrated into the user interface?
+  * Refine ideas about export, annotation, visualization, and data science, and relationship to the core "isolation" feature.  How should these features be integrated into the user interface?
+  * Relative priorities beyond "isolating data": export vs. annotation vs. visualization vs. data science operations?
 * Do we like the "Tailwind" UX framework that we chose for styling the prototype web application?  Ditto for React Router and React Hooks?  Are there any better alternatives?
 * Export Feature: how to implement?  As a server API that returns a browser MIME type, or in the web application code?
 * API interface: Should we develop a "mock" API for web application development that doesn't require a running data platform server and envoy proxy?
