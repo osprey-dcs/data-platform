@@ -40,6 +40,16 @@ For commercialization of the Web Application, additional features are recommende
 * API interface: Should we develop a "mock" API for web application development that doesn't require a running data platform server and envoy proxy?
 * Middle tier application server: Should we develop a middle tier JavaScript application server that might avoid some of the limitations with streaming data via grpc from the browser-based web application?
 
+# thoughts on "isolating" data and relationship to other features from chris
+
+It comes down to isolating sets in the [data source]x[time] query domain.  Recall that we wanted to tag an annotation to a "data block", which is a subset of the query domain.
+
+Thus, developing a navigation strategy is based upon moving through the 2 query domain axes (for a potentially very large domain).  I don't know the best was to do this, that is, "Paging buttons vs. infinite scroll" might be something we have to muddle through.  Probably have some general mechanism that has configuration parameters that we can tweak until we get a good "look and feel."
+
+NOTE: Once a data block is identified by the user (as a data block), then we can annotate it, or export it, or visualize it.
+
+Visualization will likely have further restrictions, it will be context specific according to the feature.  For example, viewing time series data assumes contiguous time ranges and a limited number of data sources.  That is probably the best use case to start with.  I don't think we want to get too involved with visualization, that's a whole field of study in itself.
+
 # references
 
 [1] [github repo for original web app prototype with documentation](https://github.com/craigmcchesney/datastore-web-app)
