@@ -1,10 +1,12 @@
 # highlights of items listed below
-* java changes to reflect Chris's bulk renaming in gRPC API proto files
 * query support for web app
-  * add API and handling for table-level queries (needed for web app)
-  * add handling for non-streaming query APIs (bucket and table level, needed for web app)
+  * add API and handling for unary query with result in tabular format
+  * add handling for bucket-oriented unary query API
+  * add query API for exploring available data sources, column name patterns
+    * e.g., return columns whose name matches pattern
+    * return details about a specific column such as data type and sample rate
   * add attributes, event metadata, and annotations to query API (or annotation API, but needed for web app)
-  * add query handling for column name patterns
+* java changes to reflect Chris's bulk renaming in gRPC API proto files
 * define API and develop initial implementation of annotation service
 * update deployment process to run from dp-service, include all services and benchmarks
 * update documentation to include query API and service, integration test, annotation API and service, etc.
@@ -54,9 +56,9 @@
 * Support for alarm values (e.g., ValueStatus), "user tag" aspect of EPICS timstamp.
 
 # query
-* Define table-level query API, what should the result data structure look like?  We need this for the web client, and it would be handy for data science app clients too so they don't all need logic for turning "buckets" into tables.  Breadth or Depth first?  E.g.,
-  * Build table in horizontal "stripes" with a complete set of timestamps for the time range and all corresponding column values, define structure for sending (potentially partial) stripes to client, vs.
-  * Build table vertically, adding data for one column at a time to the table for the full time range, send (potentially partial) vertical "stripes" to client with timestamps only for the columns that are included in the current result.
+* Define simple unary query API to return the result in a tabular format for use in the web application.
+  * Build table vertically, adding data for one column at a time to the table for the full time range.
+  * Should we return a partial result if the table size exceeds the gRPC message size limit, or just return an error status message? It's not unreasonable to think the client can have some knowledge of this and avoid sending requests for "too much" data.
 * Implement handling for queryResponseSingle() API (no streaming)?  We probably need this for the web application.
   * Can we handle this in a consistent way as the streaming APIs?  That is by adding query to queue to be executed and dispatched asynchronously with a "ResponseSingleDispatcher" that sends the result back to the client via the responseObserver? 
     * The stub for the single response API does accept a ResponseObserver, so hopefully we can add a job to the queue, wait for the results, send the response to the observer, and maybe use a latch that is decremented after dispatching the response that the QueryServiceImpl method can wait for (via a controller object nested around the dispatcher?)?

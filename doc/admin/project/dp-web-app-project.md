@@ -20,25 +20,11 @@ For commercialization of the Web Application, additional features are recommende
 * add attributes, event metadata, and annotations to query API
 * query handling for column name patterns
 
-# initial ideas about approach
+# requirements clarification and prioritization
 
-* Use JavaScript/React following pattern developed for datastore prototype.
-* Use React "Router" (or similar mechanism) for navigation via browser location bar and updating location by navigation in application.  This allows the user to utilize browser bookmarks within the application.
-* Use React Hooks for application code as in the prototype.
-* Use "Tailwind" library for UX styling?
-* Call gRPC API directly from web app (instead of building a middle tier app server that can do gRPC streaming for the web app)
-
-# questions / todo
-
-* Requirements: clarify and prioritize.
-  * Ability to identify and isolate data is core feature.  How should it work?  We have a starting place in the prototype application.
-    * Table Navigation: Paging buttons vs. infinite scroll?
-  * Refine ideas about export, annotation, visualization, and data science, and relationship to the core "isolation" feature.  How should these features be integrated into the user interface?
-  * Relative priorities beyond "isolating data": export vs. annotation vs. visualization vs. data science operations?
-* Do we like the "Tailwind" UX framework that we chose for styling the prototype web application?  Ditto for React Router and React Hooks?  Are there any better alternatives?
-* Export Feature: how to implement?  As a server API that returns a browser MIME type, or in the web application code?
-* API interface: Should we develop a "mock" API for web application development that doesn't require a running data platform server and envoy proxy?
-* Middle tier application server: Should we develop a middle tier JavaScript application server that might avoid some of the limitations with streaming data via grpc from the browser-based web application?
+* Ability to identify and isolate data is core feature.  How should it work?  We have a starting place in the prototype application.
+* Refine ideas about export, annotation, visualization, and data science, and relationship to the core "isolation" feature.  How should these features be integrated into the user interface?
+* Relative priorities beyond "isolating data": export vs. annotation vs. visualization vs. data science operations?
 
 # thoughts on "isolating" data and relationship to other features from chris
 
@@ -50,8 +36,43 @@ NOTE: Once a data block is identified by the user (as a data block), then we can
 
 Visualization will likely have further restrictions, it will be context specific according to the feature.  For example, viewing time series data assumes contiguous time ranges and a limited number of data sources.  That is probably the best use case to start with.  I don't think we want to get too involved with visualization, that's a whole field of study in itself.
 
+# thoughts on searching annotation data as part of "isolating" data from chris
+
+For example, I might want to know "how many times did Fred modify things since last Tuesday?"  "What data was Fred looking at?"  "Where did this calculation come from?"  "What archive data was used in this calculation?"  etc.
+
+This could get involved and the annotation query interface will be... interesting.  We should pick off the low-hanging fruit first - hopefully that will provide insight.
+
 # references
 
 [1] [github repo for original web app prototype with documentation](https://github.com/craigmcchesney/datastore-web-app)
 
 [2] [prototype web app styling overview](https://github.com/craigmcchesney/datastore-web-app/wiki/Styling-Overview)
+
+# Phase One
+
+## scope
+
+The primary objective for the first phase is to build the core feature of the application, which is "isolating" data of interest.  If we think of the data archive as a giant spreadsheet, then we are filtering that spreadsheet down to a specific region of interest in the query domain [data source]x[time].  The annotation query API, currently under development, provides additional capabilities for data in both dimensions.
+
+As the annotation API is developed, we will focus on using the core query API to build a filtering mechanism over the two dimensions of data source and time.  We will probably need to add some query features to make this possible, so part of the phase one scope is to identify and quickly build query API tools to support the filtering and isolation process.  For example, we probably need some tools for finding out what data sources (columns) are available from the archive and relevant details about them such as data type and sample frequency.
+
+It's worth pointing out that this capability if essentially what was developed in the initial web application prototype, making it a good place to start.
+
+## initial ideas about approach
+
+* Use JavaScript/React following pattern developed for datastore prototype.
+* Use React "Router" (or similar mechanism) for navigation via browser location bar and updating location by navigation in application.  This allows the user to utilize browser bookmarks within the application.
+* Use React Hooks for application code as in the prototype.
+* Use "Tailwind" library for UX styling?
+* Call gRPC API directly from web app (instead of building a middle tier app server that can do gRPC streaming for the web app)
+
+## open questions
+
+* What simple queries are needed to facilitate the isolation and filtering process, to help us explore the universe of possible data sources?
+* Do we like the "Tailwind" UX framework that we chose for styling the prototype web application?  Ditto for React Router and React Hooks?  Are there any better alternatives?
+* Export Feature: how to implement?  As a server API that returns a browser MIME type, or in the web application code?
+* API interface: Should we develop a "mock" API for web application development that doesn't require a running data platform server and envoy proxy?
+* Middle tier application server: Should we develop a middle tier JavaScript application server that might avoid some of the limitations with streaming data via grpc from the browser-based web application? 
+* Table Navigation: Paging buttons vs. infinite scroll?
+
+
