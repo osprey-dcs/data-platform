@@ -58,6 +58,12 @@ As the annotation API is developed, we will focus on using the core query API to
 
 It's worth pointing out that this capability if essentially what was developed in the initial web application prototype, making it a good place to start.
 
+So in summary, the scope of the first phase includes:
+* focus primarily on filtering the (data source x time) query axes
+* identify and incorporate tools for exploring the data sources available in the system
+* understand annotation query API and incorporate filtering by annotation data in the design, possibly with an initial implementation
+* incorporate design for operating on the filtered data set, such as exporting, adding annotations, visualizing, and initiating basic data science operations. 
+
 ## initial ideas about approach
 
 * Use JavaScript/React following pattern developed for datastore prototype.
