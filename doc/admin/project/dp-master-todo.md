@@ -8,6 +8,7 @@
   * add attributes, event metadata, and annotations to query API (or annotation API, but needed for web app)
 * java changes to reflect Chris's bulk renaming in gRPC API proto files
 * define API and develop initial implementation of annotation service
+* Move contents of dp-common repo to dp-service
 * update deployment process to run from dp-service, include all services and benchmarks
 * update documentation to include query API and service, integration test, annotation API and service, etc.
 * experiment using a mongo BSON bucket document format that stores data in protobuf format to avoid unpacking data in ingestion and repacking data in query
@@ -116,6 +117,7 @@
 * Use retryable writes, exactly once for handling transient network errors and replica set elections https://www.mongodb.com/docs/manual/core/retryable-writes
 
 # configuration
+* Move contents of dp-common repo to dp-service since Chris doesn't plan to use it in the client libraries.
 * Add a configuration report to ConfigurationManager that returns an object containing properties read from config file, properties overridden on command line, etc? (for testing, not sure we need it).
 * Add a mechanism for the application to specify configuration properties that it expects to find, e.g., a list of properties during initialization, so that we can check up front instead of one at a time as we need them - not sure this is useful either, but might be good to know where the configuration doesn't contain expected values and we'll be using defaults?
 
