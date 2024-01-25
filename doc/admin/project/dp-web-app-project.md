@@ -13,12 +13,14 @@ For commercialization of the Web Application, additional features are recommende
 * ability to analyze time-series data using standard data science techniques such as averages, fitting, and correlations
 * post-ingestion archive annotations: add user notes and comments, provide data assocations within archive
 
-# relevant data platform todos
+# relevant data platform todos (currently under development)
 
-* API and handling for table-level queries
-* handling for non-streaming query APIs
+* non-streaming query API and handling for query that returns tablular data
+* API for exploring data sources (columns)
+* API for creating annotations
+* metadata query API for exploring attributes, event metadata, and annotations
 * add attributes, event metadata, and annotations to query API
-* query handling for column name patterns
+* API for exporting data to common file types?
 
 # requirements clarification and prioritization
 
@@ -48,6 +50,8 @@ This could get involved and the annotation query interface will be... interestin
 
 [2] [prototype web app styling overview](https://github.com/craigmcchesney/datastore-web-app/wiki/Styling-Overview)
 
+[3] [grpc-web framework used to call gRPC from JavaScript browser app](https://github.com/grpc/grpc-web)
+
 # Phase One
 
 ## scope
@@ -76,9 +80,28 @@ So in summary, the scope of the first phase includes:
 
 * What simple queries are needed to facilitate the isolation and filtering process, to help us explore the universe of possible data sources?
 * Do we like the "Tailwind" UX framework that we chose for styling the prototype web application?  Ditto for React Router and React Hooks?  Are there any better alternatives?
-* Export Feature: how to implement?  As a server API that returns a browser MIME type, or in the web application code?
 * API interface: Should we develop a "mock" API for web application development that doesn't require a running data platform server and envoy proxy?
 * Middle tier application server: Should we develop a middle tier JavaScript application server that might avoid some of the limitations with streaming data via grpc from the browser-based web application? 
-* Table Navigation: Paging buttons vs. infinite scroll?
+* Table Navigation: Paging buttons vs. infinite scroll?  I think maybe we should start with infinite scroll but I'm open to other ideas.
+* Export Feature: how to implement?  As a server API that returns a browser MIME type, or in the web application code?
 
+## thoughts about the design
 
+* We need a mechanism that allows the user to explore the universe of data sources (columns) in the archive.  There will initially be a limited query mechanism for this, e.g, return information for columns whose name match a pattern, or whose name is in a specified list of names.  The query result will include an "info" object for each column, with some details such as data type, last measurement time, interval between measurements, etc.  This is similar to the "explore PVs" feature we had in the prototype, or whatever it's called.
+* Mechanism for adding specified columns to the dataset.
+* Mechanism for filtering the time axis down to the range of interest.  It's probably safe to assume that the columns are valid for the specified time range at this point.  You could use information about the specific columns to refine this if useful.  We were playing with double ended sliders in the prototype application for this, but we should explore the possibilities.
+* How will we incorporate including key/value attributes, event metadata (event name, time and description), and annotations like comments etc in the filtering user interface?  We have not yet implemented the query mechanism to support this, but I'll be working on it for the next few weeks.
+* Execute an API query using the captured filter parameters that returns a result including a table of data for the specified columns and time range.  We'll need to be careful to send queries whose result is not too large for a single response message.  The current gRPC query API is a simple "unary" RPC with a single request and response.  In the prototype, we used a similar query mechanism with controls for paging.  I'd like to try infinite scroll if it makes sense, where we need to send an API query to retrieve the next page of details.
+    * I believe that grpc-web, which we are using to call gRPC APIs from JavaScript/React, does support server-side streaming.  This allows us to send a stream of responses for a single request, and may or may not be useful for the web app.
+* Display the results in a table.  The API supports heterogeneous data types including scalar, array, table, structure, and image.  So we'll need to have a design that supports types beyond scalar, like a link to display the contents for that cell in the table or hover pop-up or whatever.
+    * We also need to think about how to display any relevant metadata with the result (tags, event metadata, user annotations).  The metadata may only apply to a certain subset of the overall query time range, and a subset of the columns in the result.
+* Once the user is happy with the results returned by the filter (which includes columns, time range, and metadata), we need to allow them to apply additional operations to that data set like export, annotation, visualizing, and analysis.  We won't have all those features right off the bat, but we'll need a way to incorporate and trigger them, adding to the set of operations as we implement them.
+
+## getting started
+
+* Understand the requirements and scope.
+* Review the prototype datastore web app.
+* Work on an initial design.
+* Begin to create the basic navigation for the application.
+* Check that you have MongoDB and Envoy proxy installed and running.  They were used for the datastore web app prototype so hopefully they are still working.
+* Start to think about the types of data source metadata queries that might be needed to support the web app.
