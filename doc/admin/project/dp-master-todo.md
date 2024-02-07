@@ -1,17 +1,11 @@
 # highlights of items listed below
-* query support for web app
-  * add API and handling for unary query with result in tabular format
-  * add handling for bucket-oriented unary query API
-  * add query API for exploring available data sources, column name patterns
-    * e.g., return columns whose name matches pattern
-    * return details about a specific column such as data type and sample rate
-  * add attributes, event metadata, and annotations to query API (or annotation API, but needed for web app)
-* java changes to reflect Chris's bulk renaming in gRPC API proto files
-* define API and develop initial implementation of annotation service
 * Move contents of dp-common repo to dp-service
 * update deployment process to run from dp-service, include all services and benchmarks
-* update documentation to include query API and service, integration test, annotation API and service, etc.
+* java changes to reflect Chris's bulk renaming in gRPC API proto files
+* documentation for integration test framework, query service API, implementation, developer notes etc
 * experiment using a mongo BSON bucket document format that stores data in protobuf format to avoid unpacking data in ingestion and repacking data in query
+* define API and develop initial implementation of annotation service
+* add attributes, event metadata, and annotations to query API
 * ingestion and query handling for arrays, tables, images, structures etc
 * ingestion and query handling for irregular sample intervals
 
@@ -21,19 +15,18 @@
 * Support/documentation for deploying mongodb/express as docker containers?
 
 # documentation
-* Break up data-platform README into new doc subdirectory.
+* Update installation and deployment instructions to reflect dp-service repo changes.
 * Overview of initial query service implementation.
 * Overview of integration test and benchmark framework.
-* Update installation and deployment instructions to reflect dp-service repo changes.
-* Add/update API docs to reflect name changes to common and ingestion.
 * Add/update query API docs.
+* Add/update API docs to reflect name changes to common and ingestion.
 * Add/update annotation API docs.
 
 # general
-* Reflect gRPC API changes in ingestion and query service implementations.
+* Reflect gRPC API name changes in ingestion and query service implementations.
 
 # ingestion
-* Test new mongo BSON document type using protobuf format for data values without unpacking it (might support heterogeneous datatypes directly without explicit handling), would also avoid re-packing data in the query service.
+* Test with new mongo BSON Java POJO document type using protobuf format for data values without unpacking it (might support heterogeneous datatypes directly without explicit handling), would also avoid re-packing data in the query service.
   * Store serialized size of data in bucket for convenience?
   * Are there issues with the data being "opaque" in the database?
 * Move logic from init() to start() in MongoIngestionHandler for starting queue and workers?
@@ -43,6 +36,7 @@
   * Should IngestionRequest columns specify data type? Would we ever want multiple data types in a column? In George's original schema, each DataValue can be a different type, but still could specify intention and check values instead of just deducing from first data value so we can reject an invalid request.
   * Change MongoHandlerBase.generateBucketsFromRequest() to create and populate the correct type of document from within the switch statement by data type?
   * Test framework / client: Change IngestionTestBase.buildIngestionRequest() to build the appropriate DataValue elements, and add test coverage to MongoHandlerTestBase for success and failure scenarios.
+* Handling for list of timestamps instead of startTime/interval/numSamples.
 * Handling for irregular sample intervals. How do we accommodate both regular and irregular buckets in mongodb?  E.g., use a map data structure, mark bucket type as regular or irregular to indicate handling.  What is impact on query service of having to deal with both?  Better to have separate mongo collections?
   * Could probably have a new "AbstractBucketDocument" super class with derivations for fixed interval (existing BucketDocument class) and irregular interval following pattern of BucketDocument subclasses using discriminator annotation on subclasses.
 * Implement provider registration API.  Currently just use integer chosen by client.
@@ -57,15 +51,8 @@
 * Support for alarm values (e.g., ValueStatus), "user tag" aspect of EPICS timstamp.
 
 # query
-* Define simple unary query API to return the result in a tabular format for use in the web application.
-  * Build table vertically, adding data for one column at a time to the table for the full time range.
-  * Should we return a partial result if the table size exceeds the gRPC message size limit, or just return an error status message? It's not unreasonable to think the client can have some knowledge of this and avoid sending requests for "too much" data.
-* Implement handling for queryResponseSingle() API (no streaming)?  We probably need this for the web application.
-  * Can we handle this in a consistent way as the streaming APIs?  That is by adding query to queue to be executed and dispatched asynchronously with a "ResponseSingleDispatcher" that sends the result back to the client via the responseObserver? 
-    * The stub for the single response API does accept a ResponseObserver, so hopefully we can add a job to the queue, wait for the results, send the response to the observer, and maybe use a latch that is decremented after dispatching the response that the QueryServiceImpl method can wait for (via a controller object nested around the dispatcher?)?
 * Add support (API and handling) for searching by attributes and event metadata (was holding off to see how the annotation API design falls out).
   * MongoQueryHandler.dataBucketFromDocument() handle attributes, eventMetadata.
-* Add support for column name patterns / regex?
 * Should we add check that query time range is less than some configured maximum time range size?
 * I only implemented a single HandlerQueryInterface concrete class using the "sync" mongodb driver, since this meets our performance requirements (and seems to outperform the async/reactivestreams driver for our use) and is in some ways less complex to work with.  Should we try building a handler using the async/reactivestreams mongodb driver to compare performance?
 
@@ -94,9 +81,10 @@
 * Scale / load testing. How big can a collection be before it is impractical?
 
 # integration test
+* Remove data created by integration test at completion?  Use command line switch/config? Talk to Chris.
 * Add support for running integration test with out-of-process grpc against running ingestion and query servers?
   * Add methods for determining whether to run requestObserver.onNext(), onCompleted(), onError() in a different thread for in-process but directly for out-of-process?  Or just leave it the way it is with sending requestObserver messages in a different thread (added because in-process grpc runs sending request and receiving response in same thread, which can cause some issues for re-entering synchronized handler code that was designed to expect different threads).
-* Add in-process grpc test coverage for rejects and error conditions? Much of this is covered at a lower level and may not require full gRPC communication tests.
+* Add in-process grpc test coverage for ingestion and query rejects and error conditions? Added coverage for the getColumnInfo() API so can follow that pattern.  Do we need coverage?  There is some other coverage already.
 
 # testing
 * More sophisticated grpc test coverage using mockito etc?  Maybe not necessary with integration test coverage.  See:
@@ -107,6 +95,7 @@
 * Tuning (heap, garbage collection, dynamic thread allocation to worker pool)
 * Multithreading controls - custom executor with core/max threads, mechanism for creating new workers when they are needed?
 * Experiment with different number of threads / workers in handler?  investigate how to find max number of threads available to java and experiment within that range?
+* test horizontal scaling of ingestion and query services?
 * Use CompletableFuture for non-blocking async?
   * https://medium.com/javarevisited/java-completablefuture-c47ca8c885af
 * Experiment with java virtual threads for some of the async libraries like mongo reactivestreams driver?
