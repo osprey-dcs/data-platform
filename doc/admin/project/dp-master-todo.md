@@ -66,6 +66,11 @@
 # dp-grpc
 * Finish making name changes to existing API spec.
 
+# repo admin
+* add tags for v1.1 with initial query service
+* create dev-1.2 dev branches
+* can remove dp-ingest, dp-query, dp-common
+
 # java client
 * Create client to subscribe to query stream for specified PVs?  E.g., 
   * write data to file at some time interval (hdf5, numpy), allow consumer to subscribe to notification when new data is ready, use onNext() etc pattern 
