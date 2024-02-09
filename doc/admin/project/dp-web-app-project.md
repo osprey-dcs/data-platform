@@ -105,3 +105,24 @@ So in summary, the scope of the first phase includes:
 * Begin to create the basic navigation for the application.
 * Check that you have MongoDB and Envoy proxy installed and running.  They were used for the datastore web app prototype so hopefully they are still working.
 * Start to think about the types of data source metadata queries that might be needed to support the web app.
+
+# additional details about API and data model for creating annotations and performing metadata queries
+
+We came up with a model that goes something like this:
+
+* the core data model for annotations is based on "rectangles" of data, each specified by list of columns and range of time
+* the data rectangles are from the same domain as the data query specification, which also uses a list of columns and time range
+* data rectangles may or may not overlap, and may or may not be contiguous in time
+* annotations apply to a list of one or more data rectangles
+* the API for creating annotations will associate event/snapshot details, tags, key/value attributes, user comment, attachment, linked dataset etc with a list of "data rectangles" (e.g., list of columns and time range)
+* the metadata query API will allow the user to specify a query covering event/snapshot details, tags, key/value attributes, user comment, attachment, linked dataset, etc that returns a list of "data rectangles"
+* the existing mechanism for specifying event/snapshot details and key/value attributes during ingestion will use the same underlying data model and persistence as other annotations
+
+So for the web application, given an API and service implementation that works as described above, we want to think about how we will incorporate user interface elements for:
+
+* identifying a list of "data rectangles" and creating an annotation that is associated with them
+* specifying a metadata query over event/snapshot details, tags, key/value attributes, user comment, attachment, linked dataset, etc and displaying the resulting list of "data rectangles" (not necessarily displaying all the data, but descriptions of the dimensions of the rectangles)
+* displaying the contents of a data rectangle in tabular format using some sort of pagination, where each pages uses the table query API to retrieve the data
+* exporting one or more data rectangles to file
+* visualizing the content of a data rectangle graphically
+* performing simple data science operations and statistics on data rectangles

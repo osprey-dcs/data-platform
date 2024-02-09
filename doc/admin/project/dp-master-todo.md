@@ -13,10 +13,16 @@
 * Add/update API docs to reflect name changes to common and ingestion.
 
 # v1.3 (good progress in february)
-* define API and develop initial implementation of annotation service
+* define API and develop initial implementation of annotation service 
+  * the core data model for annotations is based on "rectangles" of data, each specified by list of columns and range of time 
+  * the data rectangles are from the same domain as the data query specification, which also uses a list of columns and time range
+  * data rectangles may or may not overlap, and may or may not be contiguous in time
+  * annotations apply to a list of one or more data rectangles
+  * the API for creating annotations will associate event/snapshot details, tags, key/value attributes, user comment, attachment, linked dataset etc with a list of "data rectangles" (e.g., list of columns and time range)
+  * the existing mechanism for specifying event/snapshot details and key/value attributes during ingestion will use the same underlying data model and persistence as other annotations
 * add metadata query API to cover event/snapshot info, key/value attributes, annotations
-  * returns parameters of a "dataset" e.g., time range and set of columns?
-  * MongoQueryHandler.dataBucketFromDocument() handle attributes, eventMetadata.
+  * the metadata query API will allow the user to specify a query covering event/snapshot details, tags, key/value attributes, user comment, attachment, linked dataset, etc that returns a list of "data rectangles"
+  * need to change MongoQueryHandler.dataBucketFromDocument() to handle attributes, eventMetadata, etc.
 * make collection names configurable
 * remove data created by integration and benchmark tests at completion
   * add config / command-line flag to optionally not delete data
@@ -42,6 +48,10 @@
   * Should IngestionRequest columns specify data type? Would we ever want multiple data types in a column? In George's original schema, each DataValue can be a different type, but still could specify intention and check values instead of just deducing from first data value so we can reject an invalid request.
   * Change MongoHandlerBase.generateBucketsFromRequest() to create and populate the correct type of document from within the switch statement by data type?
   * Test framework / client: Change IngestionTestBase.buildIngestionRequest() to build the appropriate DataValue elements, and add test coverage to MongoHandlerTestBase for success and failure scenarios.
+* How to enforce the data type for a particular column?  How to enforce dimensions of array data types?
+  * explicit registration of column name, data type, dimensionality, sample period, etc
+  * registration of a column's details on first ingestion, reject might be confusing since it's behind the scenes
+  * how to enforce without unpacking data (if we store DataValue as raw protobuf)
 * Implement provider registration API.  Currently just use integer chosen by client.
 * Add API for checking status of ingestion requests.
 * use parallel stream iteration in ingesting the batch of data buckets for an ingestion request? e.g.,
