@@ -28,6 +28,7 @@
   * add config / command-line flag to optionally not delete data
 * refactor services to use common base class with queue, job, dispatcher
   * Move logic from init() to start() in MongoIngestionHandler for starting queue and workers?
+* handling for unary ingestion rpc (only streaming is currently implemented)
 
 # v1.4 (march/april)
 * experiment using a mongo BSON bucket document format that stores data in protobuf format to avoid unpacking data in ingestion and repacking data in query
