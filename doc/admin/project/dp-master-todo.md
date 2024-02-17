@@ -1,16 +1,12 @@
 # v1.2 (mid february)
-* grpc API name changes in proto files
-  * common and ingestion
-  * query
-* java changes to reflect Chris's bulk renaming in gRPC API proto files
-* Add/update API docs to reflect name changes to common and ingestion.
 * deployment that includes running both ingestion and query services from dp-service
   * Add mechanisms for running performance benchmarks
+* Add/update API docs to reflect name changes to common and ingestion.
 * Update installation and deployment instructions for new dp-service jar etc.
 * documentation for integration test framework, query service API, implementation, developer notes etc
 * create dp-web repo, create javascript grpc stubs, check in
 
-# v1.3 (good progress in february)
+# v1.3 (start mid february)
 * refactor services to use common base class with queue, job, dispatcher
   * Move logic from init() to start() in MongoIngestionHandler for starting queue and workers?
 * define API and develop initial implementation of annotation service 
