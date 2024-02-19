@@ -5,6 +5,10 @@
 * Update installation and deployment instructions for new dp-service jar etc.
 * documentation for integration test framework, query service API, implementation, developer notes etc
 * create dp-web repo, create javascript grpc stubs, check in
+* test mongodb 7
+  * maybe a good time to try running dp against docker, try docker with mongodb 7?
+  * compare performance of dp benchmarks with both db versions
+* consider upgrading to mongodb 7 for dp
 
 # v1.3 (start mid february)
 * refactor services to use common base class with queue, job, dispatcher
