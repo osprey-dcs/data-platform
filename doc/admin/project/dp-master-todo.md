@@ -1,14 +1,15 @@
 # v1.2 (mid february)
-* deployment that includes running both ingestion and query services from dp-service
-  * Add mechanisms for running performance benchmarks
-* Add/update API docs to reflect name changes to common and ingestion.
-* Update installation and deployment instructions for new dp-service jar etc.
-* documentation for integration test framework, query service API, implementation, developer notes etc
-* create dp-web repo, create javascript grpc stubs, check in
+* repo admin
+  * add dp-web-app repo
+  * give mitch access to dp repos
+  * remove dp-common, dp-ingest, dp-query repos
 * test mongodb 7
   * maybe a good time to try running dp against docker, try docker with mongodb 7?
   * compare performance of dp benchmarks with both db versions
-* consider upgrading to mongodb 7 for dp
+* consider upgrading to mongodb 7 for dp* Add/update API docs to reflect name changes to common and ingestion.
+* Update installation and deployment instructions for new dp-service jar etc.
+* documentation for integration test framework, query service API, implementation, developer notes etc
+* create javascript grpc stubs, check in
 
 # v1.3 (start mid february)
 * refactor services to use common base class with queue, job, dispatcher
