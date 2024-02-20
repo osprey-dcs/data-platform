@@ -1,8 +1,4 @@
 # v1.2 (mid february)
-* repo admin
-  * add dp-web-app repo
-  * give mitch access to dp repos
-  * remove dp-common, dp-ingest, dp-query repos
 * test mongodb 7
   * maybe a good time to try running dp against docker, try docker with mongodb 7?
   * compare performance of dp benchmarks with both db versions
