@@ -1,0 +1,24 @@
+MongoClient:
+  dbHost: localhost
+  dbPort: 27017
+  dbUser: admin
+  dbPassword: admin
+
+IngestionServer:
+  port: 50051
+
+IngestionHandler:
+  numWorkers: 7
+
+IngestionBenchmark:
+  grpcConnectString: "localhost:50051"
+  startSeconds: 1698767462
+
+QueryServer:
+  port: 50052
+
+QueryHandler:
+  numWorkers: 7
+
+QueryBenchmark:
+  grpcConnectString: "localhost:50052"

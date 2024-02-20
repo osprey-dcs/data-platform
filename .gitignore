@@ -1,8 +1,7 @@
 dp-support/current
 dp-support/dp-support*
 
-lib/dp-ingest/*.jar
-lib/dp-query/*.jar
+lib/dp-service/*.jar
 
 var/log/*.log
 var/lock/*.pid
