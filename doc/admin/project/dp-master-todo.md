@@ -1,13 +1,18 @@
 # v1.2 (mid february)
-* test mongodb 7
-  * maybe a good time to try running dp against docker, try docker with mongodb 7?
-  * compare performance of dp benchmarks with both db versions
-* consider upgrading to mongodb 7 for dp* Add/update API docs to reflect name changes to common and ingestion.
-* Update installation and deployment instructions for new dp-service jar etc.
-* documentation for integration test framework, query service API, implementation, developer notes etc
-* create javascript grpc stubs, check in
+* update documentation
+  * dp-grpc
+    * add comments to API objects in proto files
+    * API overview with notes about RPC interface, links to proto files for details (move from data-platform repo)
+  * dp-support
+    * overivew of scripts for managing environment (move from data-platform repo)
+  * data-platform
+    * move details to other repos
+    * updated overview, prerequisities, quick start, deployment instructions, etc
+  * dp-service
+    * documentation for integration test framework, query service API, implementation, developer notes etc
 
 # v1.3 (start mid february)
+* create javascript grpc stubs, check in
 * refactor services to use common base class with queue, job, dispatcher
   * Move logic from init() to start() in MongoIngestionHandler for starting queue and workers?
 * define API and develop initial implementation of annotation service 
