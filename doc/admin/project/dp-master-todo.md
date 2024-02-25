@@ -1,20 +1,30 @@
 # v1.2 (mid february)
-* update documentation
-  * dp-grpc
-    * add comments to API objects in proto files
-    * API overview with notes about RPC interface, links to proto files for details (move from data-platform repo)
-  * dp-support
-    * overivew of scripts for managing environment (move from data-platform repo)
-  * data-platform
-    * move details to other repos
-    * updated overview, prerequisities, quick start, deployment instructions, etc
-  * dp-service
-    * documentation for integration test framework, query service API, implementation, developer notes etc
+* dp-grpc
+  * QueryDataResponse.QueryResult.QueryData.DataBucket should contain DataTimestamps so it can be list of timestamps or samplingClock, not just samplingClock
+* dp-service
+  * add developer docs from data-platform doc directory
+  * code change for DataBucket query result handling to use DataTimestamps instead of SamplingClock
+* dp-benchmark
+  * move benchmark summary doc from data-platform to README for dp-benchmark
+* dp-support
+  * change mongodb-compass-start script to pass connect string on the command line instead of echoing it on console?
+  * update docs for new scripts
+* data-platform
+  * check that data platform overview describes services with references to API document
+  * add config file with comments
+  * change cron template to include query service etc
+  * include updated dp-support
+  * add proto files?
+  * move tags and update releases for all repos
+  * make new installer
+  * document process for building release installer tarball etc on wiki or something?
 
 # v1.3 (start mid february)
 * create javascript grpc stubs, check in
 * refactor services to use common base class with queue, job, dispatcher
   * Move logic from init() to start() in MongoIngestionHandler for starting queue and workers?
+  * dp-service
+    * documentation for integration test framework, query service API, implementation, developer notes etc
 * define API and develop initial implementation of annotation service 
   * the core data model for annotations is based on "rectangles" of data, each specified by list of columns and range of time 
   * the data rectangles are from the same domain as the data query specification, which also uses a list of columns and time range
@@ -30,7 +40,7 @@
   * add config / command-line flag to optionally not delete data
 * handling for unary ingestion rpc (only streaming is currently implemented)
 
-# v1.4 (march/april)
+# v1.4 (march/april/may)
 * experiment using a mongo BSON bucket document format that stores data in protobuf format to avoid unpacking data in ingestion and repacking data in query
   * are there any issues with having "opague" (unpacked protobuf) data in the database? e.g., any use of the database directly to access data needs to be aware of protobuf packing and have mechanism for unpacking
 * ingestion and query handling for arrays, tables, images, structures etc
@@ -76,10 +86,7 @@
 # dp-grpc
 
 # installation and deployment
-* Support/documentation for deploying mongodb/express as docker containers?
-
-# repo admin
-* can remove dp-ingest, dp-query, dp-common
+* deployment of dp services in a docker container(s)
 
 # java client
 * Create client to subscribe to query stream for specified PVs?  E.g., 
