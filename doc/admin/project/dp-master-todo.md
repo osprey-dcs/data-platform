@@ -1,9 +1,6 @@
 # v1.2 (mid february)
 
 * data-platform
-  * check that data platform overview describes services with references to API document
-  * check cross references and intro for each repo
-  * add proto files?
   * move tags and update releases for all repos
   * script to create simplified installer?
     * use simpler structure without "current" and dp-service.jar etc
