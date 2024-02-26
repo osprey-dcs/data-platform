@@ -1,1 +1,3 @@
-@reboot sleep 30 && ~/data-platform/dp-support/current/bin/server-start-ingest > ~/data-platform/var/log/ingest-start.out 2>&1
+@reboot sleep 30 && ~/data-platform/bin/server-ingest-start > ~/data-platform/var/log/ingest-start.out 2>&1
+
+@reboot sleep 30 && ~/data-platform/bin/server-query--start > ~/data-platform/var/log/query-start.out 2>&1
