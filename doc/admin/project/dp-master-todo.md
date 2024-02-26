@@ -1,25 +1,20 @@
 # v1.2 (mid february)
-* dp-grpc
-  * QueryDataResponse.QueryResult.QueryData.DataBucket should contain DataTimestamps so it can be list of timestamps or samplingClock, not just samplingClock
-* dp-service
-  * add developer docs from data-platform doc directory
-  * code change for DataBucket query result handling to use DataTimestamps instead of SamplingClock
-* dp-benchmark
-  * move benchmark summary doc from data-platform to README for dp-benchmark
-* dp-support
-  * change mongodb-compass-start script to pass connect string on the command line instead of echoing it on console?
-  * update docs for new scripts
+
 * data-platform
   * check that data platform overview describes services with references to API document
-  * add config file with comments
-  * change cron template to include query service etc
-  * include updated dp-support
+  * check cross references and intro for each repo
   * add proto files?
   * move tags and update releases for all repos
-  * make new installer
-  * document process for building release installer tarball etc on wiki or something?
+  * script to create simplified installer?
+    * use simpler structure without "current" and dp-service.jar etc
+    * e.g., instead of dp-support/current/bin, just /bin
+    * add proto files /proto
+    * add config file with comments /config
+    * add jar file /lib/dp-service-shaded.jar or just /lib/dp-service.jar?
+  * document process for building release installer tarball etc on wiki or something? (e.g., new script or steps required)
 
 # v1.3 (start mid february)
+
 * create javascript grpc stubs, check in
 * refactor services to use common base class with queue, job, dispatcher
   * Move logic from init() to start() in MongoIngestionHandler for starting queue and workers?
@@ -41,6 +36,7 @@
 * handling for unary ingestion rpc (only streaming is currently implemented)
 
 # v1.4 (march/april/may)
+
 * experiment using a mongo BSON bucket document format that stores data in protobuf format to avoid unpacking data in ingestion and repacking data in query
   * are there any issues with having "opague" (unpacked protobuf) data in the database? e.g., any use of the database directly to access data needs to be aware of protobuf packing and have mechanism for unpacking
 * ingestion and query handling for arrays, tables, images, structures etc
@@ -86,7 +82,7 @@
 # dp-grpc
 
 # installation and deployment
-* deployment of dp services in a docker container(s)
+* extract MongoDB user/name password for dp-support docker and compass scripts from a config file
 
 # java client
 * Create client to subscribe to query stream for specified PVs?  E.g., 
