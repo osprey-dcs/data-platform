@@ -95,3 +95,12 @@ Need to build the installer and upload it as part of the release.
 #### build data-platform installer
 
 Hopefully the script was updated before adding tags etc.  Sometimes it leads to changes that should be tagged.  Use the data-platform/scripts/make-installer script to create the installer tarball with content from the other repos.
+
+## create new dev branch for major release
+
+If transitioning to a new major release, consider creating new dev branch from main.  E.g., for v1.2 to v1.3:
+
+- git checkout main
+- git checkout -b dev-1.3
+- git merge main
+- git push --set-upstream origin dev-1.3
