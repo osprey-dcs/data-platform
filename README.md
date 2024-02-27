@@ -123,7 +123,89 @@ The "data-platform/config" directory includes template config files for the inst
 
 ## Start ecosystem processes
 
-The "data-platform/bin" directory includes a set of scripts for managing the data platform ecosystem.  These can be used to quickly get the system up and running.  See the section [running data platform services and applications](https://github.com/osprey-dcs/data-platform/tree/main#dp-support-ecosystem-scripts) for more details about using these scripts.
+The "data-platform/bin" directory includes a set of scripts for managing the data platform ecosystem.  These can be used to quickly get the system up and running.  Below are some of the basics for getting the ecosystem up and running, including starting the MongoDB database, running the Data Platform services, and running the performance benchmarks.  See the [dp-support repo](https://github.com/osprey-dcs/dp-support) for additional details about the available scripts.
+
+### manage local mongodb
+
+Assuming you've installed MongoDB as a local package, use the following scripts to start the database and check status via systemctl.
+
+#### start local mongodb
+```
+data-platform/bin/mongodb-systemctl-start
+```
+
+#### check status of local mongodb
+```
+data-platform/bin/mongodb-systemctl-status
+```
+
+### manage docker mongodb
+
+If you choose to run MongoDB via a Docker container, use the following commands to create the container, start it, and run a database shell (mongosh) against it.
+
+#### create mongodb docker container
+```
+data-platform/bin/mongodb-docker-create
+```
+
+#### start mongodb docker container
+```
+data-platform/bin/mongodb-docker-start
+```
+
+#### create mongodb docker container
+```
+data-platform/bin/mongodb-docker-create
+```
+
+#### run mongosh against mongodb docker container
+```
+data-platform/bin/mongodb-docker-shell
+```
+
+### run mongodb compass gui
+Whether you've installed MongoDB as a local package, or are running it via a Docker container, you can use the Compass GUI to navigate the database contents.  The wrapper script shown below runs the application, and passes a default connection string (assuming the database user and password are "admin", you'll need to edit the connect string in Compass if you've overridden the defaults).
+```
+data-platform/bin/mongodb-compass-start
+```
+
+### run data platform services
+
+Use the following commands to start the Ingestion and Query Services.
+
+#### start ingestion service
+```
+data-platform/bin/server-ingest-start
+```
+
+#### check ingestion service status
+```
+data-platform/bin/server-ingest-status
+```
+
+#### start query service
+```
+data-platform/bin/server-query-start
+```
+
+#### check query service status
+```
+data-platform/bin/server-query-status
+```
+
+### run data platform performance benchmarks
+
+Use the following commands to run the Ingestion and Query Service performance benchmarks.
+
+#### run ingestion benchmark
+```
+data-platform/bin/app-run-ingestion-benchmark
+```
+
+#### run query benchmark
+```
+data-platform/bin/app-run-query-benchmark
+```
 
 # Installation Details
 
@@ -137,9 +219,11 @@ The Data Platform Java applications are compiled using Java 16, and have been te
 
 ### mongodb installation
 
-MongoDB version 7.0.5 is the current reference version for the Data Platform service implementations.  Installation will vary by platform and instructions for doing so should be fairly easy to find.  MongoDB provides [documentation for installing on a variety of platforms](https://www.mongodb.com/docs/manual/administration/install-community/), which is a good place to start.
+MongoDB version 7.0.5 is the current reference version for the Data Platform service implementations.  It may be installed as a local package, or via a Docker container.  Each approach is described in more detail below.
 
-It is also possible (and relatively simple) to run MongoDB from a docker container.  While probably not appropriate for a production installation or system under heavy load, this approach might be useful for development, evaluation, and other applications.  The [dp-support repo](https://github.com/osprey-dcs/dp-support) includes example scripts for [creating](https://github.com/osprey-dcs/dp-support/blob/main/bin/mongodb-docker-create) and managing a MongoDB docker deployment.
+#### mongodb installation as local package
+
+Installation will vary by platform and instructions for doing so should be fairly easy to find.  MongoDB provides [documentation for installing on a variety of platforms](https://www.mongodb.com/docs/manual/administration/install-community/), which is a good place to start.
 
 After installing MongoDB, create a user for the data platform applications.  The following example creates an "admin" user (password="admin") with root privileges in the "admin" database.  You can also create a user with privileges scoped only to the "dp" database in MongoDB.
 
@@ -159,6 +243,10 @@ db.createUser({user: "admin", pwd: "admin", roles: [ { role: "root", db: "admin"
 ```
 exit
 ```
+
+#### mongodb installation as docker container
+
+It is also possible (and relatively simple) to run MongoDB from a docker container.  While probably not appropriate for a production installation or system under heavy load, this approach might be useful for development, evaluation, and other applications.  The Quick Start section above demonstrates the steps for creating and running MongoDB via a Docker container.  See the [dp-support repo](https://github.com/osprey-dcs/dp-support) for more details about the scripts.
 
 ### mongodb-compass installation
 
