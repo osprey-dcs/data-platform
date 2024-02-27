@@ -1,33 +1,41 @@
-# v1.3 (start mid february)
+# v1.3 (march)
 
-* create javascript grpc stubs, check in
+* create javascript grpc stubs for web app, check in to dp-web-app (and dp-grpc? what about protoc setup for generating javascript stubs, something to check in / document?)
+* investigate compiler warning for QueryServiceImpl, IngestionTestBase "uses unchecked or unsafe operations"
 * refactor services to use common base class with queue, job, dispatcher
   * Move logic from init() to start() in MongoIngestionHandler for starting queue and workers?
   * dp-service
     * documentation for integration test framework, query service API, implementation, developer notes etc
-* define API and develop initial implementation of annotation service 
+* ingestion service minor tasks
+  * add providerId/requestId from ingestion request to time series buckets 
+  * add ingestion handling and test coverage for eventMetadata.stopTime in MongoIngestionHandler.generateBucketsFromRequest() etc
+* develop initial implementation of annotation service 
   * the core data model for annotations is based on "rectangles" of data, each specified by list of columns and range of time 
   * the data rectangles are from the same domain as the data query specification, which also uses a list of columns and time range
   * data rectangles may or may not overlap, and may or may not be contiguous in time
   * annotations apply to a list of one or more data rectangles
   * the API for creating annotations will associate event/snapshot details, tags, key/value attributes, user comment, attachment, linked dataset etc with a list of "data rectangles" (e.g., list of columns and time range)
   * the existing mechanism for specifying event/snapshot details and key/value attributes during ingestion will use the same underlying data model and persistence as other annotations
+* dp-service documentation: 
+  * Add detailed documents for service framework and specific implementations, integration test framework, performance benchmarks, etc
+  * update section with java command lines for running services, benchmarks, tests
 * add metadata and annotation query APIs to cover event/snapshot info, key/value attributes, annotations
   * the metadata query API will allow the user to specify a query covering event/snapshot details, tags, key/value attributes, user comment, attachment, linked dataset, etc that returns a list of "data rectangles"
   * need to change MongoQueryHandler.dataBucketFromDocument() to handle attributes, eventMetadata, etc.
 * make collection names configurable
-* remove data created by integration and benchmark tests at completion
-  * add config / command-line flag to optionally not delete data
+* option for removing data created by integration and benchmark tests at completion
+  * add config / command-line flag to optionally not delete data?
 * handling for unary ingestion rpc (only streaming is currently implemented)
 
-# v1.4 (march/april/may)
+# v1.4 (april/may)
 
 * experiment using a mongo BSON bucket document format that stores data in protobuf format to avoid unpacking data in ingestion and repacking data in query
   * are there any issues with having "opague" (unpacked protobuf) data in the database? e.g., any use of the database directly to access data needs to be aware of protobuf packing and have mechanism for unpacking
 * ingestion and query handling for arrays, tables, images, structures etc
-* ingestion and query handling for irregular sample intervals, list of timestamps
-  * How do we accommodate both regular and irregular buckets in mongodb?  E.g., use a map data structure, mark bucket type as regular or irregular to indicate handling.  What is impact on query service of having to deal with both?  Better to have separate mongo collections?
-  * Could probably have a new "AbstractBucketDocument" super class with derivations for fixed interval (existing BucketDocument class) and irregular interval following pattern of BucketDocument subclasses using discriminator annotation on subclasses.
+* ingestion and query handling for buckets with explicit list of timestamps instead of SamplingClock with start time, periodNanos, and sample count
+  * How do we accommodate both SamplingClock and TimestampList buckets in mongodb?  Maybe just have an optional list of timestamps that if populated implies bucket uses timestamp list, otherwise use SamplingClock.
+  * MongoQueryHandler.dataTimestampsForBucket(): Change to determine whether to use explicit timestamp list or samplingClock from BucketDocument (e.g., does it contain a non-empty list of timestamps?)
+  * check code for lastSamplingClock to make sure it will handle case where there is an explicit list of timestamps, e.g., get count from number of timestamps, calculate sample period from delta of two timestamps?
 
 # documentation
 
