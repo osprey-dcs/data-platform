@@ -1,0 +1,97 @@
+#/bin/bash
+
+echo
+echo '================================================================'
+echo 'make-installer'
+echo '================================================================'
+echo
+
+# create output directory
+TARGET_DIR="/home/craigmcc/data-platform"
+test -d "$TARGET_DIR" && { echo "fatal error: TARGET_DIR $TARGET_DIR already exists"; exit 1; }
+mkdir "$TARGET_DIR" || { echo "fatal error: mkdir failed for $TARGET_DIR"; exit 1; }
+echo "created $TARGET_DIR"
+
+# create config directory
+mkdir "$TARGET_DIR/config" || { echo "fatal error: mkdir failed for $TARGET_DIR/config"; exit 1; }
+echo "created $TARGET_DIR/config"
+
+# copy app config
+APP_CONFIG_SRC="/home/craigmcc/dp/dp-java/dp-service/src/main/resources/application.yml"
+APP_CONFIG_TARGET="$TARGET_DIR/config/dp.yml"
+test -e "$APP_CONFIG_SRC" || { echo "fatal error: APP_CONFIG_SRC $APP_CONFIG_SRC not found"; exit 1; }
+cp "$APP_CONFIG_SRC" "$APP_CONFIG_TARGET" || { echo "fatal error: cp failed for APP_CONFIG_SRC $APP_CONFIG_SRC"; exit 1; }
+echo "copied APP_CONFIG_SRC $APP_CONFIG_SRC"
+
+# copy log config
+LOG_CONFIG_SRC="/home/craigmcc/dp/dp-java/dp-service/src/main/resources/log4j2.xml"
+LOG_CONFIG_TARGET="$TARGET_DIR/config/log4j2.xml"
+test -e "$LOG_CONFIG_SRC" || { echo "fatal error: LOG_CONFIG_SRC $LOG_CONFIG_SRC not found"; exit 1; }
+cp "$LOG_CONFIG_SRC" "$LOG_CONFIG_TARGET" || { echo "fatal error: cp failed for LOG_CONFIG_SRC $LOG_CONFIG_SRC"; exit 1; }
+echo "copied LOG_CONFIG_SRC $LOG_CONFIG_SRC"
+
+# create bin directory
+mkdir "$TARGET_DIR/bin" || { echo "fatal error: mkdir failed for $TARGET_DIR/bin"; exit 1; }
+echo "created $TARGET_DIR/bin"
+
+# copy dp-support/bin
+BIN_SRC="/home/craigmcc/dp/dp-support/bin"
+cp "$BIN_SRC"/* "$TARGET_DIR/bin" || { echo "fatal error: cp failed for BIN_SRC $BIN_SRC"; exit 1; }
+echo "copied BIN_SRC $BIN_SRC"
+
+# create lib directory
+mkdir "$TARGET_DIR/lib" || { echo "fatal error: mkdir failed for $TARGET_DIR/lib"; exit 1; }
+echo "created $TARGET_DIR/lib"
+
+# copy dp-service jar
+JAR_SRC="/home/craigmcc/dp/dp-java/dp-service/target/dp-service-1.2.0-shaded.jar"
+JAR_TARGET="$TARGET_DIR/lib/dp-service.jar"
+test -e "$JAR_SRC" || { echo "fatal error: JAR_SRC $JAR_SRC not found"; exit 1; }
+cp "$JAR_SRC" "$JAR_TARGET" || { echo "fatal error: cp failed for JAR_SRC $JAR_SRC"; exit 1; }
+echo "copied JAR_SRC $JAR_SRC"
+
+# copy README.env
+README_SRC="/home/craigmcc/dp/data-platform/README.env"
+README_TARGET="$TARGET_DIR/README.env"
+test -e "$README_SRC" || { echo "fatal error: README_SRC $README_SRC not found"; exit 1; }
+cp "$README_SRC" "$README_TARGET" || { echo "fatal error: cp failed for README_SRC $README_SRC"; exit 1; }
+echo "copied README_SRC $README_SRC"
+
+# create templates directory
+mkdir "$TARGET_DIR/templates" || { echo "fatal error: mkdir failed for $TARGET_DIR/templates"; exit 1; }
+echo "created $TARGET_DIR/templates"
+
+# copy templates
+TEMPLATE_SRC="/home/craigmcc/dp/data-platform/templates"
+cp "$TEMPLATE_SRC"/* "$TARGET_DIR/templates" || { echo "fatal error: cp failed for TEMPLATE_SRC $TEMPLATE_SRC"; exit 1; }
+echo "copied TEMPLATE_SRC $TEMPLATE_SRC"
+
+# create proto directory
+mkdir "$TARGET_DIR/proto" || { echo "fatal error: mkdir failed for $TARGET_DIR/proto"; exit 1; }
+echo "created $TARGET_DIR/proto"
+
+# copy proto files
+PROTO_SRC="/home/craigmcc/dp/dp-java/dp-grpc/src/main/proto"
+cp "$PROTO_SRC"/* "$TARGET_DIR/proto" || { echo "fatal error: cp failed for PROTO_SRC $PROTO_SRC"; exit 1; }
+echo "copied PROTO_SRC $PROTO_SRC"
+
+# create var directory
+mkdir "$TARGET_DIR/var" || { echo "fatal error: mkdir failed for $TARGET_DIR/var"; exit 1; }
+echo "created $TARGET_DIR/var"
+
+# create lock directory
+mkdir "$TARGET_DIR/var/lock" || { echo "fatal error: mkdir failed for $TARGET_DIR/var/lock"; exit 1; }
+echo "created $TARGET_DIR/var/lock"
+
+# create log directory
+mkdir "$TARGET_DIR/var/log" || { echo "fatal error: mkdir failed for $TARGET_DIR/var/log"; exit 1; }
+echo "created $TARGET_DIR/var/log"
+
+# create tarball of installer
+TAR_FILE="/home/craigmcc/data-platform-installer.tar"
+tar cvf "$TAR_FILE" "$TARGET_DIR"/*
+echo "created TAR_FILE $TAR_FILE"
+
+# gzip tarball
+gzip "$TAR_FILE"
+echo "created tarball $TAR_FILE.gz"
