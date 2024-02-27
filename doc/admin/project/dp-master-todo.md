@@ -1,15 +1,3 @@
-# v1.2 (mid february)
-
-* data-platform
-  * script to create simplified installer?
-    * use simpler structure without "current" and dp-service.jar etc
-    * e.g., instead of dp-support/current/bin, just /bin
-    * add proto files /proto
-    * add config file with comments /config
-    * add jar file /lib/dp-service-shaded.jar or just /lib/dp-service.jar?
-  * document process for building release installer tarball etc on wiki or something? (e.g., new script or steps required)
-  * create releases for dp-grpc, dp-service, dp-support, data-platform
-
 # v1.3 (start mid february)
 
 * create javascript grpc stubs, check in
