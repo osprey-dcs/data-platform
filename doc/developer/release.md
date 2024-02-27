@@ -69,7 +69,7 @@ If tags need to be (re)moved:
 
 - git tag -d v1.2
 - git push origin --delete v1.2
-- git tag -a v1.2
+- git tag -a v1.2 -m "v1.2"
 - git push origin v1.2
 
 ## create dp-service jar file
