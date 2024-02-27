@@ -2,20 +2,20 @@
 
 * create javascript grpc stubs for web app, check in to dp-web-app (and dp-grpc? what about protoc setup for generating javascript stubs, something to check in / document?)
 * investigate compiler warning for QueryServiceImpl, IngestionTestBase "uses unchecked or unsafe operations"
-* refactor services to use common base class with queue, job, dispatcher
-  * Move logic from init() to start() in MongoIngestionHandler for starting queue and workers?
-  * dp-service
-    * documentation for integration test framework, query service API, implementation, developer notes etc
-* ingestion service minor tasks
-  * add providerId/requestId from ingestion request to time series buckets 
-  * add ingestion handling and test coverage for eventMetadata.stopTime in MongoIngestionHandler.generateBucketsFromRequest() etc
-* develop initial implementation of annotation service 
+* create service framework with queue/workers, job, dispatcher and modify query service implementation to use it
+  * modify query service to use new service framework
+* develop initial implementation of annotation service extending new service framework
   * the core data model for annotations is based on "rectangles" of data, each specified by list of columns and range of time 
   * the data rectangles are from the same domain as the data query specification, which also uses a list of columns and time range
   * data rectangles may or may not overlap, and may or may not be contiguous in time
   * annotations apply to a list of one or more data rectangles
   * the API for creating annotations will associate event/snapshot details, tags, key/value attributes, user comment, attachment, linked dataset etc with a list of "data rectangles" (e.g., list of columns and time range)
   * the existing mechanism for specifying event/snapshot details and key/value attributes during ingestion will use the same underlying data model and persistence as other annotations
+* modify ingestion service to use new service framework
+* ingestion service minor tasks
+  * Move logic from init() to start() in MongoIngestionHandler for starting queue and workers?
+  * add providerId/requestId from ingestion request to time series buckets
+  * add ingestion handling and test coverage for eventMetadata.stopTime in MongoIngestionHandler.generateBucketsFromRequest() etc
 * dp-service documentation: 
   * Add detailed documents for service framework and specific implementations, integration test framework, performance benchmarks, etc
   * update section with java command lines for running services, benchmarks, tests
