@@ -91,10 +91,10 @@ echo "created $TARGET_DIR/var/log"
 cd
 
 # create tarball of installer
-DP_DIR="./data-platform"
+DP_DIR="data-platform"
 test -d "$TARGET_DIR" || { echo "fatal error: DP_DIR $DP_DIR does not exist"; exit 1; }
 TAR_FILE="/home/craigmcc/data-platform-installer.tar"
-tar cvf "$TAR_FILE" "$DP_DIR"/*
+tar cvf "$TAR_FILE" "$DP_DIR"/*  || { echo "fatal error: tar faile to create TAR_FILE $TAR_FILE"; exit 1; }
 echo "created TAR_FILE $TAR_FILE"
 
 # gzip tarball
