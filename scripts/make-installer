@@ -87,11 +87,17 @@ echo "created $TARGET_DIR/var/lock"
 mkdir "$TARGET_DIR/var/log" || { echo "fatal error: mkdir failed for $TARGET_DIR/var/log"; exit 1; }
 echo "created $TARGET_DIR/var/log"
 
+# change to root dir so tar file contains relative paths
+cd
+
 # create tarball of installer
+DP_DIR="./data-platform"
+test -d "$TARGET_DIR" || { echo "fatal error: DP_DIR $DP_DIR does not exist"; exit 1; }
 TAR_FILE="/home/craigmcc/data-platform-installer.tar"
-tar cvf "$TAR_FILE" "$TARGET_DIR"/*
+tar cvf "$TAR_FILE" "$DP_DIR"/*
 echo "created TAR_FILE $TAR_FILE"
 
 # gzip tarball
 gzip "$TAR_FILE"
 echo "created tarball $TAR_FILE.gz"
+

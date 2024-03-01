@@ -1,16 +1,10 @@
 # v1.3 (march)
 
+* develop initial implementation of annotation service extending new service framework
 * create javascript grpc stubs for web app, check in to dp-web-app (and dp-grpc? what about protoc setup for generating javascript stubs, something to check in / document?)
 * investigate compiler warning for QueryServiceImpl, IngestionTestBase "uses unchecked or unsafe operations"
-* create service framework with queue/workers, job, dispatcher and modify query service implementation to use it
-  * modify query service to use new service framework
-* develop initial implementation of annotation service extending new service framework
-  * the core data model for annotations is based on "rectangles" of data, each specified by list of columns and range of time 
-  * the data rectangles are from the same domain as the data query specification, which also uses a list of columns and time range
-  * data rectangles may or may not overlap, and may or may not be contiguous in time
-  * annotations apply to a list of one or more data rectangles
-  * the API for creating annotations will associate event/snapshot details, tags, key/value attributes, user comment, attachment, linked dataset etc with a list of "data rectangles" (e.g., list of columns and time range)
-  * the existing mechanism for specifying event/snapshot details and key/value attributes during ingestion will use the same underlying data model and persistence as other annotations
+  * BucketDocumentResponseDispatcher.handleResult_(): "raw use of parameterized class Bucketdocument"
+  * IngestionTestBase: unchecked cast Object to List<Double> in buildIngestionRequest()
 * modify ingestion service to use new service framework
 * ingestion service minor tasks
   * Move logic from init() to start() in MongoIngestionHandler for starting queue and workers?
