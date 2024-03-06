@@ -114,3 +114,7 @@ echo "created TAR_FILE $TAR_FILE"
 gzip "$TAR_FILE"
 echo "created tarball $TAR_FILE.gz"
 
+# move target directory to add timestamp suffix
+TIMESTAMP=$(date '+%s')
+mv "$TARGET_DIR" "$TARGET_DIR.$TIMESTAMP" ||  { echo "failed to mv $TARGET_DIR to $TARGET_DIR.$TIMESTAMP"; exit 1; }
+echo "moved $TARGET_DIR to $TARGET_DIR.$TIMESTAMP"
