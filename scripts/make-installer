@@ -6,6 +6,21 @@ echo 'make-installer'
 echo '================================================================'
 echo
 
+# read command line parameter for VERSION
+# use eval to eat single quotes containing each param value (so that they can include spaces etc)
+eval VERSION="$1"
+echo "VERSION: $VERSION"
+test -z "$VERSION" && { echo "fatal error: VERSION command-line parameter not specified"; exit 1; }
+
+# check version matches pom.xml for dp-grpc, dp-service
+GRPC_POM="/home/craigmcc/dp/dp-java/dp-grpc/pom.xml"
+grep "<version>$VERSION</version>" "$GRPC_POM" ||  { echo "fatal error: VERSION $VERSION mismatch GRPC_POM $GRPC_POM"; exit 1; }
+echo "grep matched $VERSION in $GRPC_POM"
+SERVICE_POM="/home/craigmcc/dp/dp-java/dp-service/pom.xml"
+grep "<version>$VERSION</version>" "$SERVICE_POM" ||  { echo "fatal error: VERSION $VERSION mismatch SERVICE_POM $SERVICE_POM"; exit 1; }
+echo "grep matched $VERSION in $SERVICE_POM"
+
+# generate timestamp for naming files and directories
 TIMESTAMP=$(date '+%s')
 
 # create output directory
@@ -53,7 +68,7 @@ echo "MVN_CMD: $MVN_CMD"
 popd || { echo "fatal error: popd failed"; exit 1; }
 
 # copy dp-service jar
-JAR_SRC="/home/craigmcc/dp/dp-java/dp-service/target/dp-service-1.3.0-shaded.jar"
+JAR_SRC="/home/craigmcc/dp/dp-java/dp-service/target/dp-service-$VERSION-shaded.jar"
 JAR_TARGET="$TARGET_DIR/lib/dp-service.jar"
 test -e "$JAR_SRC" || { echo "fatal error: JAR_SRC $JAR_SRC not found"; exit 1; }
 cp "$JAR_SRC" "$JAR_TARGET" || { echo "fatal error: cp failed for JAR_SRC $JAR_SRC"; exit 1; }
@@ -115,7 +130,7 @@ cd
 # create tarball of installer
 DP_DIR="data-platform"
 test -d "$TARGET_DIR" || { echo "fatal error: DP_DIR $DP_DIR does not exist"; exit 1; }
-TAR_FILE="/home/craigmcc/data-platform-installer.tar"
+TAR_FILE="/home/craigmcc/data-platform-installer-$VERSION.tar"
 tar cvf "$TAR_FILE" "$DP_DIR"/*  || { echo "fatal error: tar faile to create TAR_FILE $TAR_FILE"; exit 1; }
 echo "created TAR_FILE $TAR_FILE"
 
