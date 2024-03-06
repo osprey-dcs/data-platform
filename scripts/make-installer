@@ -6,9 +6,11 @@ echo 'make-installer'
 echo '================================================================'
 echo
 
+TIMESTAMP=$(date '+%s')
+
 # create output directory
 TARGET_DIR="/home/craigmcc/data-platform"
-test -d "$TARGET_DIR" && { echo "fatal error: TARGET_DIR $TARGET_DIR already exists"; exit 1; }
+test -d "$TARGET_DIR" && { mv "$TARGET_DIR" "$TARGET_DIR.$TIMESTAMP"; echo "moved $TARGET_DIR to $TARGET_DIR.$TIMESTAMP"; }
 mkdir "$TARGET_DIR" || { echo "fatal error: mkdir failed for $TARGET_DIR"; exit 1; }
 echo "created $TARGET_DIR"
 
@@ -42,6 +44,13 @@ echo "copied BIN_SRC $BIN_SRC"
 # create lib directory
 mkdir "$TARGET_DIR/lib" || { echo "fatal error: mkdir failed for $TARGET_DIR/lib"; exit 1; }
 echo "created $TARGET_DIR/lib"
+
+# generate dp-service jar
+pushd "/home/craigmcc/dp/dp-java/dp-service" || { echo "fatal error: pushd failed for /home/craigmcc/dp/dp-java/dp-service"; exit 1; }
+MVN_CMD="mvn package"
+eval "$MVN_CMD" || { echo "fatal error: MVN_CMD $MVN_CMD failed"; exit 1; }
+echo "MVN_CMD: $MVN_CMD"
+popd || { echo "fatal error: popd failed"; exit 1; }
 
 # copy dp-service jar
 JAR_SRC="/home/craigmcc/dp/dp-java/dp-service/target/dp-service-1.3.0-shaded.jar"
@@ -115,6 +124,5 @@ gzip "$TAR_FILE"
 echo "created tarball $TAR_FILE.gz"
 
 # move target directory to add timestamp suffix
-TIMESTAMP=$(date '+%s')
 mv "$TARGET_DIR" "$TARGET_DIR.$TIMESTAMP" ||  { echo "failed to mv $TARGET_DIR to $TARGET_DIR.$TIMESTAMP"; exit 1; }
 echo "moved $TARGET_DIR to $TARGET_DIR.$TIMESTAMP"
