@@ -75,6 +75,19 @@ PROTO_SRC="/home/craigmcc/dp/dp-java/dp-grpc/src/main/proto"
 cp "$PROTO_SRC"/* "$TARGET_DIR/proto" || { echo "fatal error: cp failed for PROTO_SRC $PROTO_SRC"; exit 1; }
 echo "copied PROTO_SRC $PROTO_SRC"
 
+# run protoc to generate javascript stubs from proto files
+PROTOC_CMD="~/bin/protoc -I=/home/craigmcc/dp/dp-java/dp-grpc/src/main/proto --js_out=import_style=commonjs,binary:/home/craigmcc/dp/protoc-output common.proto query.proto annotation.proto && protoc -I=/home/craigmcc/dp/dp-java/dp-grpc/src/main/proto --grpc-web_out=import_style=commonjs,mode=grpcwebtext:/home/craigmcc/dp/protoc-output common.proto query.proto annotation.proto"
+echo "PROTOC_CMD: $PROTOC_CMD"
+eval "$PROTOC_CMD" || { echo "fatal error: PROTOC_CMD $PROTOC_CMD failed"; exit 1; }
+
+# create installer directory for protoc-generated javascript stubs
+mkdir "$TARGET_DIR/javascript" || { echo "fatal error: mkdir failed for $TARGET_DIR/javascript"; exit 1; }
+
+# copy protoc-generated javascript stubs to installer directory
+STUB_SRC="/home/craigmcc/dp/protoc-output"
+cp "$STUB_SRC"/* "$TARGET_DIR/javascript" || { echo "fatal error: cp failed for STUB_SRC $STUB_SRC"; exit 1; }
+echo "copied STUB_SRC $STUB_SRC"
+
 # create var directory
 mkdir "$TARGET_DIR/var" || { echo "fatal error: mkdir failed for $TARGET_DIR/var"; exit 1; }
 echo "created $TARGET_DIR/var"
