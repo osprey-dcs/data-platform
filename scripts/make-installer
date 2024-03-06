@@ -44,7 +44,7 @@ mkdir "$TARGET_DIR/lib" || { echo "fatal error: mkdir failed for $TARGET_DIR/lib
 echo "created $TARGET_DIR/lib"
 
 # copy dp-service jar
-JAR_SRC="/home/craigmcc/dp/dp-java/dp-service/target/dp-service-1.2.0-shaded.jar"
+JAR_SRC="/home/craigmcc/dp/dp-java/dp-service/target/dp-service-1.3.0-shaded.jar"
 JAR_TARGET="$TARGET_DIR/lib/dp-service.jar"
 test -e "$JAR_SRC" || { echo "fatal error: JAR_SRC $JAR_SRC not found"; exit 1; }
 cp "$JAR_SRC" "$JAR_TARGET" || { echo "fatal error: cp failed for JAR_SRC $JAR_SRC"; exit 1; }
