@@ -1,25 +1,34 @@
 # v1.3 (march)
 
-* develop initial implementation of annotation service extending new service framework
-* create javascript grpc stubs for web app, check in to dp-web-app (and dp-grpc? what about protoc setup for generating javascript stubs, something to check in / document?)
-* investigate compiler warning for QueryServiceImpl, IngestionTestBase "uses unchecked or unsafe operations"
-  * BucketDocumentResponseDispatcher.handleResult_(): "raw use of parameterized class Bucketdocument"
-  * IngestionTestBase: unchecked cast Object to List<Double> in buildIngestionRequest()
-* modify ingestion service to use new service framework
-* ingestion service minor tasks
+* annotation service
+  * CreateAnnotationRequest validation
+    * maybe use metadata query for list of columns in annotation request to see if data exists for each? Could check that data is defined for the specific time range, but maybe that's overkill. (CreateAnnotationJob.execute())
+      * Add validation method to handler interface for validDataBlock().  Will also need a database client interface method to perform the query.  This belongs in the handler so that we can do it in the context of processing the request asynchronously instead of in AnnotationValidationUtility.validateCreateAnnotationRequestCommon() which checks if the request is valid.
+  * integration test
+    * add validation of database contents for request (GrpcIntegrationTestBase.sendAndVerifyCreateCommentAnnotation())
+    * add validation for api response
+    * expand coverage to include annotations with multiple data blocks
+  * annotations mongo collection
+    * do we need additional indexes?
+* grpc server refactoring: change QueryGrpcServer and IngestionGrpcServer to extend GrpcServerBase, following pattern of AnnotationGrpcServer.
+* ingestion service
+  * modify ingestion service to use new service framework
   * Move logic from init() to start() in MongoIngestionHandler for starting queue and workers?
   * add providerId/requestId from ingestion request to time series buckets
   * add ingestion handling and test coverage for eventMetadata.stopTime in MongoIngestionHandler.generateBucketsFromRequest() etc
-* dp-service documentation: 
-  * Add detailed documents for service framework and specific implementations, integration test framework, performance benchmarks, etc
-  * update section with java command lines for running services, benchmarks, tests
+  * handling for unary ingestion rpc (only streaming is currently implemented)
 * add metadata and annotation query APIs to cover event/snapshot info, key/value attributes, annotations
   * the metadata query API will allow the user to specify a query covering event/snapshot details, tags, key/value attributes, user comment, attachment, linked dataset, etc that returns a list of "data rectangles"
   * need to change MongoQueryHandler.dataBucketFromDocument() to handle attributes, eventMetadata, etc.
+* investigate compiler warning for QueryServiceImpl, IngestionTestBase "uses unchecked or unsafe operations"
+  * BucketDocumentResponseDispatcher.handleResult_(): "raw use of parameterized class Bucketdocument"
+  * IngestionTestBase: unchecked cast Object to List<Double> in buildIngestionRequest()
+* dp-service documentation: 
+  * Add detailed documents for service framework and specific implementations, integration test framework, performance benchmarks, etc
+  * update section with java command lines for running services, benchmarks, tests
 * make collection names configurable
 * option for removing data created by integration and benchmark tests at completion
   * add config / command-line flag to optionally not delete data?
-* handling for unary ingestion rpc (only streaming is currently implemented)
 
 # v1.4 (april/may)
 
@@ -36,6 +45,7 @@
 # general
 
 # ingestion
+* Consider using annotations collection / data model for storing event metadata, attribues attached to ingestion requests? (finish initial annotation implementation first)
 * Handling for heterogeneous data types e.g., array, table, byte array, image, structure. (maybe we can avoid this if we can store unpacked protobuf directly)
   * Need BucketDocument subclass for each type of list data, e.g, for array might need multiple classes like array-float, array-string, …, not to mention table-float, table-string, … and maybe even cube-float, cube-string, … (I think Bob and Chris have said we only care about arrays and tables but need to confirm).
   * Should IngestionRequest specify dimensions of array data structures, or are we allowing unlimited dimensions?
