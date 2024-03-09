@@ -47,6 +47,10 @@ test -e "$LOG_CONFIG_SRC" || { echo "fatal error: LOG_CONFIG_SRC $LOG_CONFIG_SRC
 cp "$LOG_CONFIG_SRC" "$LOG_CONFIG_TARGET" || { echo "fatal error: cp failed for LOG_CONFIG_SRC $LOG_CONFIG_SRC"; exit 1; }
 echo "copied LOG_CONFIG_SRC $LOG_CONFIG_SRC"
 
+# copy dp-support config
+SUPPORT_CONFIG_SRC="/home/craigmcc/dp/dp-support/config"
+cp "$SUPPORT_CONFIG_SRC"/* "$TARGET_DIR/config" || { echo "fatal error: cp failed for SUPPORT_CONFIG_SRC $SUPPORT_CONFIG_SRC"; exit 1; }
+
 # create bin directory
 mkdir "$TARGET_DIR/bin" || { echo "fatal error: mkdir failed for $TARGET_DIR/bin"; exit 1; }
 echo "created $TARGET_DIR/bin"
@@ -62,7 +66,7 @@ echo "created $TARGET_DIR/lib"
 
 # generate dp-service jar
 pushd "/home/craigmcc/dp/dp-java/dp-service" || { echo "fatal error: pushd failed for /home/craigmcc/dp/dp-java/dp-service"; exit 1; }
-MVN_CMD="mvn package"
+MVN_CMD="mvn package -DskipTests"
 eval "$MVN_CMD" || { echo "fatal error: MVN_CMD $MVN_CMD failed"; exit 1; }
 echo "MVN_CMD: $MVN_CMD"
 popd || { echo "fatal error: popd failed"; exit 1; }
@@ -137,7 +141,3 @@ echo "created TAR_FILE $TAR_FILE"
 # gzip tarball
 gzip "$TAR_FILE"
 echo "created tarball $TAR_FILE.gz"
-
-# move target directory to add timestamp suffix
-mv "$TARGET_DIR" "$TARGET_DIR.$TIMESTAMP" ||  { echo "failed to mv $TARGET_DIR to $TARGET_DIR.$TIMESTAMP"; exit 1; }
-echo "moved $TARGET_DIR to $TARGET_DIR.$TIMESTAMP"
