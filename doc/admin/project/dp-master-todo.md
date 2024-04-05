@@ -1,25 +1,15 @@
 # v1.3 (march)
 
-* annotation service
-  * CreateAnnotationRequest validation
-    * maybe use metadata query for list of columns in annotation request to see if data exists for each? Could check that data is defined for the specific time range, but maybe that's overkill. (CreateAnnotationJob.execute())
-      * Add validation method to handler interface for validDataBlock().  Will also need a database client interface method to perform the query.  This belongs in the handler so that we can do it in the context of processing the request asynchronously instead of in AnnotationValidationUtility.validateCreateAnnotationRequestCommon() which checks if the request is valid.
-  * integration test
-    * add validation of database contents for request (GrpcIntegrationTestBase.sendAndVerifyCreateCommentAnnotation())
-    * add validation for api response
-    * expand coverage to include annotations with multiple data blocks
-  * annotations mongo collection
-    * do we need additional indexes?
-* grpc server refactoring: change QueryGrpcServer and IngestionGrpcServer to extend GrpcServerBase, following pattern of AnnotationGrpcServer.
+* add metadata and annotation query APIs to cover event/snapshot info, key/value attributes, annotations
+  * the metadata query API will allow the user to specify a query covering event/snapshot details, tags, key/value attributes, user comment, attachment, linked dataset, etc that returns a list of "data rectangles"
+  * need to change MongoQueryHandler.dataBucketFromDocument() to handle attributes, eventMetadata, etc.
 * ingestion service
   * modify ingestion service to use new service framework
   * Move logic from init() to start() in MongoIngestionHandler for starting queue and workers?
   * add providerId/requestId from ingestion request to time series buckets
   * add ingestion handling and test coverage for eventMetadata.stopTime in MongoIngestionHandler.generateBucketsFromRequest() etc
   * handling for unary ingestion rpc (only streaming is currently implemented)
-* add metadata and annotation query APIs to cover event/snapshot info, key/value attributes, annotations
-  * the metadata query API will allow the user to specify a query covering event/snapshot details, tags, key/value attributes, user comment, attachment, linked dataset, etc that returns a list of "data rectangles"
-  * need to change MongoQueryHandler.dataBucketFromDocument() to handle attributes, eventMetadata, etc.
+* grpc server refactoring: change QueryGrpcServer and IngestionGrpcServer to extend GrpcServerBase, following pattern of AnnotationGrpcServer.
 * investigate compiler warning for QueryServiceImpl, IngestionTestBase "uses unchecked or unsafe operations"
   * BucketDocumentResponseDispatcher.handleResult_(): "raw use of parameterized class Bucketdocument"
   * IngestionTestBase: unchecked cast Object to List<Double> in buildIngestionRequest()
@@ -72,7 +62,11 @@
 * I only implemented a single HandlerQueryInterface concrete class using the "sync" mongodb driver, since this meets our performance requirements (and seems to outperform the async/reactivestreams driver for our use) and is in some ways less complex to work with.  Should we try building a handler using the async/reactivestreams mongodb driver to compare performance?
 
 # annotation
-* Define database schema for storing annotations, as separate collection with references to the affected buckets by bucket id? Reference by time range?  Copy annotation (e.g., key/values) to each bucket that it pertains to (which would complicate modifying annotation).  Bucket reference back to annotation(s)?  Query and modification implications, e.g,
+* do we need additional indexes on mongodb annotations collection?
+* Should we cross reference annotations to buckets and/or vice versa? 
+  * E.g., annotation documents have references to the affected buckets by bucket id? 
+* bucket documents contain list of annotations that apply to bucket? (which would complicate modifying annotation)?
+* Query and modification implications, e.g,
   * If we need to update annotations, we probably want to keep a metadata collection with one or two way references between the metadata document and the bucket documents that it applies to, but this is messy if we are specifying the metadata on each individual request, at that point it might make sense to register the metadata, get an id for it, and the send the id in requests.
   * Relationship between event metadata and attributes added during ingestion to the annotation information, is it the same schema?  Do we need to change something about ingestion?
 
