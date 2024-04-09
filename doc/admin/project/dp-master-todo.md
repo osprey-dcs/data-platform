@@ -1,38 +1,46 @@
-# v1.3 (march)
+# ===== v1.4 (april/may) =====
 
-* add metadata and annotation query APIs to cover event/snapshot info, key/value attributes, annotations
-  * the metadata query API will allow the user to specify a query covering event/snapshot details, tags, key/value attributes, user comment, attachment, linked dataset, etc that returns a list of "data rectangles"
-  * need to change MongoQueryHandler.dataBucketFromDocument() to handle attributes, eventMetadata, etc.
-* ingestion service
-  * modify ingestion service to use new service framework
-  * Move logic from init() to start() in MongoIngestionHandler for starting queue and workers?
-  * add providerId/requestId from ingestion request to time series buckets
-  * add ingestion handling and test coverage for eventMetadata.stopTime in MongoIngestionHandler.generateBucketsFromRequest() etc
+## ingestion service
+  * store protobuf directly in bucket documents 
+    * to avoid unpacking data and eliminate type-specific BucketDocument subclasses for each data type (plus multiplicity for arrays/tables)
+    * are there any issues with having "opague" (unpacked protobuf) data in the database? e.g., any use of the database directly to access data needs to be aware of protobuf packing and have mechanism for unpacking
+    * outcome will determine approach for ingestion and query handling for arrays, tables, images, structures etc
+  * ingestion service handler refactoring to use same framework as query and annotation services
+    * modify ingestion service to use new service framework with queue, workers, jobs, dispatchers
+    * Move logic from init() to start() in MongoIngestionHandler for starting queue and workers?
+  * refactor ingestion grpc server to extend GrpcServerBase, following pattern of AnnotationGrpcServer.
+  * ingestion service handling of additional data from ingestion request
+    * add providerId/requestId from ingestion request to time series buckets
   * handling for unary ingestion rpc (only streaming is currently implemented)
-* grpc server refactoring: change QueryGrpcServer and IngestionGrpcServer to extend GrpcServerBase, following pattern of AnnotationGrpcServer.
-* investigate compiler warning for QueryServiceImpl, IngestionTestBase "uses unchecked or unsafe operations"
-  * BucketDocumentResponseDispatcher.handleResult_(): "raw use of parameterized class Bucketdocument"
-  * IngestionTestBase: unchecked cast Object to List<Double> in buildIngestionRequest()
-* dp-service documentation: 
-  * Add detailed documents for service framework and specific implementations, integration test framework, performance benchmarks, etc
-  * update section with java command lines for running services, benchmarks, tests
-* make collection names configurable
-* option for removing data created by integration and benchmark tests at completion
-  * add config / command-line flag to optionally not delete data?
 
-# v1.4 (april/may)
+## query service
+  * refactor query grpc server to extend GrpcServerBase, following pattern of AnnotationGrpcServer.
 
-* experiment using a mongo BSON bucket document format that stores data in protobuf format to avoid unpacking data in ingestion and repacking data in query
-  * are there any issues with having "opague" (unpacked protobuf) data in the database? e.g., any use of the database directly to access data needs to be aware of protobuf packing and have mechanism for unpacking
-* ingestion and query handling for arrays, tables, images, structures etc
-* ingestion and query handling for buckets with explicit list of timestamps instead of SamplingClock with start time, periodNanos, and sample count
+## handling for eventMetadata.stopTime
+  * add ingestion handling and test coverage for eventMetadata.stopTime
+    * in MongoIngestionHandler.generateBucketsFromRequest() etc
+    * add support to BucketDocument for EventMetadata.stopTimestamp. Either rename existing eventSeconds/Nanos to eventStartSeconds/Nanos, or add new EventMetadata object to contain the data as a field of BucketDocument
+  * add query handling for EventMetadata.stopTimestamp 
+    * building grpc response in MongoQueryHandler.dataBucketFromDocument()
+  * add integration test coverage 
+    * set attributes and event metadata in ingestion and check QueryDataResponse that query correctly returns that data
+
+## ingestion and query handling for buckets with explicit list of timestamps
+  * instead of SamplingClock with start time, periodNanos, and sample count
   * How do we accommodate both SamplingClock and TimestampList buckets in mongodb?  Maybe just have an optional list of timestamps that if populated implies bucket uses timestamp list, otherwise use SamplingClock.
   * MongoQueryHandler.dataTimestampsForBucket(): Change to determine whether to use explicit timestamp list or samplingClock from BucketDocument (e.g., does it contain a non-empty list of timestamps?)
   * check code for lastSamplingClock to make sure it will handle case where there is an explicit list of timestamps, e.g., get count from number of timestamps, calculate sample period from delta of two timestamps?
 
+## investigate compiler warning for QueryServiceImpl, IngestionTestBase "uses unchecked or unsafe operations"
+  * BucketDocumentResponseDispatcher.handleResult_(): "raw use of parameterized class Bucketdocument"
+  * IngestionTestBase: unchecked cast Object to List<Double> in buildIngestionRequest()
+
+# ===== FEATURES FOR FUTURE VERSIONS =====
+
 # documentation
 
 # general
+* make collection names (or database name) configurable?
 
 # ingestion
 * Consider using annotations collection / data model for storing event metadata, attribues attached to ingestion requests? (finish initial annotation implementation first)
