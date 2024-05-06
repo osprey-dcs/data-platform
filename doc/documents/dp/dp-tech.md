@@ -1,14 +1,14 @@
 ## Section 1. Data Platform Overview
 
 
-### 1.1 motivation
+### motivation
 
 The Data Platform provides tools for managing the data captured in an experimental research facility, such as a particle accelerator. The data are used within control systems and analytics applications, and facilitate the creation of machine learning models for those applications.
 
 The Data Platform is agnostic to the source and acquisition of the data. A project goal is to manage data captured from the [EPICS "Experimental Physics and Industrial Control System"](https://epics-controls.org/), however, use of EPICS is not required. The Data Platform APIs are generic and can be used from essentially all programming languages and any type of application.
 
 
-### 1.2 requirements and objectives
+### requirements and objectives
 
 
 
@@ -19,7 +19,7 @@ The Data Platform is agnostic to the source and acquisition of the data. A proje
 * Provide mechanisms for adding post-ingestion annotations to the archive, and performing queries over those annotations.
 
 
-### 1.3 data platform elements
+### data platform elements
 
 The Data Platform includes two primary technical components, including an API utilizing the gRPC framework, and a suite of services built using the Java programming language.  The project also includes utilities for deploying and managing those components.  A JavaScript web application for exploring the data archive and working with data is under development.  Each element is described in more detail below.
 
@@ -48,7 +48,7 @@ The Data Platform Web Application is under development using the [JavaScript Rea
 A set of utilities is provided to help manage the Data Platform ecosystem.  There are scripts for managing infrastructure services including MongoDB and the Envoy proxy (used for deploying the web application), and a set of simple process-management utilities for managing the Data Platform server and benchmark applications.  The support tools are described in section 5.
 
 
-### 1.4 status and milestones
+### status and milestones
 
 
 #### "datastore" prototype (2022)
@@ -86,7 +86,7 @@ Version 1.2 saw changes to the "proto" files defining the gRPC API for the Data 
 Version 1.3 provides an initial implementation of the annotation service for adding annotations to archived data and performing queries against those annotations.  The primary focus for the initial annotation service implementation was on the data model for associating annotations with data in the archive.  The only type of annotation currently supported is a simple user comment, but we will be adding many other types of annotations using the same underlying data model.  See section 2 for more details about the annotation data model.
 
 
-### 1.5 todo and road map
+### todo and road map
 
 
 #### v1.4 planned features (April / May 2024)
@@ -112,7 +112,7 @@ Version 1.3 provides an initial implementation of the annotation service for add
 * Experiment with horizontal scaling alternatives and MongoDB database partitioning (sharding).
 
 
-### 1.6 project organization
+### project organization
 
 The Data Platform project is organized using the following github repositories:
 
