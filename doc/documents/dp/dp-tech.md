@@ -162,30 +162,23 @@ The gRPC API is defined using "proto" files (a text file with a ".proto" extensi
 
 See the links above for some simple examples of services, methods, and messages.
 
-
 ### 2.2 Data Platform gRPC API proto files
 
 Currently, the Data Platform API defines three application services: ingestion, query, and annotation.  The methods and data types (messages) for each service are contained in individual "proto" files (e.g., "ingestion.proto", "query.proto", and "annotation.proto"), with some shared data types in "common.proto" that are included in the relevant service files via "import" statements.
 
-
 ### 2.3 Data Platform proto file conventions
-
 
 #### ordering of elements
 
 Within the Data Platform service proto files, elements are listed in the following order:
 
-
-
 1. service method definitions
 2. definition of request and response data types
 3. definition of other shared data types
 
-
 #### packaging of parameters for a method into a single "request" message
 
 For all Data Platform service methods, parameters are bundled into a single "request" message data type, instead of listing multiple parameters to the method.
-
 
 #### naming of request and response messages
 
@@ -193,19 +186,20 @@ The service-specific proto files each begin with a "service" definition block th
 
 A simple example is the Ingestion Service method "registerProvider()". The method request parameters are bundled in a message data structure called "RegisterProviderRequest". The method returns the response message type "RegisterProviderResponse".  So the method definition looks like this:
 
-_rpc registerProvider (RegisterProviderRequest) returns (RegisterProviderResponse);_
+```
+rpc registerProvider (RegisterProviderRequest) returns (RegisterProviderResponse);
+```
 
 A more complex example is the Ingestion Service RPC methods "ingestDataStream()" (bidirectional streaming data ingestion API) and "ingestData()" (unary data ingestion API). We want both methods to use the same request and response data types, so we use the common message types "IngestionRequest" and "IngestionResponse". This pattern is also used for time-series data queries defined in "query.proto".  The method definitions look like this:
 
-_rpc ingestData (IngestDataRequest) returns (IngestDataResponse);_
-
-_rpc ingestDataStream (stream IngestDataRequest) returns (stream IngestDataResponse);_
-
+```
+rpc ingestData (IngestDataRequest) returns (IngestDataResponse);
+rpc ingestDataStream (stream IngestDataRequest) returns (stream IngestDataResponse);
+```
 
 #### nesting of messages
 
 Where possible, nesting is used to enclose simpler messages within the more complex messages that use them.  In cases where we want to share messages between multiple request or response messages, the definition of those messages appears after the request and response messages in the proto file.
-
 
 #### determining successful method execution
 
@@ -215,55 +209,44 @@ The "ExceptionalResult" message is defined in "common.proto" with an enum indica
 
 Here is an example of the use of this pattern in the "QueryDataResponse" message used to send the result of time-series data queries:
 
-_message QueryDataResponse {_
+```
+message QueryDataResponse {
 
-_  oneof result {_
+  oneof result {
+    ExceptionalResult exceptionalResult = 10;
+    QueryData queryData = 11;
+  }
 
-_    ExceptionalResult exceptionalResult = 10;_
+  message QueryData {
 
-_    QueryData queryData = 11;_
+    repeated DataBucket dataBuckets = 1;
 
-_  }_
-
-_  message QueryData {_
-
-_    repeated DataBucket dataBuckets = 1;_
-
-_    message DataBucket {_
-
-_      &lt;snip>_
-
-_    }_
-
-_  }_
-
-_}_
-
+    message DataBucket {
+      // DataBucket field definitions...
+    }
+  }
+}
+```
 
 ### 2.4 Data Platform API data model
 
 The purpose of this section is to introduce some of the elements of the Data Platform's data model.  These concepts will be used in subsequent descriptions of the various service APIs.
 
-
 #### 2.4.1 process variables
 
 The core element of the Data Platform is the "process variable" (PV).  In control theory, a process variable is the current measured value of a particular part of a process that is being monitored or controlled.  The primary purpose of the Data Platform Ingestion and Query Services is to store and retrieve PV measurements.  It is assumed that each PV for a particular facility is uniquely named.  E.g., "S01:GCC01" might identify the first vacuum cold cathode gauge in sector one in the storage ring for some accelerator facility.
-
 
 #### 2.4.2 data vectors
 
 The Data Platform Ingestion and Query Service APIs for handling data work with vectors of PV measurements.  In "common.proto", this is reflected in the message data type "DataColumn", which includes a PV name and list of measurements.
 
-
 #### 2.4.3 handling heterogeneous data
 
 One requirement for the Data Platform API is to provide a general mechanism for handling heterogeneous data types for PV measurements including simple scalar values, as well as multi-dimensional arrays, structures, and images.   This is accomplished by the "DataValue" message data type in "common.proto",  which uses the "oneof" mechanism to support a number of different data types for the values in a data vector (DataColumn).
 
-
 #### 2.4.4 timestamps
 
 Time is represented in the Data Platform API using the "Timestamp" message defined in "common.proto".  It contains two components for the number of seconds since the epoch, and nanoseconds.  As a convenience, the message "TimestampList" is used to send a list of timestamps.
-
 
 #### 2.4.5 ingestion data frame
 
@@ -284,51 +267,36 @@ This allows a list of values to be stored as a single unit in the database and r
 
 A simple example of the bucket pattern follows (a slightly modified version of an example taken from the link above), demonstrating bucketing of temperature sensor data.  The first snippet shows three measurements, with one record per measurement:
 
-_{_
+```
+{
+   sensor_id: 12345,
+   timestamp: ISODate("2019-01-31T10:00:00.000Z"),
+   temperature: 40
+}
 
-_   sensor_id: 12345,_
+{
+   sensor_id: 12345,
+   timestamp: ISODate("2019-01-31T10:01:00.000Z"),
+   temperature: 40
+}
 
-_   timestamp: ISODate("2019-01-31T10:00:00.000Z"),_
-
-_   temperature: 40_
-
-_}_
-
-_{_
-
-_   sensor_id: 12345,_
-
-_   timestamp: ISODate("2019-01-31T10:01:00.000Z"),_
-
-_   temperature: 40_
-
-_}_
-
-_{_
-
-_   sensor_id: 12345,_
-
-_   timestamp: ISODate("2019-01-31T10:02:00.000Z"),_
-
-_   temperature: 41_
-
-_}_
+{
+   sensor_id: 12345,
+   timestamp: ISODate("2019-01-31T10:02:00.000Z"),
+   temperature: 41
+}
+```
 
 With bucketing, we save the overhead of the sensor_id and timestamp in each record:
-
-_{_
-
-_    sensor_id: 12345,_
-
-_    start_date: ISODate("2019-01-31T10:00:00.000Z"),_
-
-_    sample_period_nanos: 1_000_000_000,_
-
-_    count: 3_
-
-_    measurements: [ 40, 40, 41 ]_
-
-_}_
+```
+{
+    sensor_id: 12345,
+    start_date: ISODate("2019-01-31T10:00:00.000Z"),
+    sample_period_nanos: 1_000_000_000,
+    count: 3
+    measurements: [ 40, 40, 41 ]
+}
+```
 
 Bucketing is used to send the results of time-series data queries.  The message "QueryDataResponse" in "query.proto" contains the query result in "QueryData", which contains a list of "DataBucket" messages.  Each "DataBucket" contains a vector of data in a "DataColumn" message for a single PV, along with time expressed using "DataTimestamps" (described above), with either an explicit list of timestamps for the bucket data values, or a SamplingClock with start time and sample period.
 
@@ -339,16 +307,9 @@ When designing the Data Platform's Annotation Service, we found we needed a mech
 
 If you think of the entire data archive as a giant spreadsheet, with a column for each PV name and a row for each measurement timestamp, a "data block" specifies some region within that spreadsheet, and a "dataset" contains a collection of those regions.  This is illustrated in the figure below.
 
-
-
-<p id="gdcalert1" ><span style="color: red; font-weight: bold">>>>>>  gd2md-html alert: inline image link here (to images/image1.png). Store image on your image server and adjust path/filename/extension if necessary. </span><br>(<a href="#">Back to top</a>)(<a href="#gdcalert2">Next alert</a>)<br><span style="color: red; font-weight: bold">>>>>> </span></p>
-
-
-![alt_text](images/image1.png "image_tooltip")
-
+![dataset figure](images/dataset-datablock.png "image_tooltip")
 
 "annotation.proto" defines the messages "DataSet" and "DataBlock" for use as the data model for creating annotations, where a "DataSet" includes a description and a list of "DataBlock" messages, and each "DataBlock" includes begin and end Timestamp messages (described above), and a list of PV names.
-
 
 #### 2.4.8 annotations
 
@@ -358,7 +319,6 @@ Given the definition of a "DataSet" described above, the message "CreateAnnotati
 
 For a link between related datasets, we might create a "LinkAnnotation" that specifies the id of the linked dataset and some text describing the relationship.
 
-
 #### 2.4.9 ingestion metadata
 
 The Ingestion Service API allows descriptive metadata to be attached to data sent to the archive.  Two types of metadata are supported, key/value attributes and event metadata.
@@ -367,37 +327,32 @@ The message "Attribute", defined in "common.proto", is a simple data structure t
 
 The message "EventMetadata", also defined in "common.proto", allows incoming data to be associated with some event.  The "EventMetadata" message includes fields for the event description, with start and stop timestamps specifying the event start and stop time.
 
-
 ### 2.5 Data Platform API - ingestion service
 
 "DpIngestionService" is a gRPC service defined in "ingestion.proto".  It includes methods for provider registration and data ingestion.
-
 
 #### 2.5.1 provider registration
 
 The Ingestion Service provider registration mechanism is not yet implemented.  It will assign unique identifiers to the infrastructure elements that will use the ingestion API to send data to the archive.
 
-
 #### 2.5.2 data ingestion
 
 The Ingestion Service provides a very streamlined API for ingesting data to the archive.  There are two methods for data ingestion:
 
-_rpc ingestData (IngestDataRequest) returns (IngestDataResponse);_
-
-_rpc ingestDataStream (stream IngestDataRequest) returns (stream IngestDataResponse);_
+```
+rpc ingestData (IngestDataRequest) returns (IngestDataResponse);
+rpc ingestDataStream (stream IngestDataRequest) returns (stream IngestDataResponse);
+```
 
 Both methods use the same request and response messages.  The method "ingestData()" sends a single "IngestDataRequest" and receives a single "IngestDataResponse" corresponding to the request.  "ingestDataStream()" is a bidirectional gRPC streaming method that allows the client to send a stream of "IngestDataRequest" messages and receive a stream of "IngestDataResponse" messages.  In both cases, the client uses the combination of provider id and request id to match incoming responses to outgoing requests.
-
 
 ##### ingestion data frame
 
 As described above, the "IngestionDataFrame" is the primary unit of ingestion, containing a set of PV data vectors with the corresponding timestamp specification.
 
-
 ##### ingestion request
 
 An "IngestDataRequest", defined in "ingestion.proto", includes an "IngestionDataFrame", optional metadata (list of key/value attributes or event metadata), a "Timestamp" indicating the time the request is sent, an id specifying the provider sending the data, and a mandatory client-generated request identifier, uniquely identifying the request for that provider.
-
 
 ##### ingestion response
 
@@ -405,23 +360,19 @@ The message "IngestDataResponse" in ingestion.proto contains one of two payloads
 
 The Ingestion Service is fully asynchronous, so the response does not indicate if a request is successfully handled, only whether the request is accepted or rejected.  A separate API for checking whether or not a request was handled successfully will be added in a future release.  It will support queries by provider id and/or request id to identify errors in handling ingestion requests.  For now, the "requestStatus" collection in MongoDB contains a document for each request indicating whether it succeeded or failed.  It is envisioned that a monitoring tool will use the request status API  to detect ingestion errors and send notification.
 
-
 ### 2.6 Data Platform API - query service
 
 "DpQueryService" is a gRPC service defined in "query.proto".  It includes methods for querying both time-series data and metadata.
 
-
 #### 2.6.1 time-series data query
 
 The Query Service provides several methods for querying time-series data, offering different options for performance and packaging of results.
-
-_rpc queryData(QueryDataRequest) returns (QueryDataResponse);_
-
-_rpc queryDataTable(QueryDataRequest) returns (QueryTableResponse);_
-
-_rpc queryDataStream(QueryDataRequest) returns (stream QueryDataResponse);_
-
-_rpc queryDataBidiStream(stream QueryDataRequest) returns (stream QueryDataResponse);_
+```
+rpc queryData(QueryDataRequest) returns (QueryDataResponse);
+rpc queryDataTable(QueryDataRequest) returns (QueryTableResponse);
+rpc queryDataStream(QueryDataRequest) returns (stream QueryDataResponse);
+rpc queryDataBidiStream(stream QueryDataRequest) returns (stream QueryDataResponse);
+```
 
 Each method accepts a "QueryDataRequest" message, described in more detail below, to specify the query parameters.  All the time-series data query methods return "QueryDataResponse" messages with the exception of queryDataTable(), which returns data in a tabular format via a "QueryTableResponse" message. Each of the time-series query methods and the corresponding request/response objects is discussed in more detail below.
 
@@ -475,7 +426,9 @@ A "TableResult" message contains a list of PV column data vectors, one for each 
 
 The Data Platform Query Service includes a single method for querying the archive's metadata about the PVs available in the archive.
 
-_rpc queryMetadata(QueryMetadataRequest) returns (QueryMetadataResponse);_
+```
+rpc queryMetadata(QueryMetadataRequest) returns (QueryMetadataResponse);
+```
 
 "queryMetadata()" is a single request/response unary method that accepts a "QueryMetadataRequest" and returns a "QueryMetadataResponse".
 
@@ -500,8 +453,9 @@ A "MetadataResult" message contains a list of "PvInfo" messages, one for each PV
 #### 2.7.1 creating datasets
 
 The Data Platform Annotation Service uses datasets to identify the relevant data within the archive for a particular annotation.  The API includes a single method for creating datasets.
-
-_rpc createDataSet(CreateDataSetRequest) returns (CreateDataSetResponse);_
+```
+rpc createDataSet(CreateDataSetRequest) returns (CreateDataSetResponse);
+```
 
 This is a single request/response unary method for creating a dataset.  It accepts a "CreateDataSetRequest" message and returns a "CreateDataSetResponse".
 
@@ -522,9 +476,10 @@ A "CreateDataSetResult" message simply contains the unique identifier assigned t
 
 The Data Platform Annotation Service provides two methods related to annotations.
 
-_rpc createAnnotation(CreateAnnotationRequest) returns (CreateAnnotationResponse);_
-
-_rpc queryAnnotations(QueryAnnotationsRequest) returns (QueryAnnotationsResponse);_
+```
+rpc createAnnotation(CreateAnnotationRequest) returns (CreateAnnotationResponse);
+rpc queryAnnotations(QueryAnnotationsRequest) returns (QueryAnnotationsResponse);
+```
 
 
 ##### createAnnotation()
@@ -577,11 +532,7 @@ Some common frameworks and patterns are used in the service implementations, inc
 The diagram below gives an overview of the key classes used to build a service, using the concrete Annotation Service classes.  The same pattern is used in all Data Platform service implementations, with analogous concrete classes for each.
 
 
-
-<p id="gdcalert2" ><span style="color: red; font-weight: bold">>>>>>  gd2md-html alert: inline image link here (to images/image2.png). Store image on your image server and adjust path/filename/extension if necessary. </span><br>(<a href="#">Back to top</a>)(<a href="#gdcalert3">Next alert</a>)<br><span style="color: red; font-weight: bold">>>>>> </span></p>
-
-
-![alt_text](images/image2.png "image_tooltip")
+![class overview](images/uml-dp-class-overview.png "class overview")
 
 
 The remainder of this section drills into each of the frameworks and patterns mentioned above, using the overview class diagram as a road map and exposing additional detail where appropriate.
@@ -592,11 +543,7 @@ The remainder of this section drills into each of the frameworks and patterns me
 Each service implementation includes an extension of the framework class "GrpcServerBase" that is the entry point for running the service.  The diagram below shows the Annotation Service extension of that base class, "AnnotationGrpcServer".  The extension implements the "main()" method to run the application.
 
 
-
-<p id="gdcalert3" ><span style="color: red; font-weight: bold">>>>>>  gd2md-html alert: inline image link here (to images/image3.png). Store image on your image server and adjust path/filename/extension if necessary. </span><br>(<a href="#">Back to top</a>)(<a href="#gdcalert4">Next alert</a>)<br><span style="color: red; font-weight: bold">>>>>> </span></p>
-
-
-![alt_text](images/image3.png "image_tooltip")
+![grpc framework](images/uml-dp-grpc-framework.png "grpc framework")
 
 
 "GrpcServerBase" implements the method "start()" to initialize the gRPC communication framework, instantiate the class implementing the service implementation, and add a shutdown hook to handle VM shut down.  It also implements "blockUntilShutdown()" to allow "main()" to wait for the application to complete and clean up the service.
@@ -615,11 +562,7 @@ The handling for incoming requests by those methods is described in the next sec
 The diagram below shows the framework for handling incoming requests.
 
 
-
-<p id="gdcalert4" ><span style="color: red; font-weight: bold">>>>>>  gd2md-html alert: inline image link here (to images/image4.png). Store image on your image server and adjust path/filename/extension if necessary. </span><br>(<a href="#">Back to top</a>)(<a href="#gdcalert5">Next alert</a>)<br><span style="color: red; font-weight: bold">>>>>> </span></p>
-
-
-![alt_text](images/image4.png "image_tooltip")
+![service request handling framework](images/uml-dp-service-request-handling-framework.png "service request handling framework")
 
 
 Requests coming in via the gRPC communication framework are delivered to the "AnnotationServiceImpl" for processing.  Its main purpose is to provide useful implementations of the Annotation Service API methods.  It also provides helper methods for the gRPC protocol related to the service, like creating response objects and sending them in the response stream.
@@ -635,11 +578,7 @@ In addition to implementing the "AnnotationHandlerInterface" defining the servic
 The next diagram provides additional detail for the "QueueHandlerBase" framework.
 
 
-
-<p id="gdcalert5" ><span style="color: red; font-weight: bold">>>>>>  gd2md-html alert: inline image link here (to images/image5.png). Store image on your image server and adjust path/filename/extension if necessary. </span><br>(<a href="#">Back to top</a>)(<a href="#gdcalert6">Next alert</a>)<br><span style="color: red; font-weight: bold">>>>>> </span></p>
-
-
-![alt_text](images/image5.png "image_tooltip")
+![queue / worker / job framework](images/uml-dp-queue-worker-job.png "queue / worker / job framework")
 
 
 In "QueueHandlerBase" initialization, the concrete "MongoAnnotationHandler" implementation of abstract method "getNumWorkers_()" is used to create a Java "ExecutorService" containing the specified number of "QueueWorker" instances, starting each of them via "execute()".  This invokes the workers' "run()" method, which monitors the handler's "BlockingQueue" for new tasks using poll().
@@ -651,11 +590,7 @@ The "MongoAnnotationHandler" methods for handling incoming requests, such as "ha
 The diagram below shows the static relationships for a "QueryAnnotationsJob", responsible for executing a "queryAnnotations()" API request and dispatching the results in the response stream.
 
 
-
-<p id="gdcalert6" ><span style="color: red; font-weight: bold">>>>>>  gd2md-html alert: inline image link here (to images/image6.png). Store image on your image server and adjust path/filename/extension if necessary. </span><br>(<a href="#">Back to top</a>)(<a href="#gdcalert7">Next alert</a>)<br><span style="color: red; font-weight: bold">>>>>> </span></p>
-
-
-![alt_text](images/image6.png "image_tooltip")
+![alt_text](images/uml-dp-handler-job.png "image_tooltip")
 
 
 The "QueryAnnotationsJob" is removed from the handler's task queue by a worker, who invokes the job's "execute()" method.  The job uses the handler's "MongoAnnotationClientInterface" to invoke "executeQueryAnnotations()" with the "QueryAnnotationsRequest", and passes the resulting database Cursor object to the "AnnotationsResponseDispatcher" method "handleResult()" for dispatching the query result.
@@ -820,11 +755,7 @@ That query method is a bidirectional streaming method, where the initial request
 Behind the scenes, a MongoDB query is executed to retrieve the relevant time-series data.  The cursor for the query results is used to generate the initial result set in the response stream, but we want to hold on to the cursor to fulfill the subsequent requests for additional query results so that the query doesn't need to be re-executed.  The diagram below illustrates the framework for handling "queryDataBidiStream()".
 
 
-
-<p id="gdcalert7" ><span style="color: red; font-weight: bold">>>>>>  gd2md-html alert: inline image link here (to images/image7.png). Store image on your image server and adjust path/filename/extension if necessary. </span><br>(<a href="#">Back to top</a>)(<a href="#gdcalert8">Next alert</a>)<br><span style="color: red; font-weight: bold">>>>>> </span></p>
-
-
-![alt_text](images/image7.png "image_tooltip")
+![queryDataBidiStream() handling](images/uml-dp-service-request-handling-bidi-stream.png "queryDataBidiStream() handling")
 
 
 When "QueryServiceImpl.queryDataBidiStream()" receives a new request, it creates a "QueryResponseBidiStreamRequestStreamObserver" to handle the request stream.  The initial request received by its "onNext()" method contains the parameters for the time-series data query and is dispatched to "QueryHandlerInterface.handleQueryBidiStream()".  This request is handled as illustrated in Section 3.1.2.  That method also returns a "QueryResultCursor" to the request stream observer.
@@ -839,11 +770,7 @@ MongoDB is used at the core of all Data Platform service implementations for dat
 The diagram below shows the framework of classes comprising the Data Platform's database interface, again using the Annotation Service implementation as an example.
 
 
-
-<p id="gdcalert8" ><span style="color: red; font-weight: bold">>>>>>  gd2md-html alert: inline image link here (to images/image8.png). Store image on your image server and adjust path/filename/extension if necessary. </span><br>(<a href="#">Back to top</a>)(<a href="#gdcalert9">Next alert</a>)<br><span style="color: red; font-weight: bold">>>>>> </span></p>
-
-
-![alt_text](images/image8.png "image_tooltip")
+![database interface framework](images/uml-dp-database-interface-framework.png "database interface framework")
 
 
 The core class in the framework is "MongoClientBase".  This abstract class is intended to be extended by intermediate abstract classes that correspond to the various MongoDB Java driver implementations that can be used to provide access to MongoDB operations by the service handler framework.  There are at least three different drivers, including "sync", "async", and a new async driver called "reactivestreams".
@@ -886,11 +813,7 @@ the number of workers for the annotation service is obtained using the key "Anno
 The diagram below shows the Data Platform "ConfgurationManager", with some example uses including "MongoAnnotationHandler", "AnnotationGrpcServer", and "BenchmarkStreamingIngestion", which retrieve number of workers, port number, and connect string, respectively.
 
 
-
-<p id="gdcalert9" ><span style="color: red; font-weight: bold">>>>>>  gd2md-html alert: inline image link here (to images/image9.png). Store image on your image server and adjust path/filename/extension if necessary. </span><br>(<a href="#">Back to top</a>)(<a href="#gdcalert10">Next alert</a>)<br><span style="color: red; font-weight: bold">>>>>> </span></p>
-
-
-![alt_text](images/image9.png "image_tooltip")
+![configuration manager](images/uml-dp-configuration-manager.png "configuration manager")
 
 
 The "ConfigurationManager" provides methods for accessing config resources casted to common Java types such as "getConfigString()" and "getConfigInteger()".  Each accessor method has two variants, one that returns the casted resource value of null if not defined, and the other that uses a default value parameter to return the default value if the resource is not defined.  This allows the caller to not check for null, not cast the value, and not override with a default, etc.
@@ -912,11 +835,7 @@ Because performance is the most important requirement for the Data Platform Inge
 The diagram below shows the elements of the ingestion performance benchmarking framework.
 
 
-
-<p id="gdcalert10" ><span style="color: red; font-weight: bold">>>>>>  gd2md-html alert: inline image link here (to images/image10.png). Store image on your image server and adjust path/filename/extension if necessary. </span><br>(<a href="#">Back to top</a>)(<a href="#gdcalert11">Next alert</a>)<br><span style="color: red; font-weight: bold">>>>>> </span></p>
-
-
-![alt_text](images/image10.png "image_tooltip")
+![ingestion benchmark](images/uml-dp-benchmark-ingestion.png "uml-dp-benchmark-ingestion.png")
 
 
 The framework supports running ingestion scenarios for different approaches, so the base class "IngestionBenchmarkBase" contains the key framework components for running an ingestion benchmark.  It defines the nested class "IngestionTask" to encapsulate the logic for invoking an ingestion API, creating the stream of ingestion requests, and handling the API response stream.  The nested classes "IngestionTaskParams" and "IngestionTaskResults" are used to contain the parameters needed by the task and to return performance results from the task.
@@ -931,11 +850,7 @@ The application class "BenchmarkStreamingIngestion" extends the base class to ru
 The query service benchmark framework is a bit more complicated than the ingestion service framework because it also loads the data into MongoDB to be used in the performance benchmark.  Initially, it utilized data loaded by the ingestion benchmark, but we decided to make it a standalone application and added the data-loading mechanism.  The diagram below shows the query service benchmark framework.
 
 
-
-<p id="gdcalert11" ><span style="color: red; font-weight: bold">>>>>>  gd2md-html alert: inline image link here (to images/image11.png). Store image on your image server and adjust path/filename/extension if necessary. </span><br>(<a href="#">Back to top</a>)(<a href="#gdcalert12">Next alert</a>)<br><span style="color: red; font-weight: bold">>>>>> </span></p>
-
-
-![alt_text](images/image11.png "image_tooltip")
+![query benchmark](images/uml-dp-benchmark-query.png "query benchmark")
 
 
 The core class of the framework is "QueryBenchmarkBase".  For loading data, it uses a multithreaded "ExecutorService" with the custom "Callable" task class "InsertTask".  Each task loads data as specified by the "InsertTaskParams" passed to the task, and returns a "InsertTaskResult" with details including the number of data buckets inserted by the task.  Loading data is triggered by the method "loadBucketData()".
@@ -1163,11 +1078,7 @@ We've used a naming convention for classes that contain jUnit test cases to end 
 One requirement for this project is to provide integration testing that provides coverage for scenarios that involve multiple services.  We developed an integration testing framework that supports creating tests that include data ingestion, query, and annotation.  The framework is shown in the diagram below.
 
 
-
-<p id="gdcalert12" ><span style="color: red; font-weight: bold">>>>>>  gd2md-html alert: inline image link here (to images/image12.png). Store image on your image server and adjust path/filename/extension if necessary. </span><br>(<a href="#">Back to top</a>)(<a href="#gdcalert13">Next alert</a>)<br><span style="color: red; font-weight: bold">>>>>> </span></p>
-
-
-![alt_text](images/image12.png "image_tooltip")
+![integration test framework](images/uml-dp-integration-test-framework.png "integration test framework")
 
 
 The core of the framework is the class "GrpcIntegrationTestBase".  The base class is extended by test classes such as "StaggeredTimestampTest", "MetadataQueryTest", "TableQueryTest", and "AnnotationTest".  A special case is "BenchmarkIntegrationTest", which is detailed in the next subsection.
@@ -1200,11 +1111,7 @@ By exercising the streaming data ingestion API method and the three time-series 
 The benchmark integration test framework is shown in the diagram below.
 
 
-
-<p id="gdcalert13" ><span style="color: red; font-weight: bold">>>>>>  gd2md-html alert: inline image link here (to images/image13.png). Store image on your image server and adjust path/filename/extension if necessary. </span><br>(<a href="#">Back to top</a>)(<a href="#gdcalert14">Next alert</a>)<br><span style="color: red; font-weight: bold">>>>>> </span></p>
-
-
-![alt_text](images/image13.png "image_tooltip")
+![benchmark integration test framework](images/uml-dp-benchmark-integration-test-framework.png "benchmark integration test framework")
 
 
 Like the other integration tests, the benchmark integration test extends "GrpcIntegrationTestBase" and uses "setUp()" and "tearDown()" to bring up the Data Platform services in a single Java process using the in-process gRPC framework.
@@ -1233,11 +1140,7 @@ The "IntegrationTestQueryGrpcClient" provides methods for running each of the th
 The Data Platform services utilize MongoDB for persistence.  The default database is called "dp".  Regression tests use a database called "dp-test" whose contents are removed at the start of each test.  The diagram below shows the entity-relationship model for the Data Platform MongoDB schema.
 
 
-
-<p id="gdcalert14" ><span style="color: red; font-weight: bold">>>>>>  gd2md-html alert: inline image link here (to images/image14.png). Store image on your image server and adjust path/filename/extension if necessary. </span><br>(<a href="#">Back to top</a>)(<a href="#gdcalert15">Next alert</a>)<br><span style="color: red; font-weight: bold">>>>>> </span></p>
-
-
-![alt_text](images/image14.png "image_tooltip")
+![database schema](images/uml-dp-mongodb-entity-relationship.png "database schema")
 
 
 The Data Platform MongoDB schema includes collections named "buckets", "requestStatus", "dataSets", and "annotations".  Each is described in more detail below.
@@ -1317,17 +1220,3 @@ The fields in the base document class "AnnotationDocument" include:
 * - "type" - specifies the discriminator string for the concrete document subtype, used by the MongoDB codec to map to the corresponding Java class
 * - "ownerId" - string specifying the annotation owner
 * - "dataSetId" - specifies the unique identifier string for the annotation's dataset
-
-
-## Section 4: Data Platform Web Application
-
-TODO
-
-
-## Section 5: Data Platform Ecosystem Support Tools
-
-
-## Section 6: Data Platform Quick Start Guide
-
-
-## Appendix A: Data Platform Performance Benchmarks
