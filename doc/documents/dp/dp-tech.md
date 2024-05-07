@@ -40,12 +40,12 @@ The Data Platform Services are implemented as Java server applications.  There a
 
 #### web application
 
-The Data Platform Web Application is under development using the [JavaScript React library](https://react.dev/).  It will provide a user interface for navigating archive metadata and time-series data, viewing and creating annotations, and other tools for visualizing and exporting data.  Section 4 provides more detail about the Web Application.
+The Data Platform Web Application is under development using the [JavaScript React library](https://react.dev/).  It will provide a user interface for navigating archive metadata and time-series data, viewing and creating annotations, and other tools for visualizing and exporting data.
 
 
 #### installation and deployment support tools
 
-A set of utilities is provided to help manage the Data Platform ecosystem.  There are scripts for managing infrastructure services including MongoDB and the Envoy proxy (used for deploying the web application), and a set of simple process-management utilities for managing the Data Platform server and benchmark applications.  The support tools are described in section 5.
+A set of utilities is provided to help manage the Data Platform ecosystem.  There are scripts for managing infrastructure services including MongoDB and the Envoy proxy (used for deploying the web application), and a set of simple process-management utilities for managing the Data Platform server and benchmark applications.
 
 
 ### status and milestones
@@ -129,17 +129,17 @@ The [dp-service repo](https://github.com/osprey-dcs/dp-service) contains the Jav
 
 #### dp-web-app
 
-The [dp-web-app repo](https://github.com/osprey-dcs/dp-web-app) contains the JavaScript code for the Data Platform Web Application, with documentation about the approach that is provided in Section 4 of this document.
+The [dp-web-app repo](https://github.com/osprey-dcs/dp-web-app) contains the JavaScript code for the Data Platform Web Application, with documentation about the approach.
 
 
 #### dp-support
 
-The [dp-support repo](https://github.com/osprey-dcs/dp-support) contains the scripts and utilities for managing the components of the Data Platform ecosystem.  It includes documentation for using those tools, which is covered in Section 5 of this document.
+The [dp-support repo](https://github.com/osprey-dcs/dp-support) contains the scripts and utilities for managing the components of the Data Platform ecosystem.  It includes documentation for using those tools.
 
 
 #### data-platform
 
-The [data-platform repo](https://github.com/osprey-dcs/data-platform) is the primary repo for the Data Platform project.  It contains documentation about the approach with links to the other repos, provided in Section 1 of this document.  It also includes a Quick Start guide for running the Data Platform ecosystem from the installer, which is provided in Section 6 of this document.
+The [data-platform repo](https://github.com/osprey-dcs/data-platform) is the primary repo for the Data Platform project.  It contains documentation about the approach with links to the other repos, provided in Section 1 of this document.  It also includes a Quick Start guide for running the Data Platform ecosystem from the installer.
 
 
 #### dp-benchmark

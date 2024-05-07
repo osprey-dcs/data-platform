@@ -51,9 +51,9 @@ There are three main options for installing the Data Platform.
 
 1. This data-platform repo contains an installer with everything needed to run the Data Platform and is the easiest way to get started.  See the [Quick Start](https://github.com/osprey-dcs/data-platform#data-platform-quick-start) for details on downloading and using the installer.
 
-2. To learn more about installing the Data Platform in your development environment, see the instructions for [development installation](https://github.com/osprey-dcs/data-platform#development-installation).
+2. To learn more about installing the Data Platform in your development environment, see the instructions for [development installation](./installation.md#development-installation).
 
-3. The [jar installation section](https://github.com/osprey-dcs/data-platform#jar-installation) describes the process for downloading the latest Data Platform jar files.
+3. The [jar installation section](./installation.md#jar-installation) describes the process for downloading the latest Data Platform jar files.
 
 ### development installation
 

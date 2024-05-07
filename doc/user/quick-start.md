@@ -4,11 +4,11 @@ This section will help you get the data platform up and running as quickly as po
 
 ## Preinstallation
 
-- [install Java 16 or 17](https://github.com/osprey-dcs/data-platform#java-installation)
+- [install Java 16 or 17](./installation.md#java-installation)
 
-- [install MongoDB version 7, create database user and password](https://github.com/osprey-dcs/data-platform#mongodb-installation)
+- [install MongoDB version 7, create database user and password](./installation.md#mongodb-installation)
 
-- [optionally install mongodb-compass](https://github.com/osprey-dcs/data-platform#mongo-express-installation)
+- [optionally install mongodb-compass](./installation.md#mongodb-compass-installation)
 
 ## Download and extract data plaform installer
 
@@ -104,6 +104,16 @@ data-platform/bin/server-query-start
 data-platform/bin/server-query-status
 ```
 
+#### start annotation service
+```
+data-platform/bin/server-annotation-start
+```
+
+#### check annotation service status
+```
+data-platform/bin/server-annotation-status
+```
+
 ### run data platform performance benchmarks
 
 Use the following commands to run the Ingestion and Query Service performance benchmarks.
@@ -117,4 +127,3 @@ data-platform/bin/app-run-ingestion-benchmark
 ```
 data-platform/bin/app-run-query-benchmark
 ```
-
