@@ -48,8 +48,12 @@ Edit pom.xml for all repos to reflect current version number!
   - update README.md
   - update release process (this doc)
   - generate new dp-tech.pdf if changed dp-tech.md
-    - cd ~/dp/data-platform/doc/documents/dp
-    - pandoc dp-tech.md -o ./pdf/dp-tech.pdf
+    - mac approach using intelli-j markdown to pdf converter works best
+      - run intelli-j, open data-platform dp-tech.md
+      - run tools -> markdown -> converter markdown to pdf
+    - linux approach using pandoc looks ugly using latex format, tables don't work correctly
+      - cd ~/dp/data-platform/doc/documents/dp
+      - pandoc dp-tech.md -o ./pdf/dp-tech.pdf
 
 Make sure this is all done before adding tags etc because it's a pain removing tags, deleting releases, adding tags, creating releases etc.
 
