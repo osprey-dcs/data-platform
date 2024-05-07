@@ -59,3 +59,8 @@ Use the links below to learn more about the Data Platform project.
 * [installation details](doc/user/installation.md)
   * [installation prerequisites](doc/user/installation.md#installation-prerequisites)
   * [data platform installation options](doc/user/installation.md#data-platform-installation-options)
+
+### developer notes
+
+* [data platform release process](doc/developer/release.md)
+* [generating JavaScript stubs from dp-grpc proto files (possibly obsolete)](doc/developer/protoc-javascript.md)
