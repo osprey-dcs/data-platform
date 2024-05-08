@@ -63,7 +63,7 @@ The datastore prototype included development of a web application using JavaScri
 
 #### technology performance benchmarking (September 2023)
 
-Performance benchmark applications were developed and utilized to evaluate candidate technologies for use in the Data Platform implementation in light of the project performance goal stated above. Benchmarks focused on gRPC for API communication; InfluxDB, MongoDB and MariaDB for database storage; and writing JSON and HDF5 files to disk. The benchmark results showed that it was likely we could build service implementations meeting our performance requirements by using gRPC for communication and [MongoDB for storing "buckets" of time series data](https://www.mongodb.com/blog/post/building-with-patterns-the-bucket-pattern).  Benchmark results are documented in Appendix A.
+Performance benchmark applications were developed and utilized to evaluate candidate technologies for use in the Data Platform implementation in light of the project performance goal stated above. Benchmarks focused on gRPC for API communication; InfluxDB, MongoDB and MariaDB for database storage; and writing JSON and HDF5 files to disk. The benchmark results showed that it was likely we could build service implementations meeting our performance requirements by using gRPC for communication and [MongoDB for storing "buckets" of time series data](https://www.mongodb.com/blog/post/building-with-patterns-the-bucket-pattern).
 
 
 #### Data Platform v1.0 (November 2023)
@@ -144,7 +144,7 @@ The [data-platform repo](https://github.com/osprey-dcs/data-platform) is the pri
 
 #### dp-benchmark
 
-The [dp-benchmark repo](https://github.com/osprey-dcs/dp-benchmark) is not currently active, but contains code developed for evaluating the performance of some candidate technologies considered for use in the Data Platform service technology stack.  It includes an overview of the benchmark process with a summary of results, which is provided as Appendix A of this document.
+The [dp-benchmark repo](https://github.com/osprey-dcs/dp-benchmark) is not currently active, but contains code developed for evaluating the performance of some candidate technologies considered for use in the Data Platform service technology stack.  It includes an overview of the benchmark process with a summary of results.
 
 
 ## Section 2: Data Platform API
