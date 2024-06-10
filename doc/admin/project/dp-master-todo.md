@@ -1,8 +1,5 @@
 # v1.4 (may/june)
 
-## testing
-* (dp-service #68) test coverage for serialization, e.g., create DataColumn objects using various data types, serialize and write content to file or constant string, compare the file content with serialized object created with the current framework.  Could use the ingestionDataTypesTest 2d array, image, and structure content. First run of test could create the files, subsequent runs would compare the content.  Check files in under test/resources.
-
 ## (dp-service #67) misc ingestion service features
 * rename to pvName in BucketDocument instead of columnName?  rename columnDataList to dataValues?
 * rename IngestionHandlerInterface.onNext() to handleIngestDataStream()?
