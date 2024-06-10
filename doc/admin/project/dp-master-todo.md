@@ -1,8 +1,6 @@
 # v1.4 (may/june)
 
 ## (dp-service #67) misc ingestion service features
-* rename to pvName in BucketDocument instead of columnName?  rename columnDataList to dataValues?
-* rename IngestionHandlerInterface.onNext() to handleIngestDataStream()?
 * store providerId/requestId from ingestion request in time series buckets
 * handling for unary ingestion rpc (only streaming is currently implemented)
 * should we use an enum for requestStatus to constrain the values?
