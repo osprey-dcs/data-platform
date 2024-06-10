@@ -1,13 +1,13 @@
 # v1.4 (may/june)
 
-## (dp-service #67) misc ingestion service features
-* handling for unary ingestion rpc (only streaming is currently implemented)
-* should we use an enum for requestStatus to constrain the values?
-
 ## (dp-service #67) refactor ingestion service to use queue / worker / job / dispatcher framework
 * refactor ingestion service handler to use new framework developed for query and annotation services.
   * modify ingestion service to use new service framework with queue, workers, jobs, dispatchers
   * Move logic from init() to start() in MongoIngestionHandler for starting queue and workers?
+
+## (dp-service #67) misc ingestion service features
+* handling for unary ingestion rpc (only streaming is currently implemented)
+* should we use an enum for requestStatus to constrain the values?
 
 ## refactor grpc servers to use common framework
 * refactor ingestion and query grpc servers to extend new GrpcServerBase framework, following pattern of AnnotationGrpcServer.
