@@ -1,7 +1,6 @@
 # v1.4 (may/june)
 
-## (dp-service #67) misc ingestion service features
-* handling for unary ingestion rpc (only streaming is currently implemented)
+## misc ingestion service features
 * should we use an enum for requestStatus to constrain the values?
 
 ## ingestion and query handling for buckets with explicit list of timestamps
