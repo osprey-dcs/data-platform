@@ -4,9 +4,6 @@
 * handling for unary ingestion rpc (only streaming is currently implemented)
 * should we use an enum for requestStatus to constrain the values?
 
-## refactor grpc servers to use common framework
-* refactor ingestion and query grpc servers to extend new GrpcServerBase framework, following pattern of AnnotationGrpcServer.
-
 ## ingestion and query handling for buckets with explicit list of timestamps
 * instead of SamplingClock with start time, periodNanos, and sample count
 * How do we accommodate both SamplingClock and TimestampList buckets in mongodb?  Maybe just have an optional list of timestamps that if populated implies bucket uses timestamp list, otherwise use SamplingClock.
