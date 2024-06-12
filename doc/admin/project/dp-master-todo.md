@@ -1,28 +1,19 @@
 # v1.4 (may/june)
 
-## misc ingestion service features
-* should we use an enum for requestStatus to constrain the values?
-
 ## ingestion and query handling for buckets with explicit list of timestamps
 * instead of SamplingClock with start time, periodNanos, and sample count
 * How do we accommodate both SamplingClock and TimestampList buckets in mongodb?  Maybe just have an optional list of timestamps that if populated implies bucket uses timestamp list, otherwise use SamplingClock.
 * MongoQueryHandler.dataTimestampsForBucket(): Change to determine whether to use explicit timestamp list or samplingClock from BucketDocument (e.g., does it contain a non-empty list of timestamps?)
 * check code for lastSamplingClock to make sure it will handle case where there is an explicit list of timestamps, e.g., get count from number of timestamps, calculate sample period from delta of two timestamps?
 
+## misc ingestion service features
+* should we use an enum for requestStatus to constrain the values?
+
 ## annotation service
 * check indexes for queryDataSets(), queryAnnotations()
 
 ## web app support
 * change logic for checking response message size when building intermediate data structure (map) instead of when building the table response
-
-## handling for eventMetadata.stopTime
-* add ingestion handling and test coverage for eventMetadata.stopTime
-  * in MongoIngestionHandler.generateBucketsFromRequest() etc
-  * add support to BucketDocument for EventMetadata.stopTimestamp. Either rename existing eventSeconds/Nanos to eventStartSeconds/Nanos, or add new EventMetadata object to contain the data as a field of BucketDocument
-* add query handling for EventMetadata.stopTimestamp 
-  * building grpc response in MongoQueryHandler.dataBucketFromDocument()
-* add integration test coverage 
-  * set attributes and event metadata in ingestion and check QueryDataResponse that query correctly returns that data
 
 ## build etc.
 * investigate compiler warning for QueryServiceImpl, IngestionTestBase "uses unchecked or unsafe operations"
