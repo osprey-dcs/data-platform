@@ -13,7 +13,9 @@
 * check indexes for queryDataSets(), queryAnnotations()
 
 ## web app support
+* sort metadata query results by pv name
 * change logic for checking response message size when building intermediate data structure (map) instead of when building the table response
+* data generator with broader time range and different data types
 
 ## build etc.
 * investigate compiler warning for QueryServiceImpl, IngestionTestBase "uses unchecked or unsafe operations"
