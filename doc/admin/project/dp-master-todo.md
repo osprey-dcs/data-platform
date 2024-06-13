@@ -1,11 +1,5 @@
 # v1.4 (may/june)
 
-## ingestion and query handling for buckets with explicit list of timestamps
-* instead of SamplingClock with start time, periodNanos, and sample count
-* How do we accommodate both SamplingClock and TimestampList buckets in mongodb?  Maybe just have an optional list of timestamps that if populated implies bucket uses timestamp list, otherwise use SamplingClock.
-* MongoQueryHandler.dataTimestampsForBucket(): Change to determine whether to use explicit timestamp list or samplingClock from BucketDocument (e.g., does it contain a non-empty list of timestamps?)
-* check code for lastSamplingClock to make sure it will handle case where there is an explicit list of timestamps, e.g., get count from number of timestamps, calculate sample period from delta of two timestamps?
-
 ## misc ingestion service features
 * should we use an enum for requestStatus to constrain the values?
 
