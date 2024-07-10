@@ -1,51 +1,75 @@
-# v1.5 (june/july)
+# v1.5 (july-september)
 
-## generator / simulator
+## extend ingestion benchmark to run NASA scenario
+* 1000 signals sampled at 250 kHz, what are the data types?
+
+## add ingestion/query service handling for EPICS status/alarm etc
+* The API includes DataValue.ValueStatus, but this is not being saved to Mongo or returned in query results.
+
+## export service prototype
+* part of annotation service or new standalone service
+* use DataSet model from annotations in new exportDataSet() rpc method etc
+* what formats to support?
+
+## strategy/design/prototype for provider registration
+* how do we want provider registration to work?
+* how to validate provider id in ingestion without affecting performance
+* make this a configurable option?
+* or do off-line (post-ingestion) provider validation, part of monitoring tools like looking for ingestion errors
+
+## design/prototype for additional annotation types
+* e.g., how to handle linked dataset, upload user data set, data provenance for one dataset derived from another
+
+## API for checking ingestion request status
+* currently only logged in mongodb
+
+## simple data generator for demo / web application data
 * data generator with broader time range and different data types
+* include datasets / annotations / ingestion attributes and event metadata
 
-## general
+## misc annotation service
+* what ownership/group/sharing/permissions/audit trail info do we want to attach to annotations and datasets?  Where else do we need this?
 * how to handle keywords / attributes (and description?) generically so they can be used for dataset, annotation, (buckets? not sure that makes sense)
-* rename inconsistently named handler methods in annotation to drop word request?  maybe the pattern should be "handleRpcMethodName"?  Maybe similar pattern for Job and Dispatcher classes?  See table in tech document that shows all names.
+  * Does this belong with ownership/sharing/etc properties or a separate object?
+
+## misc general
 * What is best API type and Java POJO type for field that is a mongo id (string vs. ObjectId vs. ?)? (e.g., dataSetId reference from annotation, list of bucket ids in requestStatus)
 
-## query
-* QueryResponseBidiStreamRequestStreamObserver.onNext() - check if query is already in process before accepting a subsequent one (e.g., cursor not null)
-
-## load testing
-* Scale / load testing. How big can a collection be before it is impractical?
-  * focus on NASA 30 minute use case described by Bob
+## misc query service
+* QueryResponseBidiStreamRequestStreamObserver.onNext() - check if operation is already in process before accepting a subsequent one (e.g., cursor not null)
 
 ## build / deployment
 * update to latest Java version
+* update to latest mongodb
 
+## documentation
+* UML for important grpc API elements
 
 # ===== FEATURES FOR FUTURE VERSIONS =====
 
+## strategy/design/prototype for ingestion data validation
+* do we want to enforce data type for PV in ingestion? what about array dimensions and nested data types etc
+  * explicit registration of data type for each PV (register PV name, data type, dimensionality, sample period etc) vs. registration on first ingested data etc ?
+  * specify dimensionality in PV registration or ingestion request?
+  * would we ever want multiple data types for a PV?
+* how to do this without affecting performance
+* make this a configurable option?
+* or do off-line (post-ingestion) validation to avoid performance impacts, part of monitoring tools like looking for ingestion errors
+
 ## documentation
-* interaction diagram for job execution? 
-* UML for grpc service proto files
+* interaction diagram for job execution?
 
 ## general
 * make collection names (or database name) configurable?
 
 ## ingestion
-* Consider using annotations collection / data model for storing event metadata, attribues attached to ingestion requests? (finish initial annotation implementation first)
-* Should IngestionRequest specify dimensions of array data structures, or are we allowing unlimited dimensions?
-* Should IngestionRequest columns specify data type? Would we ever want multiple data types in a column? In George's original schema, each DataValue can be a different type, but still could specify intention and check values instead of just deducing from first data value so we can reject an invalid request.
-* How to enforce the data type for a particular column?  How to enforce dimensions of array data types?
-  * could make this configurable
-  * explicit registration of column name, data type, dimensionality, sample period, etc
-  * registration of a column's details on first ingestion, reject might be confusing since it's behind the scenes
-* Implement provider registration API.  Currently just use integer chosen by client.
-* Add API for checking status of ingestion requests.
+* Consider using annotations collection / data model for storing event metadata, attribues attached to ingestion requests?
 * use parallel stream iteration in ingesting the batch of data buckets for an ingestion request? e.g.,
 <pre>
   List<Integer> squaredNumbers = numbers.parallelStream()
   .map(number -> number * number)
   .collect(Collectors.toList());
 </pre>
-* More explicit support for EPICS data types?
-* Support for alarm values (e.g., ValueStatus), "user tag" aspect of EPICS timstamp.
 
 ## query
 * should we change the query handler tests in MongoQueryHandlerTestBase / MongoSyncQueryHandlerTest to be integration tests?  The code inserts bucket documents manually for use in the query tests, and this is a completely different path than the buckets created by the ingestion service.  It caused a failure because the code to insert bucket documents was not properly naming the DataColumns serialized to the database, so the deserialized columns caused assertion failures checking the column name in query results.
@@ -88,7 +112,6 @@
 
 ## benchmarking
 * Exit benchmarks if corresponding service is not running.
-
 
 ## integration test
 * Add support for running integration test with out-of-process grpc against running ingestion and query servers?
