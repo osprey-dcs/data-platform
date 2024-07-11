@@ -824,6 +824,15 @@ In addition to simplifying the code base, this change improved ingestion perform
 
 We decided to use the same approach for storing "DataTimestamps", which can contain either a "SamplingClock" (specifying the start time, number of samples, and sample period) or "TimestampsList" (with an explicit list of data timestamps), in the "BucketDocuments".  Instead of unpacking the "DataTimestamps" from the ingestion request and adding conditional fields to "BucketDocument" to store the constituent "SamplingClock" or "TimestampsList", we simply serialize the "DataTimestamps" protobuf object to the "BucketDocument" as an opaque byte array field.
 
+The class diagram below shows part of the original polymorphic "BucketDocument" hierarchy.  The base class uses the type parameter "T" to indicate the type of data managed by the class.  It also includes the "@BsonDiscriminator" annotation to specify that MongoDB should use the value of the "dataType" field to determine which Java POJO class to use for each document.  The derived class "DoubleBucketDocument" uses the type parameter "Double" to show that the bucket contains Java Double data values.  Similarly, the "StringBucketDocument" derived class manages "String" data values.
+
+The diagram also shows that the base class uses fields to capture the details for the bucket's "DataTimestamps", with fields for both "SamplingClock" and "TimestampsList" details.
+
+![database interface framework](images/uml-dp-bucket-document-hierarchy.png "database interface framework")
+
+In Data Platform version 1.4, the polymorphic "BucketDocument" hierarchy shown above is replaced by the new standalone "BucketDocument" class shown in the class diagram below.  It contains byte array fields "dataColumnBytes" and "dataTimestampsBytes" to hold the serialized "DataColumn" and "DataTimestamps" for the bucket, respectively.  It provides methods for reading and writing the serialized object to the bucket, and getting the API type case and name for the serialized object.
+
+![database interface framework](images/uml-dp-bucket-document-standalone.png "database interface framework")
 
 #### 3.1.6 configuration
 
