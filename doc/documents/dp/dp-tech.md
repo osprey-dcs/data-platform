@@ -86,30 +86,32 @@ Version 1.2 saw changes to the "proto" files defining the gRPC API for the Data 
 Version 1.3 provides an initial implementation of the annotation service for adding annotations to archived data and performing queries against those annotations.  The primary focus for the initial annotation service implementation was on the data model for associating annotations with data in the archive.  The only type of annotation currently supported is a simple user comment, but we will be adding many other types of annotations using the same underlying data model.  See section 2 for more details about the annotation data model.
 
 
+#### v1.4 (July 2024)
+
+Version 1.4 added Ingestion and Query Service support for all data types defined in the Data Platform API including scalars, multi-dimensional arrays, structures, and images. Support is also added to both services for ingesting and querying data with an explicit list of data timestamps to complement the existing support for specifying data timestamps using a SamplingClock (with start time, sample period, and number of samples). Both features utilize serialization of the protobuf DataColumn and DataTimestamps API objects as byte array fields of the MongoDB BucketDocument. This change improves ingestion performance significantly, while also reducing the MongoDB storage footprint and simplifying the codebase.
+
+
 ### todo and road map
 
 
-#### v1.4 planned features (April / May 2024)
+#### v1.5 planned features (July / August / September 2024)
 
-
-
-* Experiment storing data in MongoDB using protobuf format to avoid unpacking it in the ingestion service and re-packing it in the query service.  This will determine the direction for handling complex data types.
-* Ingestion and query handling for "complex" data types including arrays, tables, images, and structures.
-* Ingestion and query handling for data using an explicit list of timestamps instead of the "sampling clock" mechanism with start time and sample period.
-* Handling for simple unary ingestion API.
-* Refactoring of ingestion service to share common frameworks developed for building query and annotation service implementations.
+* Run more extensive load testing benchmarks.
+* Add support for EPICS status/alarm etc
+* Develop API and implement export service RPC methods.
+* Add support for additional annotation types, including linked and derived data sets, and post-ingestion calculations.
+* Implement API for checking status of asynchronous ingestion requests.
+* Implement API for provider registration.
+* Build simple data generator for demo and web application development.
 
 
 #### features planned for future releases
 
-
-
-* Add support for additional annotation types, including linked and derived data sets, and post-ingestion calculations.
-* Implement API for checking status of asynchronous ingestion requests.
-* Implement API for provider registration.
+* Implement mechanism for ingestion data validation.
 * Add support for authentication and authorization of query and annotation services.
-* Perform large scale load testing.
-* Experiment with horizontal scaling alternatives and MongoDB database partitioning (sharding).
+* Investigate MongoDB database partitioning (sharding) and connection pooling.
+* Experiment with horizontal scaling alternatives.
+* Experiment with streaming architecture (e.g., Apache Kafka)
 
 
 ### project organization
@@ -442,34 +444,56 @@ The "QueryMetadataRequest" message is defined in query.proto, and contains one o
 
 The "QueryMetadataResponse" message contains the result of a metadata query and includes one of two payloads, either an "ExceptionalResult" if an error is encountered or no data is found (described above) or "MetadataResult".
 
-A "MetadataResult" message contains a list of "PvInfo" messages, one for each PV specified by the query (either explicitly in the PV name list or by matching the supplied PV name pattern).  A "PvInfo" message contains metadata for an individual PV in the archive, including name, data type, sampling clock (indicating sample period), and timestamps for the first and last PV measurement in the archive.
+A "MetadataResult" message contains a list of "PvInfo" messages, one for each PV specified for the query (either explicitly in the PV name list or by matching the supplied PV name pattern).  A "PvInfo" message contains metadata for an individual PV in the archive, including name, timestamps for the first and last PV measurement in the archive, and stats for the most recent bucket including bucket id, data type information, data timestamps details, and sample count/period.
 
 
 ### 2.7 Data Platform API - annotation service
 
-"DpAnnotationService" is a gRPC service defined in "annotation.proto".  It includes methods for creating "DataSets" (described above in section 2.4.7), and for creating and querying annotations.  The service includes a placeholder method for querying datasets, but it is not yet implemented and may be removed if not deemed to be useful.
+"DpAnnotationService" is a gRPC service defined in "annotation.proto".  It includes methods for creating and querying "DataSets" (described above in section 2.4.7), and for creating and querying annotations.
 
 
-#### 2.7.1 creating datasets
+#### 2.7.1 creating and querying datasets
 
-The Data Platform Annotation Service uses datasets to identify the relevant data within the archive for a particular annotation.  The API includes a single method for creating datasets.
+The Data Platform Annotation Service uses datasets to identify the relevant data within the archive for a particular annotation.  The API includes a methods for creating and querying datasets.
+
 ```
 rpc createDataSet(CreateDataSetRequest) returns (CreateDataSetResponse);
+rpc queryDataSets(QueryDataSetsRequest) returns (QueryDataSetsResponse);
 ```
 
-This is a single request/response unary method for creating a dataset.  It accepts a "CreateDataSetRequest" message and returns a "CreateDataSetResponse".
+##### createDataSet()
 
+This is a single request/response unary method for creating a dataset.  It accepts a "CreateDataSetRequest" message and returns a "CreateDataSetResponse".
 
 ##### CreateDataSetRequest
 
 A "CreateDataSetRequest" message contains a "DataSet" message with details of the dataset to be created, e.g., its list of "DataBlock" messages.
-
 
 ##### CreateDataSetResponse
 
 A "CreateDataSetResponse" message contains one of two payloads, an "ExceptionalResult" message if a rejection or error was encountered creating the dataset, or a "CreateDataSetResult".
 
 A "CreateDataSetResult" message simply contains the unique identifier assigned to the new dataset if it was created successfully.
+
+##### queryDataSets()
+
+The "queryDataSets()" method is a single request/response method that searches for datasets in the archive that match the search criteria specified for the query.  It accepts a "QueryDataSetsRequest" message and returns a "QueryDataSetsResponse" message.
+
+##### QueryDataSetsRequest
+
+A "QueryDataSetsRequest" encapsulates the criteria for the query.  It contains a list of "QueryDataSetsCriterion" messages.
+
+The "QueryDataSetsCriterion" message defines a number of different criteria message types that can be added to the criterion list, including an "OwnerCriterion" (specifying the owner id to match in the annotation query), "NameCriterion" (specifying text to match against dataset name), and "DescriptionCriterion" (specifying text to match against dataset description.
+
+These query criteria can be used individually in the criteria list, or multiple criteria can be added to the list to specify a compound query.  E.g., adding an "OwnerCriterion" and "NameCriterion" to the list will match dataset names for the specified owner.
+
+##### QueryDataSetsResponse
+
+The "queryDataSets()" method returns a "QueryDataSetsResponse" message with the query results.  It contains one of two payloads, either an "ExceptionalResult" message if the query encountered an error or returned no data (described above), or an "DataSetsResult" message with the results if the query was successful.
+
+The "DataSetsResult" message includes a list of "DataSet" messages, one for each dataset that matches the query's search criteria.
+
+An "DataSet" message includes the following properties for the dataset: unique id, name, owner id, description, and a list of the "DataBlock" messages comprising the dataset.
 
 
 #### 2.7.2 creating and querying annotations
@@ -481,16 +505,13 @@ rpc createAnnotation(CreateAnnotationRequest) returns (CreateAnnotationResponse)
 rpc queryAnnotations(QueryAnnotationsRequest) returns (QueryAnnotationsResponse);
 ```
 
-
 ##### createAnnotation()
 
 The method "createAnnotation()" creates an annotation for the specified dataset.  It accepts a "CreateAnnotationRequest" message and returns a "CreateAnnotationResponse" message.
 
-
 ##### CreateAnnotationRequest
 
 A "CreateAnnotationRequest" message specifies the id of the owner creating the annotation, and the id of the dataset to be annotated.  It uses a variable "oneof" payload for specifying the details specific to the type of annotation being created.  Currently there is a single type of annotation, "CommentAnnotation", which includes the text of the comment for the annotation.
-
 
 ##### CreateAnnotationResponse
 
@@ -498,11 +519,9 @@ A "CreateAnnotationResponse" message is used to return the result of the "create
 
 A "CreateAnnotationResult" message simply contains the unique identifier assigned to the annotation.
 
-
 ##### queryAnnotations()
 
 The "queryAnnotations()" method is a single request/response method that searches for annotations in the archive that match the search criteria specified for the query.  It accepts a "QueryAnnotationsRequest" message and returns a "QueryAnnotationsResponse" message.
-
 
 ##### QueryAnnotationsRequest
 
@@ -510,6 +529,7 @@ A "QueryAnnotationsRequest" encapsulates the criteria for the query.  It contain
 
 The "QueryAnnotationsCriterion" message defines a number of different criteria message types that can be added to the criterion list, including an "OwnerCriterion" (specifying the owner id to match in the annotation query) and "CommentCriterion" (specifying text to match against annotation comments).  Other types of criterion messages will be added as additional types of annotations are defined.
 
+These query criteria can be used individually in the criteria list, or multiple criteria can be added to the list to specify a compound query.  E.g., adding an "OwnerCriterion" and "CommentCriterion" to the list will match comment annotations for the specified owner.
 
 ##### QueryAnnotationsResponse
 
@@ -790,7 +810,22 @@ For the Query and Annotation Services, where performance is important but not on
 The handler for each service implementation including "MongoAnnotationHandler" provides factory methods such as "newMongoSyncAnnotationHandler()" to create a handler instance initialized with the synchronous database client "MongoSyncIngestionClient".  When new jobs are added to the handler's task queue, they are provided with a reference to the database client for accessing database operations by both the job and its dispatcher, as needed.  This is illustrated in the diagram by "QueryAnnotationsJob" and the corresponding "AnnotationsResponseDispatcher" which call the database client methods "executeQueryAnnotations()" and "findDataSet()" in the execution of their methods "execute()" and "handleResult()", respectively.
 
 
-#### 3.1.5 configuration
+#### 3.1.5 serialization of protobuf objects to MongoDB documents
+
+The Ingestion Service adds a document to the MongoDB "buckets" collection for each "DataColumn" (vector of samples) contained in an ingestion request's data frame.  The documents contain the vector's "DataValues" and the corresponding "DataTimestamps" for those values, as well as other details such as bucket start and end time.
+
+Originally, the Ingestion Service used a polymorphic hierarchy of parameterized classes derived from the base class, "BucketDocument" to handle the various data types supported by the API "DataValue" message.  This approach required a Java "POJO" class for each supported API "DataValue" type for mapping the API type to a Java type.  For example, the Java class "DoubleBucketDocument" extends the base "BucketDocument" class with the type parameter "Double" to handle the API DataValue value type "doubleValue", and the Java class "StringBucketDocument" with parameter type "String" handles the API DataValue value type "stringValue".
+
+While this approach is fairly straightforward for the basic scalar data types defined by the API that map to primitive Java types, it encounters problems handling more complex API data types like "Array" and "Structure" which can contain nested references to other "DataValue" types.  It would be challenging to design Java BucketDocument subclasses to handle arbitrarily nested arrays of structures that might contain arrays of different data types, etc.
+
+In order to support these more complex API data types, we changed approach in version 1.4 to serialize the protobuf "DataColumn" object directly to the "BucketDocument" as an opaque byte array field without otherwise unpacking the column's "DataValues".  This allows us to support all API data types (including arbitrarily nested arrays and structures) while eliminating the need for the hierarchy of classes derived from "BucketDocument" for handling each unique API data type.
+
+In addition to simplifying the code base, this change improved ingestion performance significantly and reduced the MongoDB storage footprint (due to the compression used in protobuf serialization).
+
+We decided to use the same approach for storing "DataTimestamps", which can contain either a "SamplingClock" (specifying the start time, number of samples, and sample period) or "TimestampsList" (with an explicit list of data timestamps), in the "BucketDocuments".  Instead of unpacking the "DataTimestamps" from the ingestion request and adding conditional fields to "BucketDocument" to store the constituent "SamplingClock" or "TimestampsList", we simply serialize the "DataTimestamps" protobuf object to the "BucketDocument" as an opaque byte array field.
+
+
+#### 3.1.6 configuration
 
 The Data Platform service implementations all share a simple configuration framework.  The primary objective for the configuration framework is to minimize the code required to retrieve configuration values, such as checking if the resource is defined, checking for a null return value, providing a default value, and casting to common Java types.  We wanted to define methods on the configuration tool that hide those details from the caller as much as possible.
 
@@ -825,7 +860,7 @@ _configMgr().getConfigInteger(CFG_KEY_NUM_WORKERS, DEFAULT_NUM_WORKERS)_
 where "configMgr()" is a convenience method for accessing the singleton "ConfigurationManager" instance.
 
 
-#### 3.1.6 performance benchmarking
+#### 3.1.7 performance benchmarking
 
 
 ##### ingestion service performance benchmarking
@@ -840,7 +875,7 @@ The diagram below shows the elements of the ingestion performance benchmarking f
 
 The framework supports running ingestion scenarios for different approaches, so the base class "IngestionBenchmarkBase" contains the key framework components for running an ingestion benchmark.  It defines the nested class "IngestionTask" to encapsulate the logic for invoking an ingestion API, creating the stream of ingestion requests, and handling the API response stream.  The nested classes "IngestionTaskParams" and "IngestionTaskResults" are used to contain the parameters needed by the task and to return performance results from the task.
 
-"IngestionBenchmarkBase" provides the method "ingestionExperiment()" for sweeping combinations of parameter values for variables like number of threads and number of API streams, and calculating an overall performance benchmark for the run.  The lower level method "ingestionScenario()" is used by the experiment driver method to run an individual scenario and measure its performance.  This method is also used in the integration test framework to create a regression test that not only runs the ingestion scenario to create data in the archive, but verifies database contents and API responses.  See section 3.1.8 for more details.
+"IngestionBenchmarkBase" provides the method "ingestionExperiment()" for sweeping combinations of parameter values for variables like number of threads and number of API streams, and calculating an overall performance benchmark for the run.  The lower level method "ingestionScenario()" is used by the experiment driver method to run an individual scenario and measure its performance.  This method is also used in the integration test framework to create a regression test that not only runs the ingestion scenario to create data in the archive, but verifies database contents and API responses.  See section 3.1.9 for more details.
 
 The application class "BenchmarkStreamingIngestion" extends the base class to run a performance benchmark for the "ingestDataStream()" bidirectional streaming Ingestion Service API.  It defines the nested class "StreamingIngestionTask", implementing the "call()" method to call the API, send a stream of requests, handle the response stream, and collect performance stats.
 
@@ -864,13 +899,13 @@ Various concrete performance benchmark application classes extend the base class
 For example, the benchmark application class "BenchmarkQueryDataStream" shown in the diagram above defines the task class "QueryResponseStreamTask" that extends "QueryDataResponseTask".  Each task calls the "queryDataStream()" API and keeps track of the number of values and bytes sent for use in performance statistics.
 
 
-#### 3.1.7 regression testing
+#### 3.1.8 regression testing
 
 The primary objective for the regression test suite was to allow coverage to be added for essentially any part of the Data Platform common code and service implementations including lower level components, and for the most part that has been accomplished.  Test coverage for the Ingestion and Query service implementations is pretty extensive, and covers some of the lower-level features that are hard to cover in higher-level scenarios.
 
 All regression tests using a MongoDB database named "dp-test".  The Data Platform's MongoDB schema is described in Section 3.2.
 
-After adding coverage for both the Ingestion and Query service implementations, we added an "integration testing" framework that provides a mechanism for running higher-level scenarios that involve any/all of the service implementations.  That framework is discussed in Section 3.1.8.
+After adding coverage for both the Ingestion and Query service implementations, we added an "integration testing" framework that provides a mechanism for running higher-level scenarios that involve any/all of the service implementations.  That framework is discussed in Section 3.1.9.
 
 Since the integration testing framework was added, we've preferred adding test coverage at that level when possible because it exercises the communication framework in addition to the service implementations.  For that reason, there is less low-level test coverage of the annotation service implementation than the other service, but pretty good coverage at the higher-level integration test level.  We will add more extensive low-level coverage for all the services as time goes on to cover more special / unusual cases.
 
@@ -1073,7 +1108,7 @@ We've used a naming convention for classes that contain jUnit test cases to end 
 
 
 
-#### 3.1.8 integration testing
+#### 3.1.9 integration testing
 
 One requirement for this project is to provide integration testing that provides coverage for scenarios that involve multiple services.  We developed an integration testing framework that supports creating tests that include data ingestion, query, and annotation.  The framework is shown in the diagram below.
 
@@ -1088,8 +1123,6 @@ The framework is built using the ["in-process" gRPC framework](https://github.co
 The base class's "setUp()" method brings up the Data Platform environment, including Ingestion, Query, and Annotation services using the corresponding service implementation's "init()" method (e.g., "IngestionServiceImpl.init()").  It creates a gRPC channel for each service for invoking RPC methods on that service.  The base class "tearDown()" method shuts down the services using each implementation's "fini()" method.
 
 The base class provides convenience methods for calling service API's, validating the corresponding database artifacts, and verifying the API response stream.  For example, the "AnnotationTest" uses the following base methods to 1) create data in the archive,  2) create data blocks, data sets, and annotations, 3)  query annotations, and 4) query time-series data using the data blocks returned by the annotations query:
-
-
 
 1. ingestDataStreamFromColumn()
 2. sendAndVerifyCreateDataSet()
@@ -1197,8 +1230,6 @@ The Annotation Service manages the "dataSets" collection.  The API method "creat
 
 Each dataset document contains the following fields:
 
-
-
 * "_id" - unique identifier for the dataset
 * "description" - a brief textual description of the dataset
 * "dataBlocks" - contains a list of "DataBlock" objects, each of which contains a time range specified by "beginTimeSeconds" / "beginTimeNanos" / "endTimeSeconds" / "endTimeNanos" and a list of PV names
@@ -1213,8 +1244,6 @@ The "annotations" collection contains documents whose Java type is "AnnotationDo
 The Annotation Service manages the "annotations" collection.  The API method "createAnnotation()" creates a new document for each successful request.   The handler for that method determines the appropriate concrete Java document class to create from the request parameters.  This collection is the domain for the "queryAnnotations()" API method, which matches annotation documents against the search criteria and returns the matching documents.
 
 The fields in the base document class "AnnotationDocument" include:
-
-
 
 * "_id" - unique identifier for the annotation
 * - "type" - specifies the discriminator string for the concrete document subtype, used by the MongoDB codec to map to the corresponding Java class
