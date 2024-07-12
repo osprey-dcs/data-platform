@@ -1137,7 +1137,7 @@ One requirement for this project is to provide integration testing that provides
 ![integration test framework](images/uml-dp-integration-test-framework.png "integration test framework")
 
 
-The core of the framework is the class "GrpcIntegrationTestBase".  The base class is extended by test classes such as "StaggeredTimestampTest", "MetadataQueryTest", "TableQueryTest", and "AnnotationTest".  A special case is "BenchmarkIntegrationTest", which is detailed in the next subsection.
+The core of the framework is the class "GrpcIntegrationTestBase".  The base class is extended by test classes such as "StaggeredTimestampTest", "MetadataQueryTest", "TableQueryTest", and "AnnotationTest".  There are several integration tests focused on different aspects of the Ingestion Service that are not shown in the diagram, but they follow the same pattern (inheriting from "GrpcIntegrationTestBase" and using utility methods in the base class and "IngestionTestBase").  These are discussed in the table summary of the integration tests below.  A special case is "BenchmarkIntegrationTest", which is detailed in the next subsection.
 
 The framework is built using the ["in-process" gRPC framework](https://github.com/grpc/grpc-java/blob/master/examples/src/test/java/io/grpc/examples/helloworld/HelloWorldServerTest.java), which allows multiple gRPC clients and servers to run in a single Java process.  It is a convenient way to build integration test coverage without dealing with synchronizing multiple processes.
 
@@ -1154,6 +1154,101 @@ The base class provides convenience methods for calling service API's, validatin
 Each service implementation provides a test base class with data structures, classes, and utilities for using the service APIs.  For example, "IngestionTestBase" includes the data structure "IngestionRequestParams" to contain the parameters for an ingestion request.  The method "buildIngestionRequest()" creates a gRPC ingestion request object from the params object.  The nested class "IngestionResponseObserver" is a response stream observer for the streaming ingestion API that builds a list of replies for use in verifying the API response.  The classes "QueryTestBase" and "AnnotationTestBase" offer similar utilities for the Query and Annotation Services, respectively.
 
 For API calls that write data to the database, the base class wrapper methods validate the corresponding database artifacts for each API request.  The class "MongoTestClient" provides utilities for retrieving items from the database for validation.  For example, the base class method "ingestDataStreamFromColumn()" calls the bidirectional streaming ingestion API to create data, and then uses "MongoTestClient.findBucket()" and "findRequestStatus()" to retrieve the corresponding database artifacts, comparing their contents to the results expected for the request.  Similarly, the base class methods "sendAndVerifyCreateDataSet()" and "sendAndVerifyCreate…Annotation…()" using test client methods "findDataSet()" and "findAnnotation()", respectively.
+
+The various integration test classes are summarized in the tables below.
+
+##### com.ospreydcs.dp.service.integration.annotation
+
+<table>
+  <tr>
+   <td><strong>class</strong>
+   </td>
+   <td><strong>description</strong>
+   </td>
+  </tr>
+  <tr>
+   <td>AnnotationTest
+   </td>
+   <td> This test provides coverage for various aspects of the AnnotationService API including creating and querying DataSets, and creating and querying Annotations. The test runs a simple ingestion scenario to create data for various devices.  It includes both negative and positive tests for createDataSet() using the ingested data.  It includes both negative and postive tests for the queryDataSets() API over the DataSets created by the test.  It includes both negative and positive tests for createAnnotation() using the DataSets created by the test.  It includes negative and positive coverage for queryAnnotations() using the annotations created by the test.  It includes a scenario to run a time-series data query using the DataSet returned by queryAnnotations().
+   </td>
+  </tr>
+</table>
+
+##### com.ospreydcs.dp.service.integration.ingest
+
+<table>
+  <tr>
+   <td><strong>class</strong>
+   </td>
+   <td><strong>description</strong>
+   </td>
+  </tr>
+  <tr>
+   <td>DataTypesTestBase
+   </td>
+   <td> This base class includes test scenarios for ingestion of "complex" data types, including 2D array, image, and structure data and verification of ingestion results.  It defines the abstract method sendAndVerifyIngestionRpc_() that is overridden by subclasses to call one of the ingestion APIs.
+   </td>
+  </tr>
+  <tr>
+   <td>DataTypesUnaryTest
+   </td>
+   <td> Extends DataTypesTestBase and overrides sendAndVerifyIngestionRpc_() to test ingestion of complex data types using the unary ingestion API, ingestData().
+   </td>
+  </tr>
+  <tr>
+   <td>DataTypesStreamingTest
+   </td>
+   <td> Extends DataTypesTestBase and overrides sendAndVerifyIngestionRpc_() to test ingestion of complex data types using the bidirectional streaming ingestion API, ingestDataStream().
+   </td>
+  </tr>
+  <tr>
+   <td>ExplicitTimestampListTest
+   </td>
+   <td> Provides coverage for ingestion of data using DataTimestamps with an explicit TimestampsList (instead of SamplingClock, covered in most of the other ingestion integration tests).
+   </td>
+  </tr>
+  <tr>
+   <td>UnaryTest
+   </td>
+   <td> Provides coverage for ingestion of data using the unary ingestion API, ingestData().  Includes simple negative and positive test scenarios.
+   </td>
+  </tr>
+  <tr>
+   <td>ValidationTest
+   </td>
+   <td> Currently sort of a placeholder, but provides coverage for a single rejection scenario.  There is more extensive rejection test coverage in the regular unit test IngestionValidationUtilityTest, but I wanted a rejection test that exercises the gRPC communication framework to make sure it works as expected at the API level.
+   </td>
+  </tr>
+</table>
+
+##### com.ospreydcs.dp.service.integration.query
+
+<table>
+  <tr>
+   <td><strong>class</strong>
+   </td>
+   <td><strong>description</strong>
+   </td>
+  </tr>
+  <tr>
+   <td>MetadataQueryTest
+   </td>
+   <td> This test provides coverage for the Query Service's queryMetadata() API.  It runs a simple ingestion scenario, and then various negative and positive test cases for queryMetadata().
+   </td>
+  </tr>
+  <tr>
+   <td>StaggeredTimestampTest
+   </td>
+   <td> This test provides coverage for queries in a more interesting scenario for ingested data.  I added it when we added the queryDataTable() API to make sure that the query table result was correct when ingested PV data used different sample periods, and when the query time range was intentionally offset from the data bucket begin times.
+   </td>
+  </tr>
+  <tr>
+   <td>TableQueryTest
+   </td>
+   <td> This test provides coverage for the queryDataTable() API using a simpler ingestion scenario than StaggeredTimestampTest.  It includes positive test cases for both column and row-oriented query table result.
+   </td>
+  </tr>
+</table>
 
 
 ##### benchmark integration test
