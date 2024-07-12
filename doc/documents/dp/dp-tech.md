@@ -921,7 +921,7 @@ Since the integration testing framework was added, we've preferred adding test c
 We've used a naming convention for classes that contain jUnit test cases to end the class name with "Test".  The names of base classes that are intended to be extended by concrete test classes end with "Base".  The base and test classes are summarized below.
 
 
-##### ConfigurationManager tests
+##### ConfigurationManager tests (com.ospreydcs.dp.service.common.config)
 
 
 <table>
@@ -965,7 +965,7 @@ We've used a naming convention for classes that contain jUnit test cases to end 
 
 
 
-##### test database utilities
+##### mongo tests (com.ospreydcs.dp.service.common.mongo)
 
 
 <table>
@@ -981,11 +981,29 @@ We've used a naming convention for classes that contain jUnit test cases to end 
    <td>Extends "MongoSyncClient" database framework class to provide database-level utilities to regression tests.  The "init()" method drops the test database if it exists and creates a new one.  Provides utilities useful for verifying database artifacts including "findBucket()", "findRequestStatus()", "findDataSet()", and "findAnnotation()".
    </td>
   </tr>
+  <tr>
+   <td>MongoSyncDriverTest
+   </td>
+   <td>Used to confirm expected behavior of MongoDB Java "sync" driver, independent of the Data Platform database client framework for special cases such as the behavior when a duplicate database id is inserted, etc.
+   </td>
+  </tr>
+  <tr>
+   <td>MongoAsyncDriverTest
+   </td>
+   <td>Used to confirm expected behavior of MongoDB Java "reactivestreams" driver, independent of the Data Platform database client framework for special cases such as the behavior when a duplicate database id is inserted, etc.
+   </td>
+  </tr>
+  <tr>
+   <td>MongoIndexTest
+   </td>
+   <td> This simple test checks that the expected indexes exist on each of the Data Platform MongoDB collections.  The indexes are created at startup by MongoClientBase.  For each collection, there is a section in the test that checks for the expected number of indexes, and checks each of the expected index names (using the standard Mongo index naming convention).
+   </td>
+  </tr>
 </table>
 
 
 
-##### ingestion service tests
+##### ingestion service tests (com.ospreydcs.dp.service.ingest)
 
 
 <table>
@@ -999,12 +1017,6 @@ We've used a naming convention for classes that contain jUnit test cases to end 
    <td>IngestionTestBase
    </td>
    <td>Base class for derived test classes providing ingestion service test coverage.  Includes nested utility classes "IngestionRequestParams" to encapsulate the parameters for an ingestion request and "IngestionResponseObserver" for handling the response stream from the streaming ingestion API.  Includes utility method variants of "buildIngestionRequest()" for building an ingestion request from a params object.
-   </td>
-  </tr>
-  <tr>
-   <td>IngestionGrpcTest
-   </td>
-   <td>Provides basic coverage of ingestion service gRPC communication using the "in-process" gRPC framework.
    </td>
   </tr>
   <tr>
@@ -1026,15 +1038,15 @@ We've used a naming convention for classes that contain jUnit test cases to end 
    </td>
   </tr>
   <tr>
-   <td>MongoSyncDriverTest
+   <td>IngestionValidationUtilityTest
    </td>
-   <td>Used to confirm expected behavior of MongoDB Java "sync" driver, independent of the Data Platform database client framework for special cases such as the behavior when a duplicate database id is inserted, etc.
+   <td> Provides coverage for various rejection scenarios in IngestionValidationUtility.validateIngestionRequest().
    </td>
   </tr>
   <tr>
-   <td>MongoAsyncDriverTest
+   <td>IngestionServiceImplTest
    </td>
-   <td>Used to confirm expected behavior of MongoDB Java "reactivestreams" driver, independent of the Data Platform database client framework for special cases such as the behavior when a duplicate database id is inserted, etc.
+   <td> Provides coverage for utility methods in IngestionServiceImpl.
    </td>
   </tr>
 </table>
