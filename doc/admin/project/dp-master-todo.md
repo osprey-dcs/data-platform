@@ -1,40 +1,53 @@
 # v1.5 (july-september)
 
-## extend ingestion benchmark to run NASA scenario
-* 1000 signals sampled at 250 kHz, 4 bytes
-* 1GB / sec
-* 1.8 TB / 30 sec
+## build / deployment
+* update to latest Java version
+* update to latest mongodb
 
 ## add ingestion/query service handling for EPICS status/alarm etc
-* The API includes DataValue.ValueStatus, but this is not being saved to Mongo or returned in query results.
-* this might be just test coverage, since serialization of DataColumn should be storing the info in mongo
-
-## export service prototype
-* part of annotation service or new standalone service
-* use DataSet model from annotations in new exportDataSet(DataSet) rpc method etc -> URL to exported file
-* what formats to support? bob said hdf5 initially, what else?
-* how to handle arbitrarily nested arrays of structures containing arrays of images etc.
+* this might be just test coverage, since serialization of DataColumn should be storing the info in mongo, and returning it in query results
+* do we need a way to query by alarm conditions, or add it to metadata for a PV (last alarm etc), this would mean unpacking the serialized DataColumn byte array values (or setting fields in the bucket indicating alarms during ingestion which would affect performance, e.g., probably would reduce performance to the level before we used serialization to persist data values since we have to iterate through the whole data vector to find alarms)
 
 ## strategy/design/prototype for provider registration
 * how do we want provider registration to work?
 * how to validate provider id in ingestion without affecting performance
 * make this a configurable option?
 * or do off-line (post-ingestion) provider validation, part of monitoring tools like looking for ingestion errors
-* consider explicit registerProvider(String name) returns ProviderRegistration structure that contains provider ID and other crap
-  * use ProviderRegistration in ingestData() and queryRequestStatus() APIs
+* consider explicit registerProvider(String name) returns ProviderRegistration structure that contains provider ID and other stuff (e.g., provider name, session id, start time etc).
+  * use ProviderRegistration in ingestData()
+* do we want a provider metadata query and where does it belong?
 
 ## API for checking ingestion request status
 * currently only logged in mongodb
 * queryRequestStatus(): would accept providerId, and either a specific clientRequestId, or a time range, or session id (whatever that is, it's in the ProviderRegistration)
+  * could use list of criteria, e.g., providerIdCriteria, providerNameCriteria, time range
 * goes in ingestion service for now
 
 ## design/prototype for additional annotation types
-* e.g., think about how to handle linked dataset, and maybe implement it
+* think about how to handle linked dataset, and maybe implement it
+  * is there a list of linked dataset ids?  What about the model where an annotation is for a single dataset? Should we change annotation model to include a list of datasets instead of single one?
+  * should we consider one giant annotation structure that can include comment, list of links, etc (sort of what Chris had in the original proposal), or is it better to have different types of annotations with different fields?
+* consider other needed features for annotations / datasets, e.g,.
+  * what ownership/group/sharing/permissions/audit trail info do we want to attach to annotations and datasets?  Where else do we need this?
+  * how to handle keywords / attributes (and description?) generically so they can be used for dataset, annotation, (buckets? not sure that makes sense)
+    * Does this belong with ownership/sharing/etc properties or a separate object?
 
-## misc annotation service
-* what ownership/group/sharing/permissions/audit trail info do we want to attach to annotations and datasets?  Where else do we need this?
-* how to handle keywords / attributes (and description?) generically so they can be used for dataset, annotation, (buckets? not sure that makes sense)
-  * Does this belong with ownership/sharing/etc properties or a separate object?
+## export service prototype
+* part of annotation service or new standalone service? initially will add to annotation service
+  * the export feature could get "busy" in a facility running continuous machine learning
+* use DataSet model from annotations in new API e.g., exportDataSet(DataSet) rpc method returns URL to exported file
+* what formats to support? bob said hdf5 initially, what else?
+  * probably 2 different hdf5 formats e.g, one for data platform archive format (using serialize data values) and one for user consumption (where DataValues are unpacked)
+* how to handle arbitrarily nested arrays of structures containing arrays of images etc.
+
+## extend ingestion benchmark to run NASA scenario
+* either use ingestion benchmark framework, or create a new load test framework, but what's the difference?
+* signals sampled with 4 bytes data + 1 byte of status according to Bob
+  * 1000 signals sampled at 250 kHz, 
+  * 1GB / sec
+  * 60 GB / min
+  * 1.8 TB / 30 min
+* probably need to either set up a server on AWS cloud, or buy external storage to do this test
 
 ## misc general
 * What is best API type and Java POJO type for field that is a mongo id (string vs. ObjectId vs. ?)? (e.g., dataSetId reference from annotation, list of bucket ids in requestStatus)
@@ -42,18 +55,15 @@
 ## misc query service
 * QueryResponseBidiStreamRequestStreamObserver.onNext() - check if operation is already in process before accepting a subsequent one (e.g., cursor not null)
 
-## build / deployment
-* update to latest Java version
-* update to latest mongodb
-
-## simple data generator for demo / web application data
-* data generator with broader time range and different data types
-* include datasets / annotations / ingestion attributes and event metadata
-
 ## documentation
 * UML for important grpc API elements
 
 # ===== FEATURES FOR FUTURE VERSIONS =====
+
+## simple data generator for demo / web application data
+* data generator with broader time range and different data types
+* include datasets / annotations / ingestion attributes and event metadata
+* what is the relationship to simulator that Chris is building
 
 ## strategy/design/prototype for ingestion data validation
 * do we want to enforce data type for PV in ingestion? what about array dimensions and nested data types etc
@@ -85,6 +95,11 @@
 * I only implemented a single HandlerQueryInterface concrete class using the "sync" mongodb driver, since this meets our performance requirements (and seems to outperform the async/reactivestreams driver for our use) and is in some ways less complex to work with.  Should we try building a handler using the async/reactivestreams mongodb driver to compare performance?
 
 ## annotation
+* from bob (need to clarify)
+  * Perhaps point to a calibration file.
+  * Owner
+  * Date
+  * For data sets that were generated from raw data, a pointer to the raw data file, the code that produced this file and the version of that code.
 * Should we cross reference annotations to buckets and/or vice versa? 
   * E.g., annotation documents have references to the affected buckets by bucket id? 
   * bucket documents contain list of annotations that apply to bucket? (which would complicate modifying annotation)?
