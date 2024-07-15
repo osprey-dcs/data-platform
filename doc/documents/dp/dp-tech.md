@@ -1305,15 +1305,16 @@ The domain of the Query Service methods is the "buckets" collection.  A time-ser
 
 Each bucket document includes the following fields:
 
-
-
 * "_id" - unique identifier for the bucket
 * "pvName" - name of the corresponding PV
+* "providerId", "clientRequestId" - these fields are specified in the "IngestDataRequest" that created the bucket, used to find the corresponding requestStatus document with the disposition of the request
 * "firstSeconds" / "firstNanos" and "lastSeconds" / "lastNanos" - time range for bucket with first and last time (with corresponding full Java Date fields "firstTime" and "lastTime" for convenience)
-* "dataType" - string indicating the datatype contained used for measurements in the bucket
-* "numSamples" - specifies number of measurements contained in the bucket's columnDataList
-* "sampleFrequency" - specifies the sample period for the bucket in nanoseconds
-* "columnDataList" - contains the list of measurements for the bucket
+* "sampleCount" - specifies number of measurements contained in the "DataColumn" serialized to the bucket's dataColumnBytes field
+* "samplePeriod" - specifies the sample period for the bucket in nanoseconds (zero if the "DataTimestamps" object for the bucket is a "TimestampsList", otherwise equal to the bucket's "SamplingClock.periodNanos")
+* "dataTimestampsBytes" - contains serialized protobuf "DataTimestamps" object specifying the timestamps for the data vector values, using either a "SamplingClock" or "TimestampsList"
+* "dataTimestampsCase" / "dataTimestampsType" - "DataTimestamps.value" enum case and name for the serialized object contained in dataTimestampsBytes (e.g., either a "SamplingClock" or "TimestampsList")
+* "dataColumnBytes" - contains serialized protobuf "DataColumn" containing vector of values for bucket
+* "dataTypeCase" / "dataType" - "DataValue.value" enum case and name for the first "DataValue" contained in the "DataColumn" for the bucket 
 * "attributeMap" - contains a list of key / value metadata pairs added to the bucket at ingestion
 * "eventDescription" / "eventSeconds" / "eventNanos" - metadata description and start time for the event associated with this bucket at ingestion
 
@@ -1328,11 +1329,9 @@ Given the asynchronous nature of the Ingestion Service, it is anticipated that a
 
 Each request status document contains the following fields:
 
-
-
 * "_id" - unique identifier for the request status
 * "providerId" / "requestId" - these fields contain the corresponding values from the ingestion request and can be used by the client to match request status to the request
-* "status" - string indicating whether the operation succeeded or failed
+* "requestStatusCase" / "requestStatusName" - IngestionRequestStatus enum case and name indicating the status for the request (e.g., rejected, error, success)
 * "msg" - provides additional details for failed requests
 * "updateTime" - specifies time status was updated
 * "idsCreated" - contains a list of id strings for the buckets by a successful request
@@ -1347,7 +1346,9 @@ The Annotation Service manages the "dataSets" collection.  The API method "creat
 Each dataset document contains the following fields:
 
 * "_id" - unique identifier for the dataset
+* "name" - name of dataset
 * "description" - a brief textual description of the dataset
+* "ownerId"  - owner of the dataset
 * "dataBlocks" - contains a list of "DataBlock" objects, each of which contains a time range specified by "beginTimeSeconds" / "beginTimeNanos" / "endTimeSeconds" / "endTimeNanos" and a list of PV names
 
 The time range and PV names specified in a "DataBlock" correspond to the domain of the "buckets" collection, and can therefore be used directly in the parameters for any of the Query Service time-series and metadata query methods.
