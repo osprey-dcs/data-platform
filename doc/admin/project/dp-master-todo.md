@@ -1,31 +1,35 @@
 # v1.5 (july-september)
 
 ## extend ingestion benchmark to run NASA scenario
-* 1000 signals sampled at 250 kHz, what are the data types?
+* 1000 signals sampled at 250 kHz, 4 bytes
+* 1GB / sec
+* 1.8 TB / 30 sec
 
 ## add ingestion/query service handling for EPICS status/alarm etc
 * The API includes DataValue.ValueStatus, but this is not being saved to Mongo or returned in query results.
+* this might be just test coverage, since serialization of DataColumn should be storing the info in mongo
 
 ## export service prototype
 * part of annotation service or new standalone service
-* use DataSet model from annotations in new exportDataSet() rpc method etc
-* what formats to support?
+* use DataSet model from annotations in new exportDataSet(DataSet) rpc method etc -> URL to exported file
+* what formats to support? bob said hdf5 initially, what else?
+* how to handle arbitrarily nested arrays of structures containing arrays of images etc.
 
 ## strategy/design/prototype for provider registration
 * how do we want provider registration to work?
 * how to validate provider id in ingestion without affecting performance
 * make this a configurable option?
 * or do off-line (post-ingestion) provider validation, part of monitoring tools like looking for ingestion errors
-
-## design/prototype for additional annotation types
-* e.g., how to handle linked dataset, upload user data set, data provenance for one dataset derived from another
+* consider explicit registerProvider(String name) returns ProviderRegistration structure that contains provider ID and other crap
+  * use ProviderRegistration in ingestData() and queryRequestStatus() APIs
 
 ## API for checking ingestion request status
 * currently only logged in mongodb
+* queryRequestStatus(): would accept providerId, and either a specific clientRequestId, or a time range, or session id (whatever that is, it's in the ProviderRegistration)
+* goes in ingestion service for now
 
-## simple data generator for demo / web application data
-* data generator with broader time range and different data types
-* include datasets / annotations / ingestion attributes and event metadata
+## design/prototype for additional annotation types
+* e.g., think about how to handle linked dataset, and maybe implement it
 
 ## misc annotation service
 * what ownership/group/sharing/permissions/audit trail info do we want to attach to annotations and datasets?  Where else do we need this?
@@ -41,6 +45,10 @@
 ## build / deployment
 * update to latest Java version
 * update to latest mongodb
+
+## simple data generator for demo / web application data
+* data generator with broader time range and different data types
+* include datasets / annotations / ingestion attributes and event metadata
 
 ## documentation
 * UML for important grpc API elements
