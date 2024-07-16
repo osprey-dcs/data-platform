@@ -1030,7 +1030,7 @@ We've used a naming convention for classes that contain jUnit test cases to end 
 
 
 
-#### query service tests
+#### query service tests (com.ospreydcs.dp.service.query)
 
 
 <table>
@@ -1086,7 +1086,7 @@ We've used a naming convention for classes that contain jUnit test cases to end 
 
 
 
-#### annotation service tests
+#### annotation service tests (com.ospreydcs.dp.service.annotation)
 
 
 <table>
