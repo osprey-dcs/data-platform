@@ -24,11 +24,11 @@ The Data Platform API is built upon the [gRPC open-source high-performance remot
 
 We chose to use the gRPC framework for the Data Platform API because it can meet our performance requirements for data ingestion, and bindings are provided for virtually any programming language.
 
-The API definition is managed separately from the service implementations so that it can be utilized for building client applications that are independent of other Data Platform technology.  The Data Platform gRPC API is described in more detail in section "Data Platform API".
+The API definition is managed separately from the service implementations so that it can be utilized for building client applications that are independent of other Data Platform technology.  The Data Platform gRPC API is described in more detail in [section "Data Platform API"](#data-platform-api).
 
 ### service implementations
 
-The Data Platform Services are implemented as Java server applications.  There are three independent server applications, providing ingestion, query, and annotation services, respectively.  The [MongoDB document-oriented database management system](https://www.mongodb.com/) is used by the services for persistence.  Section "Data Platform Service Implementations" provides more detail about the Java service implementations and the frameworks used to build them.
+The Data Platform Services are implemented as Java server applications.  There are three independent server applications, providing ingestion, query, and annotation services, respectively.  The [MongoDB document-oriented database management system](https://www.mongodb.com/) is used by the services for persistence.  [Section "Data Platform Service Implementations"](#data-platform-service-implementations) provides more detail about the Java service implementations and the frameworks used to build them.
 
 ### web application
 
@@ -59,11 +59,11 @@ Performance benchmark applications were developed and utilized to evaluate candi
 
 ### Data Platform v1.0 (November 2023)
 
-Version 1.0 of the Data Platform includes an initial Java implementation of the Ingestion Service providing a gRPC API and using MongoDB for storing time-series data. The initial ingestion service implementation focuses only on scalar data and with timestamps specified using the "sampling clock" mechanism with start time and sample period.  It is accompanied by a performance benchmark application that is used at each stage of development to measure ingestion performance relative to the project goal. The initial implementation exceeds our goal by a comfortable margin, but this will continue to be a focus as the project evolves.  Section "Data Platform API" provides more information about the ingestion API.
+Version 1.0 of the Data Platform includes an initial Java implementation of the Ingestion Service providing a gRPC API and using MongoDB for storing time-series data. The initial ingestion service implementation focuses only on scalar data and with timestamps specified using the "sampling clock" mechanism with start time and sample period.  It is accompanied by a performance benchmark application that is used at each stage of development to measure ingestion performance relative to the project goal. The initial implementation exceeds our goal by a comfortable margin, but this will continue to be a focus as the project evolves.  [section "Data Platform API"](#data-platform-api) provides more information about the ingestion API.
 
 ### v1.1 (January 2024)
 
-Version 1.1 includes a Java implementation of the Query Service gRPC API, using the MongoDB database managed by the ingestion service to fulfill client query requests.  A variety of API RPC methods for querying time-series data are provided to support the development of clients with varying performance requirements, ranging from streaming methods that return bucketed result data down to simple single response methods that return tabular data.  See section "Data Platform API" for a detailed description of the query API.
+Version 1.1 includes a Java implementation of the Query Service gRPC API, using the MongoDB database managed by the ingestion service to fulfill client query requests.  A variety of API RPC methods for querying time-series data are provided to support the development of clients with varying performance requirements, ranging from streaming methods that return bucketed result data down to simple single response methods that return tabular data.  See [section "Data Platform API"](#data-platform-api) for a detailed description of the query API.
 
 ### v1.2 (February 2024)
 
@@ -71,7 +71,7 @@ Version 1.2 saw changes to the "proto" files defining the gRPC API for the Data 
 
 ### v1.3 (April 2024)
 
-Version 1.3 provides an initial implementation of the annotation service for adding annotations to archived data and performing queries against those annotations.  The primary focus for the initial annotation service implementation was on the data model for associating annotations with data in the archive.  The only type of annotation currently supported is a simple user comment, but we will be adding many other types of annotations using the same underlying data model.  See section "Data Platform API" for more details about the annotation data model.
+Version 1.3 provides an initial implementation of the annotation service for adding annotations to archived data and performing queries against those annotations.  The primary focus for the initial annotation service implementation was on the data model for associating annotations with data in the archive.  The only type of annotation currently supported is a simple user comment, but we will be adding many other types of annotations using the same underlying data model.  See [section "Data Platform API"](#data-platform-api) for more details about the annotation data model.
 
 ### v1.4 (July 2024)
 
@@ -106,11 +106,11 @@ The Data Platform project is organized using the following github repositories:
 
 ### dp-grpc
 
-The [dp-grpc repo](https://github.com/osprey-dcs/dp-grpc) contains the Data Platform API definition.  It includes documentation for the Platform's data and service models, and a description of the gRPC "proto" files containing the API definition, which is provided in Section "Data Platform API" of this document.
+The [dp-grpc repo](https://github.com/osprey-dcs/dp-grpc) contains the Data Platform API definition.  It includes documentation for the Platform's data and service models, and a description of the gRPC "proto" files containing the API definition, which is provided in [section "Data Platform API"](#data-platform-api) of this document.
 
 ### dp-service
 
-The [dp-service repo](https://github.com/osprey-dcs/dp-service) contains the Java code for implementations of the Data Platform services, including the shared frameworks used to build them.  It includes documentation about those frameworks and the underlying MongoDB database schema utilized by the services, which is provided by Section "Data Platform Service Implementations" of this document.
+The [dp-service repo](https://github.com/osprey-dcs/dp-service) contains the Java code for implementations of the Data Platform services, including the shared frameworks used to build them.  It includes documentation about those frameworks and the underlying MongoDB database schema utilized by the services, which is provided by [Section "Data Platform Service Implementations"](#data-platform-service-implementations) of this document.
 
 ### dp-web-app
 
@@ -122,7 +122,7 @@ The [dp-support repo](https://github.com/osprey-dcs/dp-support) contains the scr
 
 ### data-platform
 
-The [data-platform repo](https://github.com/osprey-dcs/data-platform) is the primary repo for the Data Platform project.  It contains documentation about the approach with links to the other repos, provided in Section "project organization" of this document.  It also includes a Quick Start guide for running the Data Platform ecosystem from the installer.
+The [data-platform repo](https://github.com/osprey-dcs/data-platform) is the primary repo for the Data Platform project.  It contains documentation about the approach with links to the other repos, provided in [Section "project organization"](#project-organization) of this document.  It also includes a Quick Start guide for running the Data Platform ecosystem from the installer.
 
 ### dp-benchmark
 
@@ -426,7 +426,7 @@ A "MetadataResult" message contains a list of "PvInfo" messages, one for each PV
 
 ## Data Platform API - annotation service
 
-"DpAnnotationService" is a gRPC service defined in "annotation.proto".  It includes methods for creating and querying "DataSets" (described above in section "datasets"), and for creating and querying annotations.
+"DpAnnotationService" is a gRPC service defined in "annotation.proto".  It includes methods for creating and querying "DataSets" (described above in [section "datasets"](#datasets), and for creating and querying annotations.
 
 
 ### creating and querying datasets
@@ -519,7 +519,7 @@ An "Annotation" message includes the unique id of the annotation, the owner id, 
 
 # Data Platform Service Implementations
 
-The dp-service repo contains Java implementations of the services defined in the dp-grpc repo's gRPC proto files, Ingestion, Query and Annotation.  The remainder of this section covers the patterns and frameworks used to build the services (Section "dp-service patterns and frameworks") and some details about the MongoDB database schema (Section "dp-service MongoDB schema and data flow").
+The dp-service repo contains Java implementations of the services defined in the dp-grpc repo's gRPC proto files, Ingestion, Query and Annotation.  The remainder of this section covers the patterns and frameworks used to build the services ([Section "dp-service patterns and frameworks"](#dp-service-patterns-and-frameworks)) and some details about the MongoDB database schema ([Section "dp-service MongoDB schema and data flow"](#dp-service-mongodb-schema-and-data-flow)).
 
 
 ## dp-service patterns and frameworks
@@ -743,7 +743,7 @@ This pattern for executing an API request and dispatching the response is used i
 
 ### handling for bidirectional streaming API methods
 
-The core request handling pattern described in section "service request handling framework" is used to handle all requests, whether 1) unary with single request / response, 2) single request with server-side streaming response, or 3) bidirectional streaming with multiple requests and responses.
+The core request handling pattern described in [section "service request handling framework"](#service-request-handling-framework) is used to handle all requests, whether 1) unary with single request / response, 2) single request with server-side streaming response, or 3) bidirectional streaming with multiple requests and responses.
 
 The third case is a special one, because we need a mechanism for directing subsequent requests from the API RPC method's request stream to the existing handler for the initial request.  This is illustrated by the handling framework for the bidirectional time-series data query method, "queryDataBidiStream()".
 
@@ -755,14 +755,14 @@ Behind the scenes, a MongoDB query is executed to retrieve the relevant time-ser
 ![queryDataBidiStream() handling](images/uml-dp-service-request-handling-bidi-stream.png "queryDataBidiStream() handling")
 
 
-When "QueryServiceImpl.queryDataBidiStream()" receives a new request, it creates a "QueryResponseBidiStreamRequestStreamObserver" to handle the request stream.  The initial request received by its "onNext()" method contains the parameters for the time-series data query and is dispatched to "QueryHandlerInterface.handleQueryBidiStream()".  This request is handled as illustrated in Section "service request handling framework".  That method also returns a "QueryResultCursor" to the request stream observer.
+When "QueryServiceImpl.queryDataBidiStream()" receives a new request, it creates a "QueryResponseBidiStreamRequestStreamObserver" to handle the request stream.  The initial request received by its "onNext()" method contains the parameters for the time-series data query and is dispatched to "QueryHandlerInterface.handleQueryBidiStream()".  This request is handled as illustrated in [section "service request handling framework"](#service-request-handling-framework).  That method also returns a "QueryResultCursor" to the request stream observer.
 
 The initial query results are returned in the response stream by the dispatcher.  Subsequent requests arriving in the request stream observer's "onNext()" method contain a cursor operation to retrieve the next set of results and are dispatched to "QueryResultCursor.next()", which creates the next response message and sends it via the dispatcher.  This continues until the result set is exhausted and / or the API stream is closed.
 
 
 ### MongoDB interface
 
-MongoDB is used at the core of all Data Platform service implementations for data persistence.  Section "service request handling framework" showed how the handler framework for the annotation service (as an illustration for all the services), including the concrete "HandlerJob" and "Dispatcher" implementations, use a concrete implementation of "MongoAnnotationClient" to provide the database operations needed by the handler framework.  This section provides further details about how that is accomplished.
+MongoDB is used at the core of all Data Platform service implementations for data persistence.  [section "service request handling framework"](#service-request-handling-framework) showed how the handler framework for the annotation service (as an illustration for all the services), including the concrete "HandlerJob" and "Dispatcher" implementations, use a concrete implementation of "MongoAnnotationClient" to provide the database operations needed by the handler framework.  This section provides further details about how that is accomplished.
 
 The diagram below shows the framework of classes comprising the Data Platform's database interface, again using the Annotation Service implementation as an example.
 
@@ -861,7 +861,7 @@ The diagram below shows the elements of the ingestion performance benchmarking f
 
 The framework supports running ingestion scenarios for different approaches, so the base class "IngestionBenchmarkBase" contains the key framework components for running an ingestion benchmark.  It defines the nested class "IngestionTask" to encapsulate the logic for invoking an ingestion API, creating the stream of ingestion requests, and handling the API response stream.  The nested classes "IngestionTaskParams" and "IngestionTaskResults" are used to contain the parameters needed by the task and to return performance results from the task.
 
-"IngestionBenchmarkBase" provides the method "ingestionExperiment()" for sweeping combinations of parameter values for variables like number of threads and number of API streams, and calculating an overall performance benchmark for the run.  The lower level method "ingestionScenario()" is used by the experiment driver method to run an individual scenario and measure its performance.  This method is also used in the integration test framework to create a regression test that not only runs the ingestion scenario to create data in the archive, but verifies database contents and API responses.  See section "integration testing" for more details.
+"IngestionBenchmarkBase" provides the method "ingestionExperiment()" for sweeping combinations of parameter values for variables like number of threads and number of API streams, and calculating an overall performance benchmark for the run.  The lower level method "ingestionScenario()" is used by the experiment driver method to run an individual scenario and measure its performance.  This method is also used in the integration test framework to create a regression test that not only runs the ingestion scenario to create data in the archive, but verifies database contents and API responses.  See [section "integration testing"](#integration-testing) for more details.
 
 The application class "BenchmarkStreamingIngestion" extends the base class to run a performance benchmark for the "ingestDataStream()" bidirectional streaming Ingestion Service API.  It defines the nested class "StreamingIngestionTask", implementing the "call()" method to call the API, send a stream of requests, handle the response stream, and collect performance stats.
 
@@ -889,9 +889,9 @@ For example, the benchmark application class "BenchmarkQueryDataStream" shown in
 
 The primary objective for the regression test suite was to allow coverage to be added for essentially any part of the Data Platform common code and service implementations including lower level components, and for the most part that has been accomplished.  Test coverage for the Ingestion and Query service implementations is pretty extensive, and covers some of the lower-level features that are hard to cover in higher-level scenarios.
 
-All regression tests using a MongoDB database named "dp-test".  The Data Platform's MongoDB schema is described in Section "dp-service MongoDB schema and data flow".
+All regression tests using a MongoDB database named "dp-test".  The Data Platform's MongoDB schema is described in [Section "dp-service MongoDB schema and data flow"](#dp-service-mongodb-schema-and-data-flow).
 
-After adding coverage for both the Ingestion and Query service implementations, we added an "integration testing" framework that provides a mechanism for running higher-level scenarios that involve any/all of the service implementations.  That framework is discussed in Section "integration testing".
+After adding coverage for both the Ingestion and Query service implementations, we added an "integration testing" framework that provides a mechanism for running higher-level scenarios that involve any/all of the service implementations.  That framework is discussed in [section "integration testing"](#integration-testing).
 
 Since the integration testing framework was added, we've preferred adding test coverage at that level when possible because it exercises the communication framework in addition to the service implementations.  For that reason, there is less low-level test coverage of the annotation service implementation than the other service, but pretty good coverage at the higher-level integration test level.  We will add more extensive low-level coverage for all the services as time goes on to cover more special / unusual cases.
 
