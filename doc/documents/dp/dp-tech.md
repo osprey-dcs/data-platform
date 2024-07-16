@@ -1,16 +1,12 @@
-## Section 1. Data Platform Overview
+# Data Platform Overview
 
-
-### motivation
+## motivation
 
 The Data Platform provides tools for managing the data captured in an experimental research facility, such as a particle accelerator. The data are used within control systems and analytics applications, and facilitate the creation of machine learning models for those applications.
 
 The Data Platform is agnostic to the source and acquisition of the data. A project goal is to manage data captured from the [EPICS "Experimental Physics and Industrial Control System"](https://epics-controls.org/), however, use of EPICS is not required. The Data Platform APIs are generic and can be used from essentially all programming languages and any type of application.
 
-
-### requirements and objectives
-
-
+## requirements and objectives
 
 * Provide an API for ingestion of heterogeneous data including scalar values, arrays, structures, and images.
 * Handle the data rates expected for an experimental research facility such as a particle accelerator.  A baseline performance requirement is to handle 4,000 scalar data sources sampled at 1 KHz, or 4 million samples per second.
@@ -18,83 +14,73 @@ The Data Platform is agnostic to the source and acquisition of the data. A proje
 * Provide an API for exploring metadata for data sources available in the archive.
 * Provide mechanisms for adding post-ingestion annotations to the archive, and performing queries over those annotations.
 
-
-### data platform elements
+## data platform elements
 
 The Data Platform includes two primary technical components, including an API utilizing the gRPC framework, and a suite of services built using the Java programming language.  The project also includes utilities for deploying and managing those components.  A JavaScript web application for exploring the data archive and working with data is under development.  Each element is described in more detail below.
 
-
-#### gRPC API
+### gRPC API
 
 The Data Platform API is built upon the [gRPC open-source high-performance remote procedure call (RPC) framework](https://grpc.io/). As described on [Wikipedia](https://en.wikipedia.org/wiki/GRPC), "this framework was originally developed by Google for use in connecting microservices. It uses HTTP/2 for transport, protocol buffers as the interface description languages, and provides features such as authentication and bidirectional streaming. It generates cross-platform client and server bindings for many languages."
 
 We chose to use the gRPC framework for the Data Platform API because it can meet our performance requirements for data ingestion, and bindings are provided for virtually any programming language.
 
-The API definition is managed separately from the service implementations so that it can be utilized for building client applications that are independent of other Data Platform technology.  The Data Platform gRPC API is described in more detail in section 2.
+The API definition is managed separately from the service implementations so that it can be utilized for building client applications that are independent of other Data Platform technology.  The Data Platform gRPC API is described in more detail in section "Data Platform API".
 
+### service implementations
 
-#### service implementations
+The Data Platform Services are implemented as Java server applications.  There are three independent server applications, providing ingestion, query, and annotation services, respectively.  The [MongoDB document-oriented database management system](https://www.mongodb.com/) is used by the services for persistence.  Section "Data Platform Service Implementations" provides more detail about the Java service implementations and the frameworks used to build them.
 
-The Data Platform Services are implemented as Java server applications.  There are three independent server applications, providing ingestion, query, and annotation services, respectively.  The [MongoDB document-oriented database management system](https://www.mongodb.com/) is used by the services for persistence.  Section 3 provides more detail about the Java service implementations and the frameworks used to build them.
-
-
-#### web application
+### web application
 
 The Data Platform Web Application is under development using the [JavaScript React library](https://react.dev/).  It will provide a user interface for navigating archive metadata and time-series data, viewing and creating annotations, and other tools for visualizing and exporting data.
 
-
-#### installation and deployment support tools
+### installation and deployment support tools
 
 A set of utilities is provided to help manage the Data Platform ecosystem.  There are scripts for managing infrastructure services including MongoDB and the Envoy proxy (used for deploying the web application), and a set of simple process-management utilities for managing the Data Platform server and benchmark applications.
 
 
-### status and milestones
+## status and milestones
 
 
-#### "datastore" prototype (2022)
+### "datastore" prototype (2022)
 
 A prototype implementation of the Data Platform services was built focusing on the creation of a general API supporting ingestion and query of heterogeneous data types including scalar, array / table, structure, and image. Service implementations were created using Java for both the Ingestion and Query Services, as well as libraries for building client applications. The prototype technology stack included both [InfluxDB](https://www.influxdata.com/) (for time series data) and MongoDB (for metadata). This prototype successfully demonstrated the use of gRPC APIs for ingestion and retrieval of heterogeneous, but did not meet the baseline performance requirements.
 
 
-#### datastore web application prototype (2022)
+### datastore web application prototype (2022)
 
 The datastore prototype included development of a web application using JavaScript React and Tailwind libraries.  The prototype provided simple user interfaces for navigating metadata, as well as querying and displaying time-series data.  It demonstrated calling gRPC APIs from a browser-based application using the [gRPC Web](https://github.com/grpc/grpc-web/) JavaScript implementation of gRPC for browser clients.
 
 
-#### technology performance benchmarking (September 2023)
+### technology performance benchmarking (September 2023)
 
 Performance benchmark applications were developed and utilized to evaluate candidate technologies for use in the Data Platform implementation in light of the project performance goal stated above. Benchmarks focused on gRPC for API communication; InfluxDB, MongoDB and MariaDB for database storage; and writing JSON and HDF5 files to disk. The benchmark results showed that it was likely we could build service implementations meeting our performance requirements by using gRPC for communication and [MongoDB for storing "buckets" of time series data](https://www.mongodb.com/blog/post/building-with-patterns-the-bucket-pattern).
 
 
-#### Data Platform v1.0 (November 2023)
+### Data Platform v1.0 (November 2023)
 
-Version 1.0 of the Data Platform includes an initial Java implementation of the Ingestion Service providing a gRPC API and using MongoDB for storing time-series data. The initial ingestion service implementation focuses only on scalar data and with timestamps specified using the "sampling clock" mechanism with start time and sample period (described further in section 2).  It is accompanied by a performance benchmark application that is used at each stage of development to measure ingestion performance relative to the project goal. The initial implementation exceeds our goal by a comfortable margin, but this will continue to be a focus as the project evolves.  Section 2 provides more information about the ingestion API.
+Version 1.0 of the Data Platform includes an initial Java implementation of the Ingestion Service providing a gRPC API and using MongoDB for storing time-series data. The initial ingestion service implementation focuses only on scalar data and with timestamps specified using the "sampling clock" mechanism with start time and sample period.  It is accompanied by a performance benchmark application that is used at each stage of development to measure ingestion performance relative to the project goal. The initial implementation exceeds our goal by a comfortable margin, but this will continue to be a focus as the project evolves.  Section "Data Platform API" provides more information about the ingestion API.
 
+### v1.1 (January 2024)
 
-#### v1.1 (January 2024)
+Version 1.1 includes a Java implementation of the Query Service gRPC API, using the MongoDB database managed by the ingestion service to fulfill client query requests.  A variety of API RPC methods for querying time-series data are provided to support the development of clients with varying performance requirements, ranging from streaming methods that return bucketed result data down to simple single response methods that return tabular data.  See section "Data Platform API" for a detailed description of the query API.
 
-Version 1.1 includes a Java implementation of the Query Service gRPC API, using the MongoDB database managed by the ingestion service to fulfill client query requests.  A variety of API RPC methods for querying time-series data are provided to support the development of clients with varying performance requirements, ranging from streaming methods that return bucketed result data down to simple single response methods that return tabular data.  See section 2 for a detailed description of the query API.
-
-
-#### v1.2 (February 2024)
+### v1.2 (February 2024)
 
 Version 1.2 saw changes to the "proto" files defining the gRPC API for the Data Platform to be more consistent and conventional, with corresponding changes to the Java service implementations.
 
+### v1.3 (April 2024)
 
-#### v1.3 (April 2024)
+Version 1.3 provides an initial implementation of the annotation service for adding annotations to archived data and performing queries against those annotations.  The primary focus for the initial annotation service implementation was on the data model for associating annotations with data in the archive.  The only type of annotation currently supported is a simple user comment, but we will be adding many other types of annotations using the same underlying data model.  See section "Data Platform API" for more details about the annotation data model.
 
-Version 1.3 provides an initial implementation of the annotation service for adding annotations to archived data and performing queries against those annotations.  The primary focus for the initial annotation service implementation was on the data model for associating annotations with data in the archive.  The only type of annotation currently supported is a simple user comment, but we will be adding many other types of annotations using the same underlying data model.  See section 2 for more details about the annotation data model.
-
-
-#### v1.4 (July 2024)
+### v1.4 (July 2024)
 
 Version 1.4 added Ingestion and Query Service support for all data types defined in the Data Platform API including scalars, multi-dimensional arrays, structures, and images. Support is also added to both services for ingesting and querying data with an explicit list of data timestamps to complement the existing support for specifying data timestamps using a SamplingClock (with start time, sample period, and number of samples). Both features utilize serialization of the protobuf DataColumn and DataTimestamps API objects as byte array fields of the MongoDB BucketDocument. This change improves ingestion performance significantly, while also reducing the MongoDB storage footprint and simplifying the codebase.
 
+## todo and road map
 
-### todo and road map
 
-
-#### v1.5 planned features (July / August / September 2024)
+### v1.5 planned features (July / August / September 2024)
 
 * Run more extensive load testing benchmarks.
 * Add support for EPICS status/alarm etc
@@ -105,7 +91,7 @@ Version 1.4 added Ingestion and Query Service support for all data types defined
 * Build simple data generator for demo and web application development.
 
 
-#### features planned for future releases
+### features planned for future releases
 
 * Implement mechanism for ingestion data validation.
 * Add support for authentication and authorization of query and annotation services.
@@ -113,48 +99,40 @@ Version 1.4 added Ingestion and Query Service support for all data types defined
 * Experiment with horizontal scaling alternatives.
 * Experiment with streaming architecture (e.g., Apache Kafka)
 
-
-### project organization
+## project organization
 
 The Data Platform project is organized using the following github repositories:
 
 
-#### dp-grpc
+### dp-grpc
 
-The [dp-grpc repo](https://github.com/osprey-dcs/dp-grpc) contains the Data Platform API definition.  It includes documentation for the Platform's data and service models, and a description of the gRPC "proto" files containing the API definition, which is provided in Section 2 of this document.
+The [dp-grpc repo](https://github.com/osprey-dcs/dp-grpc) contains the Data Platform API definition.  It includes documentation for the Platform's data and service models, and a description of the gRPC "proto" files containing the API definition, which is provided in Section "Data Platform API" of this document.
 
+### dp-service
 
-#### dp-service
+The [dp-service repo](https://github.com/osprey-dcs/dp-service) contains the Java code for implementations of the Data Platform services, including the shared frameworks used to build them.  It includes documentation about those frameworks and the underlying MongoDB database schema utilized by the services, which is provided by Section "Data Platform Service Implementations" of this document.
 
-The [dp-service repo](https://github.com/osprey-dcs/dp-service) contains the Java code for implementations of the Data Platform services, including the shared frameworks used to build them.  It includes documentation about those frameworks and the underlying MongoDB database schema utilized by the services, which is provided by Section 3 of this document.
-
-
-#### dp-web-app
+### dp-web-app
 
 The [dp-web-app repo](https://github.com/osprey-dcs/dp-web-app) contains the JavaScript code for the Data Platform Web Application, with documentation about the approach.
 
-
-#### dp-support
+### dp-support
 
 The [dp-support repo](https://github.com/osprey-dcs/dp-support) contains the scripts and utilities for managing the components of the Data Platform ecosystem.  It includes documentation for using those tools.
 
+### data-platform
 
-#### data-platform
+The [data-platform repo](https://github.com/osprey-dcs/data-platform) is the primary repo for the Data Platform project.  It contains documentation about the approach with links to the other repos, provided in Section "project organization" of this document.  It also includes a Quick Start guide for running the Data Platform ecosystem from the installer.
 
-The [data-platform repo](https://github.com/osprey-dcs/data-platform) is the primary repo for the Data Platform project.  It contains documentation about the approach with links to the other repos, provided in Section 1 of this document.  It also includes a Quick Start guide for running the Data Platform ecosystem from the installer.
-
-
-#### dp-benchmark
+### dp-benchmark
 
 The [dp-benchmark repo](https://github.com/osprey-dcs/dp-benchmark) is not currently active, but contains code developed for evaluating the performance of some candidate technologies considered for use in the Data Platform service technology stack.  It includes an overview of the benchmark process with a summary of results.
 
-
-## Section 2: Data Platform API
+# Data Platform API
 
 This section provides additional background for the gRPC framework used to implement the Data Platform API, the data and service models reflected in the API, and mapping of the API elements to the gRPC "proto" files that define the API.
 
-
-### 2.1 gRPC background
+## gRPC background
 
 [gRPC is a framework](https://grpc.io/docs/what-is-grpc/introduction/) that allows a client application to call a method on a server application.  Defining an API with gRPC consists of identifying the services to be provided by the application, specifying the methods that can be called remotely for each service along with the method parameters and return types.
 
@@ -164,13 +142,13 @@ The gRPC API is defined using "proto" files (a text file with a ".proto" extensi
 
 See the links above for some simple examples of services, methods, and messages.
 
-### 2.2 Data Platform gRPC API proto files
+## Data Platform gRPC API proto files
 
 Currently, the Data Platform API defines three application services: ingestion, query, and annotation.  The methods and data types (messages) for each service are contained in individual "proto" files (e.g., "ingestion.proto", "query.proto", and "annotation.proto"), with some shared data types in "common.proto" that are included in the relevant service files via "import" statements.
 
-### 2.3 Data Platform proto file conventions
+## Data Platform proto file conventions
 
-#### ordering of elements
+### ordering of elements
 
 Within the Data Platform service proto files, elements are listed in the following order:
 
@@ -178,11 +156,11 @@ Within the Data Platform service proto files, elements are listed in the followi
 2. definition of request and response data types
 3. definition of other shared data types
 
-#### packaging of parameters for a method into a single "request" message
+### packaging of parameters for a method into a single "request" message
 
 For all Data Platform service methods, parameters are bundled into a single "request" message data type, instead of listing multiple parameters to the method.
 
-#### naming of request and response messages
+### naming of request and response messages
 
 The service-specific proto files each begin with a "service" definition block that defines the method interface for that service, including parameters and return types.  Where possible, the data types for the request and response use message names based on the corresponding method name.
 
@@ -199,11 +177,11 @@ rpc ingestData (IngestDataRequest) returns (IngestDataResponse);
 rpc ingestDataStream (stream IngestDataRequest) returns (stream IngestDataResponse);
 ```
 
-#### nesting of messages
+### nesting of messages
 
 Where possible, nesting is used to enclose simpler messages within the more complex messages that use them.  In cases where we want to share messages between multiple request or response messages, the definition of those messages appears after the request and response messages in the proto file.
 
-#### determining successful method execution
+### determining successful method execution
 
 A common pattern is used across all Data Platform service method responses to assist in determining whether an operation succeeded or failed.  All response messages use the gRPC "oneof" mechanism so that the message payload is either an "ExceptionalResult" message indicating that the operation failed, or a method-specific message containing the result of a successful operation.
 
@@ -230,27 +208,27 @@ message QueryDataResponse {
 }
 ```
 
-### 2.4 Data Platform API data model
+## Data Platform API data model
 
 The purpose of this section is to introduce some of the elements of the Data Platform's data model.  These concepts will be used in subsequent descriptions of the various service APIs.
 
-#### 2.4.1 process variables
+### process variables
 
 The core element of the Data Platform is the "process variable" (PV).  In control theory, a process variable is the current measured value of a particular part of a process that is being monitored or controlled.  The primary purpose of the Data Platform Ingestion and Query Services is to store and retrieve PV measurements.  It is assumed that each PV for a particular facility is uniquely named.  E.g., "S01:GCC01" might identify the first vacuum cold cathode gauge in sector one in the storage ring for some accelerator facility.
 
-#### 2.4.2 data vectors
+### data vectors
 
 The Data Platform Ingestion and Query Service APIs for handling data work with vectors of PV measurements.  In "common.proto", this is reflected in the message data type "DataColumn", which includes a PV name and list of measurements.
 
-#### 2.4.3 handling heterogeneous data
+### handling heterogeneous data
 
 One requirement for the Data Platform API is to provide a general mechanism for handling heterogeneous data types for PV measurements including simple scalar values, as well as multi-dimensional arrays, structures, and images.   This is accomplished by the "DataValue" message data type in "common.proto",  which uses the "oneof" mechanism to support a number of different data types for the values in a data vector (DataColumn).
 
-#### 2.4.4 timestamps
+### timestamps
 
 Time is represented in the Data Platform API using the "Timestamp" message defined in "common.proto".  It contains two components for the number of seconds since the epoch, and nanoseconds.  As a convenience, the message "TimestampList" is used to send a list of timestamps.
 
-#### 2.4.5 ingestion data frame
+### ingestion data frame
 
 The message "IngestionDataFrame", defined in "ingestion.proto", is the primary unit of ingestion in the Data Platform API.  It contains the set of data to be ingested, using a list of "DataColumn" PV data vectors (described above).  It uses the message "DataTimestamps", defined in "common.proto", to specify the timestamps for the data values in those vectors.
 
@@ -260,8 +238,7 @@ A "TimestampList" (described above) may be used to send an explicit list of "Tim
 
 A second alternative is to use the "SamplingClock" message, defined in "common.proto".  It uses three fields to specify the data timestamps, with a start time "Timestamp", the sample period in nanoseconds, and an integer count of the number of samples.  The size of each data vector "DataColumn" in the "IngestionDataFrame" is expected to match the sample count.
 
-
-#### 2.4.6 bucketed time-series data
+### bucketed time-series data
 
 We use the ["bucket pattern"](https://www.mongodb.com/blog/post/building-with-patterns-the-bucket-pattern) as an optimization for handling time-series data in the Data Platform API for query results, as well as for storing a vector of PV measurement values in MongoDB.  A "bucket" is a record that contains all the measurement values for a single PV for a specified time range.
 
@@ -303,7 +280,7 @@ With bucketing, we save the overhead of the sensor_id and timestamp in each reco
 Bucketing is used to send the results of time-series data queries.  The message "QueryDataResponse" in "query.proto" contains the query result in "QueryData", which contains a list of "DataBucket" messages.  Each "DataBucket" contains a vector of data in a "DataColumn" message for a single PV, along with time expressed using "DataTimestamps" (described above), with either an explicit list of timestamps for the bucket data values, or a SamplingClock with start time and sample period.
 
 
-#### 2.4.7 datasets
+### datasets
 
 When designing the Data Platform's Annotation Service, we found we needed a mechanism for specifying a collection of data in the archive as the subject of an annotation.  We decided to add the notion of a "dataset", consisting of a list of "data blocks", where each "data block" specifies a list of PV names and a time range.
 
@@ -313,7 +290,7 @@ If you think of the entire data archive as a giant spreadsheet, with a column fo
 
 "annotation.proto" defines the messages "DataSet" and "DataBlock" for use as the data model for creating annotations, where a "DataSet" includes a description and a list of "DataBlock" messages, and each "DataBlock" includes begin and end Timestamp messages (described above), and a list of PV names.
 
-#### 2.4.8 annotations
+### annotations
 
 An annotation allows clients to annotate the data archive with notes, data associations, and post-acquisition calculations.  The Data Platform Annotation Service currently supports only a "comment" annotation, but additional types of annotations will be added in future releases.
 
@@ -321,7 +298,7 @@ Given the definition of a "DataSet" described above, the message "CreateAnnotati
 
 For a link between related datasets, we might create a "LinkAnnotation" that specifies the id of the linked dataset and some text describing the relationship.
 
-#### 2.4.9 ingestion metadata
+### ingestion metadata
 
 The Ingestion Service API allows descriptive metadata to be attached to data sent to the archive.  Two types of metadata are supported, key/value attributes and event metadata.
 
@@ -329,15 +306,15 @@ The message "Attribute", defined in "common.proto", is a simple data structure t
 
 The message "EventMetadata", also defined in "common.proto", allows incoming data to be associated with some event.  The "EventMetadata" message includes fields for the event description, with start and stop timestamps specifying the event start and stop time.
 
-### 2.5 Data Platform API - ingestion service
+## Data Platform API - ingestion service
 
 "DpIngestionService" is a gRPC service defined in "ingestion.proto".  It includes methods for provider registration and data ingestion.
 
-#### 2.5.1 provider registration
+### provider registration
 
 The Ingestion Service provider registration mechanism is not yet implemented.  It will assign unique identifiers to the infrastructure elements that will use the ingestion API to send data to the archive.
 
-#### 2.5.2 data ingestion
+### data ingestion
 
 The Ingestion Service provides a very streamlined API for ingesting data to the archive.  There are two methods for data ingestion:
 
@@ -348,25 +325,25 @@ rpc ingestDataStream (stream IngestDataRequest) returns (stream IngestDataRespon
 
 Both methods use the same request and response messages.  The method "ingestData()" sends a single "IngestDataRequest" and receives a single "IngestDataResponse" corresponding to the request.  "ingestDataStream()" is a bidirectional gRPC streaming method that allows the client to send a stream of "IngestDataRequest" messages and receive a stream of "IngestDataResponse" messages.  In both cases, the client uses the combination of provider id and request id to match incoming responses to outgoing requests.
 
-##### ingestion data frame
+#### ingestion data frame
 
 As described above, the "IngestionDataFrame" is the primary unit of ingestion, containing a set of PV data vectors with the corresponding timestamp specification.
 
-##### ingestion request
+#### ingestion request
 
 An "IngestDataRequest", defined in "ingestion.proto", includes an "IngestionDataFrame", optional metadata (list of key/value attributes or event metadata), a "Timestamp" indicating the time the request is sent, an id specifying the provider sending the data, and a mandatory client-generated request identifier, uniquely identifying the request for that provider.
 
-##### ingestion response
+#### ingestion response
 
 The message "IngestDataResponse" in ingestion.proto contains one of two payloads, either an "ExceptionalResult" (described above) indicating an error or rejection, or an "AckResult", indicating the request was accepted and echoing back the dimensions of the request in confirmation.  The response also includes provider id and client request id for matching the response to the corresponding request, and a "Timestamp" indicating the time the message was sent.
 
 The Ingestion Service is fully asynchronous, so the response does not indicate if a request is successfully handled, only whether the request is accepted or rejected.  A separate API for checking whether or not a request was handled successfully will be added in a future release.  It will support queries by provider id and/or request id to identify errors in handling ingestion requests.  For now, the "requestStatus" collection in MongoDB contains a document for each request indicating whether it succeeded or failed.  It is envisioned that a monitoring tool will use the request status API  to detect ingestion errors and send notification.
 
-### 2.6 Data Platform API - query service
+## Data Platform API - query service
 
 "DpQueryService" is a gRPC service defined in "query.proto".  It includes methods for querying both time-series data and metadata.
 
-#### 2.6.1 time-series data query
+### time-series data query
 
 The Query Service provides several methods for querying time-series data, offering different options for performance and packaging of results.
 ```
@@ -379,29 +356,29 @@ rpc queryDataBidiStream(stream QueryDataRequest) returns (stream QueryDataRespon
 Each method accepts a "QueryDataRequest" message, described in more detail below, to specify the query parameters.  All the time-series data query methods return "QueryDataResponse" messages with the exception of queryDataTable(), which returns data in a tabular format via a "QueryTableResponse" message. Each of the time-series query methods and the corresponding request/response objects is discussed in more detail below.
 
 
-##### queryData()
+#### queryData()
 
 The "queryData()" method is a simple unary method with a single request and response.  The result of the query must fit in a single gRPC response message, or an error is generated.  The "QueryDataResponse" contains bucketed time-series data (described above).
 
 
-##### queryDataTable()
+#### queryDataTable()
 
 Also a single request/response unary method, queryDataTable() differs in that the "QueryTableResponse" message contains a tabular result for use in clients such as the Data Platform Web Application that display data in tables.
 
 
-##### queryDataStream()
+#### queryDataStream()
 
 Expected to be the best performing time-series data query method for retrieving a large amount of data, "queryDataStream()" accepts a single "QueryDataRequest" message and returns its result as a stream of "QueryDataResponse" messages, each of which contains bucketed time-series data.
 
 
-##### queryDataBidiStream()
+#### queryDataBidiStream()
 
 "queryDataBidiStream()" is a bidirectional streaming method.  This method is similar to queryDataStream(), but is used in clients that need explicit control of the response stream due to memory or performance considerations.
 
 The client sends a single "QueryDataRequest" message, receiving a single "QueryDataResponse" with bucketed time-series data.  The client then requests the next response in the stream by sending a "QueryDataRequest" containing a "CursorOperation" method with type set to "CURSOR_OP_NEXT" until the result is exhausted and the stream is closed by the service.
 
 
-##### QueryDataRequest
+#### QueryDataRequest
 
 All time-series data query methods accept a "QueryDataRequest" message (defined in "query.proto").  The message contains one of two payloads, either a "QuerySpec" or a "CursorOperation".
 
@@ -410,21 +387,21 @@ A "QuerySpec" message payload specifies the parameters for a time-series data qu
 A "CursorOperation" payload is a special case and applies only to the "queryDataBidiStream()" method.  It contains an enum value from "CursorOperationType" specifying the type of cursor operation to be executed.  Currently, the enum contains a single option "CURSOR_OP_NEXT" which requests the next message in the response stream.  We may add additional operations, e.g, "fetch the next N buckets".
 
 
-##### QueryDataResponse
+#### QueryDataResponse
 
 Except for "queryDataTable()", all time-series data query methods return "QueryDataResponse" messages.  A "QueryDataResponse" contains one of two message payloads, "ExceptionalResult" if an error is encountered or no data is found (described above) or "QueryData".
 
 A "QueryData" message includes a list of "DataBucket" messages.  Each "DataBucket" contains a vector of data in a "DataColumn" message for a single PV, along with time expressed using "DataTimestamps" (described above), with either an explicit list of timestamps for the bucket data values, or a SamplingClock with start time and sample period.  The "DataBucket" also includes a list of key/value "Attribute" messages and/or "EventMetadata" message if specified on the ingestion request that created the bucket.
 
 
-##### QueryTableResponse
+#### QueryTableResponse
 
 The "queryDataTable()" time-series data query method returns its result via a "QueryTableResponse" message.  This is essentially a packaging of the bucketed time-series data managed by the archive into a tabular data structure for use in a client such as a web application.  A "QueryTableResponse" object contains one of two payloads, an "ExceptionalResult" if an error is encountered or no data is found (described above) or a "TableResult".
 
 A "TableResult" message contains a list of PV column data vectors, one for each PV specified in the "QueryDataRequest".  It also contains a "DataTimestamps" message with a "TimestampList" of timestamps, one for each data row in the table.  The column data vectors are the same size as the list of timestamps, and are padded with empty values where a column doesn't contain a value at the specified timestamp.
 
 
-#### 2.6.2 metadata query
+### metadata query
 
 The Data Platform Query Service includes a single method for querying the archive's metadata about the PVs available in the archive.
 
@@ -435,24 +412,24 @@ rpc queryMetadata(QueryMetadataRequest) returns (QueryMetadataResponse);
 "queryMetadata()" is a single request/response unary method that accepts a "QueryMetadataRequest" and returns a "QueryMetadataResponse".
 
 
-##### QueryMetadataRequest
+#### QueryMetadataRequest
 
 The "QueryMetadataRequest" message is defined in query.proto, and contains one of two payloads, "PvNameList" or "PvNamePattern".  A "PvNameList" message specifies an explicit list of PVs to find metadata for.  A "PvNamePattern" specifies a regular expression pattern for matching against PV names available in the archive.
 
 
-##### QueryMetadataResponse
+#### QueryMetadataResponse
 
 The "QueryMetadataResponse" message contains the result of a metadata query and includes one of two payloads, either an "ExceptionalResult" if an error is encountered or no data is found (described above) or "MetadataResult".
 
 A "MetadataResult" message contains a list of "PvInfo" messages, one for each PV specified for the query (either explicitly in the PV name list or by matching the supplied PV name pattern).  A "PvInfo" message contains metadata for an individual PV in the archive, including name, timestamps for the first and last PV measurement in the archive, and stats for the most recent bucket including bucket id, data type information, data timestamps details, and sample count/period.
 
 
-### 2.7 Data Platform API - annotation service
+## Data Platform API - annotation service
 
-"DpAnnotationService" is a gRPC service defined in "annotation.proto".  It includes methods for creating and querying "DataSets" (described above in section 2.4.7), and for creating and querying annotations.
+"DpAnnotationService" is a gRPC service defined in "annotation.proto".  It includes methods for creating and querying "DataSets" (described above in section "datasets"), and for creating and querying annotations.
 
 
-#### 2.7.1 creating and querying datasets
+### creating and querying datasets
 
 The Data Platform Annotation Service uses datasets to identify the relevant data within the archive for a particular annotation.  The API includes a methods for creating and querying datasets.
 
@@ -461,25 +438,25 @@ rpc createDataSet(CreateDataSetRequest) returns (CreateDataSetResponse);
 rpc queryDataSets(QueryDataSetsRequest) returns (QueryDataSetsResponse);
 ```
 
-##### createDataSet()
+#### createDataSet()
 
 This is a single request/response unary method for creating a dataset.  It accepts a "CreateDataSetRequest" message and returns a "CreateDataSetResponse".
 
-##### CreateDataSetRequest
+#### CreateDataSetRequest
 
 A "CreateDataSetRequest" message contains a "DataSet" message with details of the dataset to be created, e.g., its list of "DataBlock" messages.
 
-##### CreateDataSetResponse
+#### CreateDataSetResponse
 
 A "CreateDataSetResponse" message contains one of two payloads, an "ExceptionalResult" message if a rejection or error was encountered creating the dataset, or a "CreateDataSetResult".
 
 A "CreateDataSetResult" message simply contains the unique identifier assigned to the new dataset if it was created successfully.
 
-##### queryDataSets()
+#### queryDataSets()
 
 The "queryDataSets()" method is a single request/response method that searches for datasets in the archive that match the search criteria specified for the query.  It accepts a "QueryDataSetsRequest" message and returns a "QueryDataSetsResponse" message.
 
-##### QueryDataSetsRequest
+#### QueryDataSetsRequest
 
 A "QueryDataSetsRequest" encapsulates the criteria for the query.  It contains a list of "QueryDataSetsCriterion" messages.
 
@@ -487,7 +464,7 @@ The "QueryDataSetsCriterion" message defines a number of different criteria mess
 
 These query criteria can be used individually in the criteria list, or multiple criteria can be added to the list to specify a compound query.  E.g., adding an "OwnerCriterion" and "NameCriterion" to the list will match dataset names for the specified owner.
 
-##### QueryDataSetsResponse
+#### QueryDataSetsResponse
 
 The "queryDataSets()" method returns a "QueryDataSetsResponse" message with the query results.  It contains one of two payloads, either an "ExceptionalResult" message if the query encountered an error or returned no data (described above), or an "DataSetsResult" message with the results if the query was successful.
 
@@ -496,7 +473,7 @@ The "DataSetsResult" message includes a list of "DataSet" messages, one for each
 An "DataSet" message includes the following properties for the dataset: unique id, name, owner id, description, and a list of the "DataBlock" messages comprising the dataset.
 
 
-#### 2.7.2 creating and querying annotations
+### creating and querying annotations
 
 The Data Platform Annotation Service provides two methods related to annotations.
 
@@ -505,25 +482,25 @@ rpc createAnnotation(CreateAnnotationRequest) returns (CreateAnnotationResponse)
 rpc queryAnnotations(QueryAnnotationsRequest) returns (QueryAnnotationsResponse);
 ```
 
-##### createAnnotation()
+#### createAnnotation()
 
 The method "createAnnotation()" creates an annotation for the specified dataset.  It accepts a "CreateAnnotationRequest" message and returns a "CreateAnnotationResponse" message.
 
-##### CreateAnnotationRequest
+#### CreateAnnotationRequest
 
 A "CreateAnnotationRequest" message specifies the id of the owner creating the annotation, and the id of the dataset to be annotated.  It uses a variable "oneof" payload for specifying the details specific to the type of annotation being created.  Currently there is a single type of annotation, "CommentAnnotation", which includes the text of the comment for the annotation.
 
-##### CreateAnnotationResponse
+#### CreateAnnotationResponse
 
 A "CreateAnnotationResponse" message is used to return the result of the "createAnnotation()" method.  It includes one of two payloads, either an "ExceptionalResult" (described above) if an error is encountered creating the annotation, or a "CreateAnnotationResult" if the operation is successful.
 
 A "CreateAnnotationResult" message simply contains the unique identifier assigned to the annotation.
 
-##### queryAnnotations()
+#### queryAnnotations()
 
 The "queryAnnotations()" method is a single request/response method that searches for annotations in the archive that match the search criteria specified for the query.  It accepts a "QueryAnnotationsRequest" message and returns a "QueryAnnotationsResponse" message.
 
-##### QueryAnnotationsRequest
+#### QueryAnnotationsRequest
 
 A "QueryAnnotationsRequest" encapsulates the criteria for the query.  It contains a list of "QueryAnnotationsCriterion" messages.
 
@@ -531,7 +508,7 @@ The "QueryAnnotationsCriterion" message defines a number of different criteria m
 
 These query criteria can be used individually in the criteria list, or multiple criteria can be added to the list to specify a compound query.  E.g., adding an "OwnerCriterion" and "CommentCriterion" to the list will match comment annotations for the specified owner.
 
-##### QueryAnnotationsResponse
+#### QueryAnnotationsResponse
 
 The "queryAnnotations()" method returns a "QueryAnnotationsResponse" message with the query results.  It contains one of two payloads, either an "ExceptionalResult" message if the query encountered an error or returned no data (described above), or an "AnnotationsResult" message with the results if the query was successful.
 
@@ -540,12 +517,12 @@ The "AnnotationsResult" message includes a list of "Annotation" messages, one fo
 An "Annotation" message includes the unique id of the annotation, the owner id, the id of the associated dataset identifying the data in the archive that the annotation applies to, and for convenience (so that a second query to retrieve the dataset is not required) a "DataSet" message containing the list of "DataBlocks" comprising the annotation's dataset.
 
 
-## Section 3: Data Platform Service Implementations
+# Data Platform Service Implementations
 
-The dp-service repo contains Java implementations of the services defined in the dp-grpc repo's gRPC proto files, Ingestion, Query and Annotation.  The remainder of this section covers the patterns and frameworks used to build the services (Section 3.1) and some details about the MongoDB database schema (Section 3.2).
+The dp-service repo contains Java implementations of the services defined in the dp-grpc repo's gRPC proto files, Ingestion, Query and Annotation.  The remainder of this section covers the patterns and frameworks used to build the services (Section "dp-service patterns and frameworks") and some details about the MongoDB database schema (Section "dp-service MongoDB schema and data flow").
 
 
-### 3.1 dp-service patterns and frameworks
+## dp-service patterns and frameworks
 
 Some common frameworks and patterns are used in the service implementations, including gRPC server, service request handling, MongoDB interface, configuration, performance benchmarking, regression testing, and integration testing.
 
@@ -558,7 +535,7 @@ The diagram below gives an overview of the key classes used to build a service, 
 The remainder of this section drills into each of the frameworks and patterns mentioned above, using the overview class diagram as a road map and exposing additional detail where appropriate.
 
 
-#### 3.1.1 gRPC server
+### gRPC server
 
 Each service implementation includes an extension of the framework class "GrpcServerBase" that is the entry point for running the service.  The diagram below shows the Annotation Service extension of that base class, "AnnotationGrpcServer".  The extension implements the "main()" method to run the application.
 
@@ -577,7 +554,7 @@ For each service, the gRPC "protoc" compiler generates a service implementation 
 The handling for incoming requests by those methods is described in the next section.
 
 
-#### 3.1.2 service request handling framework
+### service request handling framework
 
 The diagram below shows the framework for handling incoming requests.
 
@@ -620,7 +597,7 @@ The dispatcher uses a convenience method "sendQueryAnnotationsResponse()" on "An
 This pattern for executing an API request and dispatching the response is used in all the service implementations for handling all requests.  Instead of repeating diagrams like above for each case, they are summarized in the following tables listing service rpc method, handler method, job subclass, and dispatcher subclass, with a table for each service.
 
 
-##### annotation service request handling
+#### annotation service request handling
 
 
 <table>
@@ -668,7 +645,7 @@ This pattern for executing an API request and dispatching the response is used i
 
 
 
-##### ingestion service request handling
+#### ingestion service request handling
 
 
 <table>
@@ -696,7 +673,7 @@ This pattern for executing an API request and dispatching the response is used i
 
 
 
-##### query service request handling
+#### query service request handling
 
 
 <table>
@@ -764,9 +741,9 @@ This pattern for executing an API request and dispatching the response is used i
 
 
 
-#### 3.1.3 handling for bidirectional streaming API methods
+### handling for bidirectional streaming API methods
 
-The core request handling pattern described in section 3.1.2 is used to handle all requests, whether 1) unary with single request / response, 2) single request with server-side streaming response, or 3) bidirectional streaming with multiple requests and responses.
+The core request handling pattern described in section "service request handling framework" is used to handle all requests, whether 1) unary with single request / response, 2) single request with server-side streaming response, or 3) bidirectional streaming with multiple requests and responses.
 
 The third case is a special one, because we need a mechanism for directing subsequent requests from the API RPC method's request stream to the existing handler for the initial request.  This is illustrated by the handling framework for the bidirectional time-series data query method, "queryDataBidiStream()".
 
@@ -778,14 +755,14 @@ Behind the scenes, a MongoDB query is executed to retrieve the relevant time-ser
 ![queryDataBidiStream() handling](images/uml-dp-service-request-handling-bidi-stream.png "queryDataBidiStream() handling")
 
 
-When "QueryServiceImpl.queryDataBidiStream()" receives a new request, it creates a "QueryResponseBidiStreamRequestStreamObserver" to handle the request stream.  The initial request received by its "onNext()" method contains the parameters for the time-series data query and is dispatched to "QueryHandlerInterface.handleQueryBidiStream()".  This request is handled as illustrated in Section 3.1.2.  That method also returns a "QueryResultCursor" to the request stream observer.
+When "QueryServiceImpl.queryDataBidiStream()" receives a new request, it creates a "QueryResponseBidiStreamRequestStreamObserver" to handle the request stream.  The initial request received by its "onNext()" method contains the parameters for the time-series data query and is dispatched to "QueryHandlerInterface.handleQueryBidiStream()".  This request is handled as illustrated in Section "service request handling framework".  That method also returns a "QueryResultCursor" to the request stream observer.
 
 The initial query results are returned in the response stream by the dispatcher.  Subsequent requests arriving in the request stream observer's "onNext()" method contain a cursor operation to retrieve the next set of results and are dispatched to "QueryResultCursor.next()", which creates the next response message and sends it via the dispatcher.  This continues until the result set is exhausted and / or the API stream is closed.
 
 
-#### 3.1.4 MongoDB interface
+### MongoDB interface
 
-MongoDB is used at the core of all Data Platform service implementations for data persistence.  Section 3.1.2 showed how the handler framework for the annotation service (as an illustration for all the services), including the concrete "HandlerJob" and "Dispatcher" implementations, use a concrete implementation of "MongoAnnotationClient" to provide the database operations needed by the handler framework.  This section provides further details about how that is accomplished.
+MongoDB is used at the core of all Data Platform service implementations for data persistence.  Section "service request handling framework" showed how the handler framework for the annotation service (as an illustration for all the services), including the concrete "HandlerJob" and "Dispatcher" implementations, use a concrete implementation of "MongoAnnotationClient" to provide the database operations needed by the handler framework.  This section provides further details about how that is accomplished.
 
 The diagram below shows the framework of classes comprising the Data Platform's database interface, again using the Annotation Service implementation as an example.
 
@@ -810,7 +787,7 @@ For the Query and Annotation Services, where performance is important but not on
 The handler for each service implementation including "MongoAnnotationHandler" provides factory methods such as "newMongoSyncAnnotationHandler()" to create a handler instance initialized with the synchronous database client "MongoSyncIngestionClient".  When new jobs are added to the handler's task queue, they are provided with a reference to the database client for accessing database operations by both the job and its dispatcher, as needed.  This is illustrated in the diagram by "QueryAnnotationsJob" and the corresponding "AnnotationsResponseDispatcher" which call the database client methods "executeQueryAnnotations()" and "findDataSet()" in the execution of their methods "execute()" and "handleResult()", respectively.
 
 
-#### 3.1.5 serialization of protobuf objects to MongoDB documents
+### serialization of protobuf objects to MongoDB documents
 
 The Ingestion Service adds a document to the MongoDB "buckets" collection for each "DataColumn" (vector of samples) contained in an ingestion request's data frame.  The documents contain the vector's "DataValues" and the corresponding "DataTimestamps" for those values, as well as other details such as bucket start and end time.
 
@@ -834,7 +811,7 @@ In Data Platform version 1.4, the polymorphic "BucketDocument" hierarchy shown a
 
 ![database interface framework](images/uml-dp-bucket-document-standalone.png "database interface framework")
 
-#### 3.1.6 configuration
+### configuration
 
 The Data Platform service implementations all share a simple configuration framework.  The primary objective for the configuration framework is to minimize the code required to retrieve configuration values, such as checking if the resource is defined, checking for a null return value, providing a default value, and casting to common Java types.  We wanted to define methods on the configuration tool that hide those details from the caller as much as possible.
 
@@ -869,10 +846,10 @@ _configMgr().getConfigInteger(CFG_KEY_NUM_WORKERS, DEFAULT_NUM_WORKERS)_
 where "configMgr()" is a convenience method for accessing the singleton "ConfigurationManager" instance.
 
 
-#### 3.1.7 performance benchmarking
+### performance benchmarking
 
 
-##### ingestion service performance benchmarking
+#### ingestion service performance benchmarking
 
 Because performance is the most important requirement for the Data Platform Ingestion Service, we developed a benchmarking framework in parallel with the service implementation so that we could measure performance at each stage of development and compare different approaches (such as comparing the performance obtained with the MongoDB Java "sync" driver with the "reactivestreams" one.
 
@@ -884,12 +861,12 @@ The diagram below shows the elements of the ingestion performance benchmarking f
 
 The framework supports running ingestion scenarios for different approaches, so the base class "IngestionBenchmarkBase" contains the key framework components for running an ingestion benchmark.  It defines the nested class "IngestionTask" to encapsulate the logic for invoking an ingestion API, creating the stream of ingestion requests, and handling the API response stream.  The nested classes "IngestionTaskParams" and "IngestionTaskResults" are used to contain the parameters needed by the task and to return performance results from the task.
 
-"IngestionBenchmarkBase" provides the method "ingestionExperiment()" for sweeping combinations of parameter values for variables like number of threads and number of API streams, and calculating an overall performance benchmark for the run.  The lower level method "ingestionScenario()" is used by the experiment driver method to run an individual scenario and measure its performance.  This method is also used in the integration test framework to create a regression test that not only runs the ingestion scenario to create data in the archive, but verifies database contents and API responses.  See section 3.1.9 for more details.
+"IngestionBenchmarkBase" provides the method "ingestionExperiment()" for sweeping combinations of parameter values for variables like number of threads and number of API streams, and calculating an overall performance benchmark for the run.  The lower level method "ingestionScenario()" is used by the experiment driver method to run an individual scenario and measure its performance.  This method is also used in the integration test framework to create a regression test that not only runs the ingestion scenario to create data in the archive, but verifies database contents and API responses.  See section "integration testing" for more details.
 
 The application class "BenchmarkStreamingIngestion" extends the base class to run a performance benchmark for the "ingestDataStream()" bidirectional streaming Ingestion Service API.  It defines the nested class "StreamingIngestionTask", implementing the "call()" method to call the API, send a stream of requests, handle the response stream, and collect performance stats.
 
 
-##### query service performance benchmarking
+#### query service performance benchmarking
 
 The query service benchmark framework is a bit more complicated than the ingestion service framework because it also loads the data into MongoDB to be used in the performance benchmark.  Initially, it utilized data loaded by the ingestion benchmark, but we decided to make it a standalone application and added the data-loading mechanism.  The diagram below shows the query service benchmark framework.
 
@@ -908,20 +885,20 @@ Various concrete performance benchmark application classes extend the base class
 For example, the benchmark application class "BenchmarkQueryDataStream" shown in the diagram above defines the task class "QueryResponseStreamTask" that extends "QueryDataResponseTask".  Each task calls the "queryDataStream()" API and keeps track of the number of values and bytes sent for use in performance statistics.
 
 
-#### 3.1.8 regression testing
+### regression testing
 
 The primary objective for the regression test suite was to allow coverage to be added for essentially any part of the Data Platform common code and service implementations including lower level components, and for the most part that has been accomplished.  Test coverage for the Ingestion and Query service implementations is pretty extensive, and covers some of the lower-level features that are hard to cover in higher-level scenarios.
 
-All regression tests using a MongoDB database named "dp-test".  The Data Platform's MongoDB schema is described in Section 3.2.
+All regression tests using a MongoDB database named "dp-test".  The Data Platform's MongoDB schema is described in Section "dp-service MongoDB schema and data flow".
 
-After adding coverage for both the Ingestion and Query service implementations, we added an "integration testing" framework that provides a mechanism for running higher-level scenarios that involve any/all of the service implementations.  That framework is discussed in Section 3.1.9.
+After adding coverage for both the Ingestion and Query service implementations, we added an "integration testing" framework that provides a mechanism for running higher-level scenarios that involve any/all of the service implementations.  That framework is discussed in Section "integration testing".
 
 Since the integration testing framework was added, we've preferred adding test coverage at that level when possible because it exercises the communication framework in addition to the service implementations.  For that reason, there is less low-level test coverage of the annotation service implementation than the other service, but pretty good coverage at the higher-level integration test level.  We will add more extensive low-level coverage for all the services as time goes on to cover more special / unusual cases.
 
 We've used a naming convention for classes that contain jUnit test cases to end the class name with "Test".  The names of base classes that are intended to be extended by concrete test classes end with "Base".  The base and test classes are summarized below.
 
 
-##### ConfigurationManager tests (com.ospreydcs.dp.service.common.config)
+#### ConfigurationManager tests (com.ospreydcs.dp.service.common.config)
 
 
 <table>
@@ -965,7 +942,7 @@ We've used a naming convention for classes that contain jUnit test cases to end 
 
 
 
-##### mongo tests (com.ospreydcs.dp.service.common.mongo)
+#### mongo tests (com.ospreydcs.dp.service.common.mongo)
 
 
 <table>
@@ -1003,7 +980,7 @@ We've used a naming convention for classes that contain jUnit test cases to end 
 
 
 
-##### ingestion service tests (com.ospreydcs.dp.service.ingest)
+#### ingestion service tests (com.ospreydcs.dp.service.ingest)
 
 
 <table>
@@ -1053,7 +1030,7 @@ We've used a naming convention for classes that contain jUnit test cases to end 
 
 
 
-##### query service tests
+#### query service tests
 
 
 <table>
@@ -1109,7 +1086,7 @@ We've used a naming convention for classes that contain jUnit test cases to end 
 
 
 
-##### annotation service tests
+#### annotation service tests
 
 
 <table>
@@ -1129,7 +1106,7 @@ We've used a naming convention for classes that contain jUnit test cases to end 
 
 
 
-#### 3.1.9 integration testing
+### integration testing
 
 One requirement for this project is to provide integration testing that provides coverage for scenarios that involve multiple services.  We developed an integration testing framework that supports creating tests that include data ingestion, query, and annotation.  The framework is shown in the diagram below.
 
@@ -1157,7 +1134,7 @@ For API calls that write data to the database, the base class wrapper methods va
 
 The various integration test classes are summarized in the tables below.
 
-##### com.ospreydcs.dp.service.integration.annotation
+#### com.ospreydcs.dp.service.integration.annotation
 
 <table>
   <tr>
@@ -1174,7 +1151,7 @@ The various integration test classes are summarized in the tables below.
   </tr>
 </table>
 
-##### com.ospreydcs.dp.service.integration.ingest
+#### com.ospreydcs.dp.service.integration.ingest
 
 <table>
   <tr>
@@ -1221,7 +1198,7 @@ The various integration test classes are summarized in the tables below.
   </tr>
 </table>
 
-##### com.ospreydcs.dp.service.integration.query
+#### com.ospreydcs.dp.service.integration.query
 
 <table>
   <tr>
@@ -1251,7 +1228,7 @@ The various integration test classes are summarized in the tables below.
 </table>
 
 
-##### benchmark integration test
+#### benchmark integration test
 
 The integration test class "BenchmarkIntegrationTest" is a special case, combining the integration testing and performance benchmarking frameworks in a single test case.  This test runs an ingestion scenario for a larger universe of data, including one minute's data for 4,000 PVs each sample 1,000 times per second.  It then exercises various time-series data queries against that data.  The test validates the database artifacts created by the ingestion scenario, and verifies all API responses including both ingestion and query.
 
@@ -1284,7 +1261,7 @@ In all three cases, the task subclass dispatches the validation hook methods "on
 The "IntegrationTestQueryGrpcClient" provides methods for running each of the three query API scenarios, "runQueryResponseStreamScenario()", "runQueryResponseCursorScenario()", and "runQueryResponseSingleScenario()".  Each query scenario retrieves one minute's data for 1,000 PVs, and uses the validation hook method implementations to verify the query results.
 
 
-### 3.2 dp-service MongoDB schema and data flow
+## dp-service MongoDB schema and data flow
 
 The Data Platform services utilize MongoDB for persistence.  The default database is called "dp".  Regression tests use a database called "dp-test" whose contents are removed at the start of each test.  The diagram below shows the entity-relationship model for the Data Platform MongoDB schema.
 
@@ -1295,7 +1272,7 @@ The Data Platform services utilize MongoDB for persistence.  The default databas
 The Data Platform MongoDB schema includes collections named "buckets", "requestStatus", "dataSets", and "annotations".  Each is described in more detail below.
 
 
-##### buckets
+#### buckets
 
 The "buckets" collection manages bucketed time-series data for PVs, where each bucket contains a vector of PV measurements for a specified time range.  The collection contains documents whose Java type is "BucketDocument".
 
@@ -1319,7 +1296,7 @@ Each bucket document includes the following fields:
 * "eventDescription" / "eventSeconds" / "eventNanos" - metadata description and start time for the event associated with this bucket at ingestion
 
 
-##### requestStatus
+#### requestStatus
 
 The "requestStatus" collection contains documents whose Java type is "RequestStatusDocument".  The Ingestion Service manages the "requestStatus" collection, creating a new document for each "IngestDataRequest" that it receives.
 
@@ -1337,7 +1314,7 @@ Each request status document contains the following fields:
 * "idsCreated" - contains a list of id strings for the buckets by a successful request
 
 
-##### dataSets
+#### dataSets
 
 The "dataSets" collection contains documents whose Java type is "DataSetDocument".  As mentioned above, the annotation data model uses datasets to specify the relevant data for annotations.
 
@@ -1354,7 +1331,7 @@ Each dataset document contains the following fields:
 The time range and PV names specified in a "DataBlock" correspond to the domain of the "buckets" collection, and can therefore be used directly in the parameters for any of the Query Service time-series and metadata query methods.
 
 
-##### annotations
+#### annotations
 
 The "annotations" collection contains documents whose Java type is "AnnotationDocument".  This is a polymorphic hierarchy, with concrete classes extending that class for each type of annotation that is supported.  Currently there is only one subtype, "CommentAnnotationDocument", though more will be added in an upcoming release.
 
