@@ -22,6 +22,7 @@
 * queryRequestStatus(): would accept providerId, and either a specific clientRequestId, or a time range, or session id (whatever that is, it's in the ProviderRegistration)
   * could use list of criteria, e.g., providerIdCriteria, providerNameCriteria, time range
 * goes in ingestion service for now
+* I'm going to wait to add additional indexes until we flesh out the request status API query interface, but I'm thinking we'll want to add 2 more indexes, a compound index on providerId / requestStatusCase so we can say "find all ingestion errors for provider x", and a compound index on "requestStatusCase"/updateTime so we can say "find all ingestion errors in this time range".
 
 ## design/prototype for additional annotation types
 * think about how to handle linked dataset, and maybe implement it
@@ -50,7 +51,7 @@
 * probably need to either set up a server on AWS cloud, or buy external storage to do this test
 
 ## misc general
-* What is best API type and Java POJO type for field that is a mongo id (string vs. ObjectId vs. ?)? (e.g., dataSetId reference from annotation, list of bucket ids in requestStatus)
+* investigate best API type and Java POJO type for field that is a mongo id (string vs. ObjectId vs. ?)? (e.g., dataSetId reference from annotation, list of bucket ids in requestStatus)
 
 ## misc query service
 * QueryResponseBidiStreamRequestStreamObserver.onNext() - check if operation is already in process before accepting a subsequent one (e.g., cursor not null)
@@ -95,11 +96,15 @@
 * I only implemented a single HandlerQueryInterface concrete class using the "sync" mongodb driver, since this meets our performance requirements (and seems to outperform the async/reactivestreams driver for our use) and is in some ways less complex to work with.  Should we try building a handler using the async/reactivestreams mongodb driver to compare performance?
 
 ## annotation
+* consider eliminating different subtypes of annotation, and have one fat class/document that includes everything (comment, linked data sets, etc).
+* consider adding a generic "text" field to base annotation document class that is used as needed by subclasses (e.g., comment for CommentAnnotation, description for LinkedDataSetAnnotation, ...).  Mongo only supports a single text indexed field per collection.
 * from bob (need to clarify)
   * Perhaps point to a calibration file.
   * Owner
   * Date
   * For data sets that were generated from raw data, a pointer to the raw data file, the code that produced this file and the version of that code.
+* Should ownerId be required on dataset queries?
+* Should we simplify the query methods to be a flat data structure with all the fields reflected in the list of criteria, or stick with list of criteria?
 * Should we cross reference annotations to buckets and/or vice versa? 
   * E.g., annotation documents have references to the affected buckets by bucket id? 
   * bucket documents contain list of annotations that apply to bucket? (which would complicate modifying annotation)?
