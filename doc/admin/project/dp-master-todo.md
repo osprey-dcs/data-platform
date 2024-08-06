@@ -1,13 +1,5 @@
 # v1.5 (july-september)
 
-## build / deployment
-* update to latest Java version
-* update to latest mongodb
-
-## add ingestion/query service handling for EPICS status/alarm etc
-* this might be just test coverage, since serialization of DataColumn should be storing the info in mongo, and returning it in query results
-* do we need a way to query by alarm conditions, or add it to metadata for a PV (last alarm etc), this would mean unpacking the serialized DataColumn byte array values (or setting fields in the bucket indicating alarms during ingestion which would affect performance, e.g., probably would reduce performance to the level before we used serialization to persist data values since we have to iterate through the whole data vector to find alarms)
-
 ## strategy/design/prototype for provider registration
 * how do we want provider registration to work?
 * how to validate provider id in ingestion without affecting performance
@@ -80,6 +72,9 @@
 
 ## general
 * make collection names (or database name) configurable?
+
+## ValueStatus / EPICS status and alarm handling
+* do we need a way to query by alarm conditions, or add it to metadata for a PV (last alarm etc), this would mean unpacking the serialized DataColumn byte array values (or setting fields in the bucket indicating alarms during ingestion which would affect performance, e.g., probably would reduce performance to the level before we used serialization to persist data values since we have to iterate through the whole data vector to find alarms)
 
 ## ingestion
 * Consider using annotations collection / data model for storing event metadata, attribues attached to ingestion requests?
