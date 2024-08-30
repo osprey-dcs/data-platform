@@ -98,6 +98,7 @@ With version 1.5, we have now completed the implementation of the initial Data P
 * Implement mechanism for ingestion data validation.
 * Add API for time-series data query by value status information?
 * Add API for provider metadata query.
+* Add framework for measuring data statistics.
 * Add support for authentication and authorization of query and annotation services.
 * Investigate MongoDB database clustering (replica sets), partitioning (sharding), and connection pooling.
 * Experiment with horizontal scaling alternatives.
@@ -961,6 +962,13 @@ Various concrete performance benchmark application classes extend the base class
 
 For example, the benchmark application class "BenchmarkQueryDataStream" shown in the diagram above defines the task class "QueryResponseStreamTask" that extends "QueryDataResponseTask".  Each task calls the "queryDataStream()" API and keeps track of the number of values and bytes sent for use in performance statistics.
 
+### generating sample data
+
+Recognizing the previous use of the ingestion performance benchmark application for creating test data for web app development and demo, a new TestDataGenerator utility has been added.  A more fully featured simulator / generator is under development, but in the meantime this tool can be used to generate sample data for use in web application development or demo purposes.  Like the ingestion benchmark, it generates one minute's data for 4000 PVs sampled at 1 KHz.
+
+To use the sample data generator, the standard ingestion service should be running ("IngestionGrpcServer").  This captures data to the standard "dp" database instead of the benchmark-specific "dp-benchmark" database.
+
+The dp-support repo contains a wrapper script in the bin directory for running the sample data generator, "app-run-test-data-generator".
 
 ### regression testing
 

@@ -51,6 +51,9 @@
 ## provider metadata
 * do we want a provider metadata query and where does it belong?
 
+## data statistics framework
+* should we add a framework for measuring data statistics, e.g., add fields containing time data was captured, time request was sent, time request was received, and time bucket was created, etc.  Could put in requestStatus document, bucket documents, or new statistics collection.
+
 ## use transaction for writing ingestion artifacts
 * I started down this path in v1.5 issue #103, but discovered transactions can't be used with standalone mongodb.
 * Requires conversion to "replica set" cluster or sharded database.
