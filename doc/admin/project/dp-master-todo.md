@@ -1,20 +1,4 @@
-# v1.5 (july-september)
-
-## strategy/design/prototype for provider registration
-* how do we want provider registration to work?
-* how to validate provider id in ingestion without affecting performance
-* make this a configurable option?
-* or do off-line (post-ingestion) provider validation, part of monitoring tools like looking for ingestion errors
-* consider explicit registerProvider(String name) returns ProviderRegistration structure that contains provider ID and other stuff (e.g., provider name, session id, start time etc).
-  * use ProviderRegistration in ingestData()
-* do we want a provider metadata query and where does it belong?
-
-## API for checking ingestion request status
-* currently only logged in mongodb
-* queryRequestStatus(): would accept providerId, and either a specific clientRequestId, or a time range, or session id (whatever that is, it's in the ProviderRegistration)
-  * could use list of criteria, e.g., providerIdCriteria, providerNameCriteria, time range
-* goes in ingestion service for now
-* I'm going to wait to add additional indexes until we flesh out the request status API query interface, but I'm thinking we'll want to add 2 more indexes, a compound index on providerId / requestStatusCase so we can say "find all ingestion errors for provider x", and a compound index on "requestStatusCase"/updateTime so we can say "find all ingestion errors in this time range".
+# v1.6 (september-october)
 
 ## design/prototype for additional annotation types
 * think about how to handle linked dataset, and maybe implement it
@@ -24,6 +8,17 @@
   * what ownership/group/sharing/permissions/audit trail info do we want to attach to annotations and datasets?  Where else do we need this?
   * how to handle keywords / attributes (and description?) generically so they can be used for dataset, annotation, (buckets? not sure that makes sense)
     * Does this belong with ownership/sharing/etc properties or a separate object?
+* consider changes to data model
+  * consider eliminating different subtypes of annotation, and have one fat class/document that includes everything (comment, linked data sets, etc).
+  * consider adding a generic "text" field to base annotation document class that is used as needed by subclasses (e.g., comment for CommentAnnotation, description for LinkedDataSetAnnotation, ...).  Mongo only supports a single text indexed field per collection.
+  * Should we simplify the query methods to be a flat data structure with all the fields reflected in the list of criteria, or stick with list of criteria?
+*  from bob (need to clarify)
+  * Perhaps point to a calibration file.
+    * Owner
+    * Date
+    * For data sets that were generated from raw data, a pointer to the raw data file, the code that produced this file and the version of that code.
+* Should ownerId be required on dataset queries?
+
 
 ## export service prototype
 * part of annotation service or new standalone service? initially will add to annotation service
@@ -42,21 +37,25 @@
   * 1.8 TB / 30 min
 * probably need to either set up a server on AWS cloud, or buy external storage to do this test
 
-## misc general
-* investigate best API type and Java POJO type for field that is a mongo id (string vs. ObjectId vs. ?)? (e.g., dataSetId reference from annotation, list of bucket ids in requestStatus)
-
-## misc query service
-* QueryResponseBidiStreamRequestStreamObserver.onNext() - check if operation is already in process before accepting a subsequent one (e.g., cursor not null)
-
-## documentation
-* UML for important grpc API elements
-
 # ===== FEATURES FOR FUTURE VERSIONS =====
 
 ## simple data generator for demo / web application data
 * data generator with broader time range and different data types
 * include datasets / annotations / ingestion attributes and event metadata
 * what is the relationship to simulator that Chris is building
+
+## ingestion provider validation
+* consider adding a config resource to disable provider id validation?
+* could validate providers "off-line" (post-ingestion)
+
+## provider metadata
+* do we want a provider metadata query and where does it belong?
+
+## use transaction for writing ingestion artifacts
+* I started down this path in v1.5 issue #103, but discovered transactions can't be used with standalone mongodb.
+* Requires conversion to "replica set" cluster or sharded database.
+* Can convert standalone database to replica set, but that has implications for development and deployment to casual users because can't use vanilla mongodb install
+* see dp-service #103 for details, created new method MongoIngestionClientInterface.ingestionTransaction containing code for 3 steps (verifying provider, writing buckets, writing request status)
 
 ## strategy/design/prototype for ingestion data validation
 * do we want to enforce data type for PV in ingestion? what about array dimensions and nested data types etc
@@ -68,6 +67,7 @@
 * or do off-line (post-ingestion) validation to avoid performance impacts, part of monitoring tools like looking for ingestion errors
 
 ## documentation
+* UML for important grpc API elements
 * interaction diagram for job execution?
 
 ## general
@@ -76,7 +76,7 @@
 ## ValueStatus / EPICS status and alarm handling
 * do we need a way to query by alarm conditions, or add it to metadata for a PV (last alarm etc), this would mean unpacking the serialized DataColumn byte array values (or setting fields in the bucket indicating alarms during ingestion which would affect performance, e.g., probably would reduce performance to the level before we used serialization to persist data values since we have to iterate through the whole data vector to find alarms)
 
-## ingestion
+## use annotation model to store ingestion metadata like attributes and event metadata?
 * Consider using annotations collection / data model for storing event metadata, attribues attached to ingestion requests?
 * use parallel stream iteration in ingesting the batch of data buckets for an ingestion request? e.g.,
 <pre>
@@ -90,16 +90,7 @@
 * Should we add check that query time range is less than some configured maximum time range size?
 * I only implemented a single HandlerQueryInterface concrete class using the "sync" mongodb driver, since this meets our performance requirements (and seems to outperform the async/reactivestreams driver for our use) and is in some ways less complex to work with.  Should we try building a handler using the async/reactivestreams mongodb driver to compare performance?
 
-## annotation
-* consider eliminating different subtypes of annotation, and have one fat class/document that includes everything (comment, linked data sets, etc).
-* consider adding a generic "text" field to base annotation document class that is used as needed by subclasses (e.g., comment for CommentAnnotation, description for LinkedDataSetAnnotation, ...).  Mongo only supports a single text indexed field per collection.
-* from bob (need to clarify)
-  * Perhaps point to a calibration file.
-  * Owner
-  * Date
-  * For data sets that were generated from raw data, a pointer to the raw data file, the code that produced this file and the version of that code.
-* Should ownerId be required on dataset queries?
-* Should we simplify the query methods to be a flat data structure with all the fields reflected in the list of criteria, or stick with list of criteria?
+## annotation to bucket collection database document cross reference
 * Should we cross reference annotations to buckets and/or vice versa? 
   * E.g., annotation documents have references to the affected buckets by bucket id? 
   * bucket documents contain list of annotations that apply to bucket? (which would complicate modifying annotation)?
@@ -107,9 +98,7 @@
     * If we need to update annotations, we probably want to keep a metadata collection with one or two way references between the metadata document and the bucket documents that it applies to, but this is messy if we are specifying the metadata on each individual request, at that point it might make sense to register the metadata, get an id for it, and the send the id in requests.
     * Relationship between event metadata and attributes added during ingestion to the annotation information, is it the same schema?  Do we need to change something about ingestion?
 
-## dp-grpc
-
-## dp-support
+## envoy configuration
 * envoy config: can we use a single envoy.yaml for mac and non-mac?  The difference is literally a single line, maybe we could use localhost or 127.0.0.1 or whatever?
 ```
   diff envoy.yaml envoy.mac.yaml
@@ -157,7 +146,8 @@
 
 ## mongo
 * DB connection pooling (e.g., HikariCP or Apache DBCP)?
-* Mongo database sharding?
+* change to replica set cluster (required for using transactions)
+* Mongo database sharding
 * Use retryable writes, exactly once for handling transient network errors and replica set elections https://www.mongodb.com/docs/manual/core/retryable-writes
 
 ## configuration

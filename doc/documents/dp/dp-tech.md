@@ -13,6 +13,7 @@ The Data Platform is agnostic to the source and acquisition of the data. A proje
 * Provide an API for retrieval of ingested data.
 * Provide an API for exploring metadata for data sources available in the archive.
 * Provide mechanisms for adding post-ingestion annotations to the archive, and performing queries over those annotations.
+* Provide mechanism for exporting data from the archive to common formats.
 
 ## data platform elements
 
@@ -75,27 +76,30 @@ Version 1.3 provides an initial implementation of the annotation service for add
 
 ### v1.4 (July 2024)
 
-Version 1.4 added Ingestion and Query Service support for all data types defined in the Data Platform API including scalars, multi-dimensional arrays, structures, and images. Support is also added to both services for ingesting and querying data with an explicit list of data timestamps to complement the existing support for specifying data timestamps using a SamplingClock (with start time, sample period, and number of samples). Both features utilize serialization of the protobuf DataColumn and DataTimestamps API objects as byte array fields of the MongoDB BucketDocument. This change improves ingestion performance significantly, while also reducing the MongoDB storage footprint and simplifying the codebase.
+Version 1.4 adds Ingestion and Query Service support for all data types defined in the Data Platform API including scalars, multi-dimensional arrays, structures, and images. Support is also added to both services for ingesting and querying data with an explicit list of data timestamps to complement the existing support for specifying data timestamps using a SamplingClock (with start time, sample period, and number of samples). Both features utilize serialization of the protobuf DataColumn and DataTimestamps API objects as byte array fields of the MongoDB BucketDocument. This change improves ingestion performance significantly, while also reducing the MongoDB storage footprint and simplifying the codebase.
+
+### v1.5 (August 2024)
+
+With version 1.5, we have now completed the implementation of the initial Data Platform API we defined at the outset for the Core Services.  This version focuses on adding the remaining unimplemented Ingestion Service features including: unidirectional client-side streaming data ingestion API, API for registering providers, API for querying ingestion request status details, testing for handling of value status information, validation of data ingestion providers, as well as improvements to the performance benchmark framework. The java dp-grpc and dp-service projects are updated to use Java 21 and the latest versions of 3rd party libraries.
 
 ## todo and road map
 
 
-### v1.5 planned features (July / August / September 2024)
+### v1.6 planned features (September / October 2024)
 
-* Run more extensive load testing benchmarks.
-* Add support for EPICS status/alarm etc
-* Develop API and implement export service RPC methods.
+* Develop prototype API and implement export service RPC methods.
 * Add support for additional annotation types, including linked and derived data sets, and post-ingestion calculations.
-* Implement API for checking status of asynchronous ingestion requests.
-* Implement API for provider registration.
-* Build simple data generator for demo and web application development.
+* Run more extensive load testing benchmarks.
 
 
 ### features planned for future releases
 
+* Build simple data generator for demo and web application development.
 * Implement mechanism for ingestion data validation.
+* Add API for time-series data query by value status information?
+* Add API for provider metadata query.
 * Add support for authentication and authorization of query and annotation services.
-* Investigate MongoDB database partitioning (sharding) and connection pooling.
+* Investigate MongoDB database clustering (replica sets), partitioning (sharding), and connection pooling.
 * Experiment with horizontal scaling alternatives.
 * Experiment with streaming architecture (e.g., Apache Kafka)
 
@@ -228,6 +232,10 @@ One requirement for the Data Platform API is to provide a general mechanism for 
 
 Time is represented in the Data Platform API using the "Timestamp" message defined in "common.proto".  It contains two components for the number of seconds since the epoch, and nanoseconds.  As a convenience, the message "TimestampList" is used to send a list of timestamps.
 
+### data providers
+
+A data provider is an infrastructure component that uses the Data Platform Ingestion Service API to upload data to the archive.  Before sending ingestion requests with data, the provider must be registered with the Ingestion Service.
+
 ### ingestion data frame
 
 The message "IngestionDataFrame", defined in "ingestion.proto", is the primary unit of ingestion in the Data Platform API.  It contains the set of data to be ingested, using a list of "DataColumn" PV data vectors (described above).  It uses the message "DataTimestamps", defined in "common.proto", to specify the timestamps for the data values in those vectors.
@@ -279,6 +287,9 @@ With bucketing, we save the overhead of the sensor_id and timestamp in each reco
 
 Bucketing is used to send the results of time-series data queries.  The message "QueryDataResponse" in "query.proto" contains the query result in "QueryData", which contains a list of "DataBucket" messages.  Each "DataBucket" contains a vector of data in a "DataColumn" message for a single PV, along with time expressed using "DataTimestamps" (described above), with either an explicit list of timestamps for the bucket data values, or a SamplingClock with start time and sample period.
 
+### ingestion request status information
+
+For performance reasons, data ingestion requests are handled asynchronously by the Ingestion Service.  Each "IngestDataRequest" sent via a data ingestion API method is either acknowledged or rejected immediately.  A request that is accepted for processing by the service may subsequently encounter an error during processing.  For that reason, a "RequestStatus" record is created in the database for each ingestion request received by the service, indicating the disposition of that request (e.g., success, rejected, or error).  The "queryRequestStatus()" API method is used to query request status details.
 
 ### datasets
 
@@ -312,18 +323,41 @@ The message "EventMetadata", also defined in "common.proto", allows incoming dat
 
 ### provider registration
 
-The Ingestion Service provider registration mechanism is not yet implemented.  It will assign unique identifiers to the infrastructure elements that will use the ingestion API to send data to the archive.
+Data providers must be registered with the Ingestion Service before using ingestion API methods to send data to the ardhive.  This is accomplished via the provider registration API:
+
+```
+rpc registerProvider (RegisterProviderRequest) returns (RegisterProviderResponse);
+```
+
+This unary method sends a single RegisterProviderRequest and receives a single RegisterProviderResponse.  It is required to call this method to register a data provider before calling one of the data ingestion methods using the id of that provider.
+
+Provider name is required in the RegisterProviderRequest, which may also contain optional metadata key/value attributes describing the provider.
+
+The response message indicates whether the registration was successful.  The response payload is an ExceptionalResult if the request is unsuccessful, otherwise it is a RegistrationResult that includes details about the new provider including providerId (for use in calls to data ingestion methods) and a flag indicating if the provider is new.  On success, if a document already exists in the MongoDB "providers" collection for the provider name specified in the RegisterProviderRequest, the method returns the corresponding provider id in the response, otherwise a new document is created in the "providers" collection and its id returned in the response.
+
+It is safe (and recommended) to call this method each time a data ingestion client is run.  If a document already exists in the MongoDB providers collection for the specified provider, the attributes are updated to the values in the RegisterProviderRequest.
+
+#### RegisterProviderRequest
+
+Encapsulates parameters for a registerProvider() API method request.  The required providerName field uniquely identifies a provider.  The list of descriptive metadata key/value attributes is optional.
+
+#### RegisterProviderResponse
+
+Encapsulates response from registerProvider() API method.  Payload is either an ExceptionalResult message with details about a rejection or error, or a RegistrationResult containing details about the provider registration including provider id/name, and a flag indicating if the provider is new or previously existing.
+
+The providerId contained in the RegistrationResult should be used for the corresponding parameter in IngestDataRequests sent to any of the data ingestion API methods.  Those methods confirm that the specified providerId is valid before processing the ingestion request.
 
 ### data ingestion
 
-The Ingestion Service provides a very streamlined API for ingesting data to the archive.  There are two methods for data ingestion:
+The Ingestion Service provides a streamlined API for ingesting data to the archive.  There are three methods for data ingestion:
 
 ```
 rpc ingestData (IngestDataRequest) returns (IngestDataResponse);
-rpc ingestDataStream (stream IngestDataRequest) returns (stream IngestDataResponse);
+rpc ingestDataStream (stream IngestDataRequest) returns (IngestDataStreamResponse);
+rpc ingestDataBidiStream (stream IngestDataRequest) returns (stream IngestDataResponse);
 ```
 
-Both methods use the same request and response messages.  The method "ingestData()" sends a single "IngestDataRequest" and receives a single "IngestDataResponse" corresponding to the request.  "ingestDataStream()" is a bidirectional gRPC streaming method that allows the client to send a stream of "IngestDataRequest" messages and receive a stream of "IngestDataResponse" messages.  In both cases, the client uses the combination of provider id and request id to match incoming responses to outgoing requests.
+All methods use the same request message, "IngestDataRequest".  The method "ingestData()" sends a single "IngestDataRequest" and receives a single "IngestDataResponse" corresponding to the request.  "ingestDataStream()" is a unidirectional gRPC client-side streaming method that allows the client to send a stream of "IngestDataRequest" messages, and receive a single "IngestDataStreamResponse" message when the request stream is closed. "ingestDataBidiStream()" is a bidirectional gRPC streaming method that allows the client to send a stream of "IngestDataRequest" messages and receive a stream of "IngestDataResponse" messages.  In all cases, the client uses the combination of provider id and request id to match incoming responses to outgoing requests.
 
 #### ingestion data frame
 
@@ -337,7 +371,47 @@ An "IngestDataRequest", defined in "ingestion.proto", includes an "IngestionData
 
 The message "IngestDataResponse" in ingestion.proto contains one of two payloads, either an "ExceptionalResult" (described above) indicating an error or rejection, or an "AckResult", indicating the request was accepted and echoing back the dimensions of the request in confirmation.  The response also includes provider id and client request id for matching the response to the corresponding request, and a "Timestamp" indicating the time the message was sent.
 
-The Ingestion Service is fully asynchronous, so the response does not indicate if a request is successfully handled, only whether the request is accepted or rejected.  A separate API for checking whether or not a request was handled successfully will be added in a future release.  It will support queries by provider id and/or request id to identify errors in handling ingestion requests.  For now, the "requestStatus" collection in MongoDB contains a document for each request indicating whether it succeeded or failed.  It is envisioned that a monitoring tool will use the request status API  to detect ingestion errors and send notification.
+The Ingestion Service is fully asynchronous, so the response does not indicate if a request is successfully handled, only whether the request is accepted or rejected.  The "queryRequestStatus()" API method is used to query request status information.
+
+### request status
+
+For performance reasons, data ingestion requests are handled asynchronously by the Ingestion Service.  Each "IngestDataRequest" sent via a data ingestion API method is either acknowledged or rejected immediately.  A request that is accepted for processing by the service may subsequently encounter an error during processing.  For that reason, a "RequestStatus" record is created in the database for each ingestion request received by the service, indicating the disposition of that request (e.g., success, rejected, or error).  The "queryRequestStatus()" API method is used to query request status details:
+
+```
+rpc queryRequestStatus(QueryRequestStatusRequest) returns (QueryRequestStatusResponse);
+```
+
+This unary method sends a single QueryRequestStatusRequest and receives a single QueryRequestStatusResponse.  It is used to determine the status of an individual data ingestion request, or to find data ingestion errors for a specified time range.
+
+The QueryRequestStatusRequest message contains a list of criteria for searching by provider id, provider name, request id, status, and time range. The criteria can be combined arbitrarily, but we envision three primary use cases:
+
+1) Query by provider id or name and request id to find the status of a specific ingestion request.
+2) Query by provider id or name, status (e.g., rejected or error) and time range.
+3) Query by status and time range without specifying a provider (e.g., "find all ingestion errors for today").
+
+The QueryRequestStatusResponse message payload is either an ExceptionalResult containing details about a rejection or error, or a RequestStatusResult containing a list of RequestStatus messages, one for each document in the MongoDB "requestStatus" collection that matches the search criteria.
+
+Each RequestStatus message contains details about the status of an individual ingestion request, including provider id/name, request id, status enum, status message, and list of bucket ids created (documents added to the MongoDB "buckets" collection).
+
+#### QueryRequestStatusRequest
+
+Encapsulates parameters to queryRequestStatus() API method. Includes a list of criteria that can be arbitrarily combined for the query filter.
+
+* ProviderIdCriterion is used to filter by providerId (as returned by registerProvider()) and sent in the IngestDataRequest.
+
+* ProviderNameCriterion is used to filter by providerName (as sent to registerProvider()) and sent in the IngestDataRequest.
+
+* RequestIdCriterion is used to filter by clientRequestId as specified in the IngestDataRequest.
+
+* StatusCriterion is used to filter by status indicated for the IngestDataRequest (success, rejected, or error).
+
+* TimeRangeCriterion is used to filter by time range, matched against the time indicated for the IngestDataRequest.
+
+#### QueryRequestStatusResponse
+
+Encapsulates response from queryRequestStatus() API method. Payload is an ExceptionalResult if the query is rejected or there is an error handling it, otherwise payload is a RequestStatusResult which contains a list of RequestStatus messages, corresponding to the documents in the MongoDB "requestStatus" collection that match the specified query criteria.
+
+Each RequestStatus message includes details from the document in the "requestStatus" collection, including a unique identifier for the request status document, provider id and name, client request id, status enum value, status message, and a list of idsCreated in the MongoDB "buckets" collection for the request's data.
 
 ## Data Platform API - query service
 
@@ -848,10 +922,13 @@ where "configMgr()" is a convenience method for accessing the singleton "Configu
 
 ### performance benchmarking
 
+Because performance is the most important requirement for the Data Platform Ingestion Service, we developed a benchmarking framework in parallel with the service implementation so that we could measure performance at each stage of development and compare different approaches (such as comparing the performance obtained with the MongoDB Java "sync" driver with the "reactivestreams" one).  The same pattern was followed to build a performance benchmark framework for the Query Service implementation.
+
+Both benchmark frameworks use the MongoDB database "dp-benchmark".  Before each run of any benchmark, the contents of that database are removed and new contents are added by the benchmark.
+
+Benchmark-specific servers, "BenchmarkIngestionGrpcServer" and "BenchmarkQueryGrpcServer", were added that override the standard Ingestion and Query service network ports for those services to avoid adding benchmark data to a live production database.
 
 #### ingestion service performance benchmarking
-
-Because performance is the most important requirement for the Data Platform Ingestion Service, we developed a benchmarking framework in parallel with the service implementation so that we could measure performance at each stage of development and compare different approaches (such as comparing the performance obtained with the MongoDB Java "sync" driver with the "reactivestreams" one.
 
 The diagram below shows the elements of the ingestion performance benchmarking framework.
 
@@ -1185,9 +1262,27 @@ The various integration test classes are summarized in the tables below.
    </td>
   </tr>
   <tr>
+   <td>ReisterProviderTest
+   </td>
+   <td> Provides coverage for the registerProvider() API method. 
+   </td>
+  </tr>
+  <tr>
+   <td>RequestStatusTest
+   </td>
+   <td> Provides coverage for the queryRequestStatus() API method.
+   </td>
+  </tr>
+  <tr>
    <td>UnaryTest
    </td>
    <td> Provides coverage for ingestion of data using the unary ingestion API, ingestData().  Includes simple negative and positive test scenarios.
+   </td>
+  </tr>
+  <tr>
+   <td>UnidirectionalStreamTest
+   </td>
+   <td> Provides coverage for the ingestDataStream() API method.
    </td>
   </tr>
   <tr>
@@ -1271,6 +1366,14 @@ The Data Platform services utilize MongoDB for persistence.  The default databas
 
 The Data Platform MongoDB schema includes collections named "buckets", "requestStatus", "dataSets", and "annotations".  Each is described in more detail below.
 
+#### providers
+
+The "provders" collection contains a document for each data provider registered with the Data Platform via the "registerProvider()" API method.  Documents contain the following fields:
+
+* "-id" - unique identifier for the provider
+* "name" - name for provider as sent via registerProvider(), must be unique
+* "attributeMap" - map of key/value metadata attributes describing the provider
+* "lastUpdated" - contains time that the provider document was created or last updated (by calling registerProvider()).
 
 #### buckets
 
@@ -1302,17 +1405,18 @@ The "requestStatus" collection contains documents whose Java type is "RequestSta
 
 The service performs validation on each request, and responds with either a rejection or acknowledgment.  The request is then handled asynchronously, with no further reporting back to the client making the request.  The request status document indicates whether the request succeeded or failed, and provides further information for failures.
 
-Given the asynchronous nature of the Ingestion Service, it is anticipated that a monitoring tool is needed to detect problems handling ingestion requests.  There is not yet a Data Platform API for querying the requestStatus collection, but it will be added to an upcoming release.
+Given the asynchronous nature of the Ingestion Service, it is anticipated that a monitoring tool is needed to detect problems handling ingestion requests.  Such a tool could use the "queryRequestStatus()" API method to query over the "requestStatus" collection.
 
 Each request status document contains the following fields:
 
 * "_id" - unique identifier for the request status
 * "providerId" / "requestId" - these fields contain the corresponding values from the ingestion request and can be used by the client to match request status to the request
+* "providerName" - contains the name for the corresponding providerId
 * "requestStatusCase" / "requestStatusName" - IngestionRequestStatus enum case and name indicating the status for the request (e.g., rejected, error, success)
 * "msg" - provides additional details for failed requests
 * "updateTime" - specifies time status was updated
 * "idsCreated" - contains a list of id strings for the buckets by a successful request
-
+* "updateTime" - contains the time that the request status document was created
 
 #### dataSets
 
