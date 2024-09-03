@@ -50,7 +50,7 @@ Edit pom.xml for all repos to reflect current version number!
   - generate new dp-tech.pdf if changed dp-tech.md
     - mac approach using intelli-j markdown to pdf converter works best
       - run intelli-j, open data-platform dp-tech.md
-      - run tools -> markdown -> converter markdown to pdf
+      - run tools -> markdown -> export markdown file to...
     - linux approach using pandoc looks ugly using latex format, tables don't work correctly
       - cd ~/dp/data-platform/doc/documents/dp
       - pandoc dp-tech.md -o ./pdf/dp-tech.pdf
