@@ -92,7 +92,7 @@ The tag-repos script can be used to move an existing tag. If tags need to be (re
 
 ## create dp-service jar file
 
-Use "mvn package" from intelli-j to create shaded jar, upload it to the dp-service release.
+(is this step still necessary?  e.g., I think now the make-installer script runs maven package to create the jar, need to check)  Use "mvn package" from intelli-j to create shaded jar, this is used to build the installer below.
 
 ## build data-platform installer
 
@@ -107,19 +107,11 @@ Need to do this in all repos: dp-grpc, dp-service, dp-support, data-platform.  F
 
 ### dp-service release
 
-Need to build shaded jar and upload it as part of the release.
-
-#### dp-service jar
-
-Run maven clean and maven package, check that tests are clean.  Intelli-J creates jar in e.g., /home/craigmcc/dp/dp-java/dp-service/target/dp-service-1.5.0-shaded.jar
+Use jar from ~/data-platform/lib/dp-service.jar used to create installer.
 
 ### data-platform release
 
-Need to build the installer and upload it as part of the release.
-
-#### build data-platform installer
-
-Hopefully the script was updated before adding tags etc.  Sometimes it leads to changes that should be tagged.  Use the data-platform/scripts/make-installer script to create the installer tarball with content from the other repos.
+Upload the installer built previously.
 
 ## create new dev branch for major release
 
