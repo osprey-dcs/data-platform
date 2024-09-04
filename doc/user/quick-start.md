@@ -4,7 +4,7 @@ This section will help you get the data platform up and running as quickly as po
 
 ## Preinstallation
 
-- [install Java 16 or 17](./installation.md#java-installation)
+- [install Java 21](./installation.md#java-installation)
 
 - [install MongoDB version 7, create database user and password](./installation.md#mongodb-installation)
 
@@ -82,7 +82,7 @@ data-platform/bin/mongodb-compass-start
 
 ### run data platform services
 
-Use the following commands to start the Ingestion and Query Services.
+Use the following commands to start the standard Ingestion and Query Services.
 
 #### start ingestion service
 ```
@@ -116,14 +116,38 @@ data-platform/bin/server-annotation-status
 
 ### run data platform performance benchmarks
 
-Use the following commands to run the Ingestion and Query Service performance benchmarks.
+The Data Platform includes tools for running performance benchmarks against the Ingestion and Query Services.  The benchmarks use non-standard server applications that override the network port number and database name so that data is added to the "dp-benchmark" database.
+
+To run a benchmark, first start the appropriate benchmark server and then run the client application against that server.
 
 #### run ingestion benchmark
+
+Here are the commands for starting the benchmark ingestion server and client applications:
+
+```
+data-platform/bin/server-benchmark-ingest-start
+```
+
 ```
 data-platform/bin/app-run-ingestion-benchmark
 ```
 
 #### run query benchmark
+
+Here are the commands for starting the benchmark query server and client applications:
+
+```
+data-platform/bin/server-benchmark-query-start
+```
+
 ```
 data-platform/bin/app-run-query-benchmark
+```
+
+### run sample data generator
+
+The Data Platform includes a utility for generating sample data for use in web application development and demo purposes.  The application generates sample data for one minute and 4,000 signals each sampled at 1 KHz.  The data generator uses the standard "dp" database and data is created with a fixed date/time starting at "2023-10-31T15:51:00.000+00:00".  Happy Halloween...
+
+```
+data-platform/bin/app-run-test-data-generator
 ```

@@ -6,7 +6,7 @@ The primary prerequisites for installing the Data Platform are Java and MongoDB.
 
 ### java installation
 
-The Data Platform Java applications are compiled using Java 16, and have been tested with Java 17.  Newer versions of Java will probably work without issue, so please let us know if you test on any of them before we do our own port.  Here are links for installing [Java 16](https://docs.oracle.com/en/java/javase/16/install/overview-jdk-installation.html) or [Java 17](https://docs.oracle.com/en/java/javase/17/install/overview-jdk-installation.html).
+The Data Platform Java applications are compiled using Java 21.  Here is a link for [downloading and installing Java 21](https://www.oracle.com/java/technologies/downloads/#java21).
 
 ### mongodb installation
 
