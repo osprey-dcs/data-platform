@@ -1,5 +1,16 @@
 # v1.6 (september-october)
 
+## export feature prototype
+* part of annotation service or new standalone service? initially will add to annotation service
+  * the export feature could get "busy" in a facility running continuous machine learning
+* use DataSet model from annotations in new API e.g., exportDataSet(DataSet) rpc method returns URL to exported file
+* what formats to support? bob said hdf5 initially, what else?
+  * probably 2 different hdf5 formats e.g, one for data platform archive format (using serialize data values) and one for user consumption (where DataValues are unpacked)
+* how to handle arbitrarily nested arrays of structures containing arrays of images etc.
+
+
+# ===== FEATURES FOR FUTURE VERSIONS =====
+
 ## design/prototype for additional annotation types
 * think about how to handle linked dataset, and maybe implement it
   * is there a list of linked dataset ids?  What about the model where an annotation is for a single dataset? Should we change annotation model to include a list of datasets instead of single one?
@@ -13,31 +24,22 @@
   * consider adding a generic "text" field to base annotation document class that is used as needed by subclasses (e.g., comment for CommentAnnotation, description for LinkedDataSetAnnotation, ...).  Mongo only supports a single text indexed field per collection.
   * Should we simplify the query methods to be a flat data structure with all the fields reflected in the list of criteria, or stick with list of criteria?
 *  from bob (need to clarify)
-  * Perhaps point to a calibration file.
-    * Owner
-    * Date
-    * For data sets that were generated from raw data, a pointer to the raw data file, the code that produced this file and the version of that code.
+* Perhaps point to a calibration file.
+  * Owner
+  * Date
+  * For data sets that were generated from raw data, a pointer to the raw data file, the code that produced this file and the version of that code.
 * Should ownerId be required on dataset queries?
 
-
-## export service prototype
-* part of annotation service or new standalone service? initially will add to annotation service
-  * the export feature could get "busy" in a facility running continuous machine learning
-* use DataSet model from annotations in new API e.g., exportDataSet(DataSet) rpc method returns URL to exported file
-* what formats to support? bob said hdf5 initially, what else?
-  * probably 2 different hdf5 formats e.g, one for data platform archive format (using serialize data values) and one for user consumption (where DataValues are unpacked)
-* how to handle arbitrarily nested arrays of structures containing arrays of images etc.
 
 ## extend ingestion benchmark to run NASA scenario
 * either use ingestion benchmark framework, or create a new load test framework, but what's the difference?
 * signals sampled with 4 bytes data + 1 byte of status according to Bob
-  * 1000 signals sampled at 250 kHz, 
+  * 1000 signals sampled at 250 kHz,
   * 1GB / sec
   * 60 GB / min
   * 1.8 TB / 30 min
 * probably need to either set up a server on AWS cloud, or buy external storage to do this test
 
-# ===== FEATURES FOR FUTURE VERSIONS =====
 
 ## simple data generator for demo / web application data
 * data generator with broader time range and different data types
