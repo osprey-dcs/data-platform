@@ -10,3 +10,4 @@ var/lock/*.pid
 
 data-platform.iml
 
+.DS_Store
