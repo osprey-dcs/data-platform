@@ -945,7 +945,7 @@ Export API requests are handled in the same fashion as all other API requests to
 
 The diagram below shows the classes involved in the export handling framework.
 
-![configuration manager](images/uml-dp-export.png "export framework")
+![exporting data](images/uml-dp-export.png "export framework")
 
 There is a single base class for all export jobs, ExportDataSetJob that controls the execution.  It defines abstract methods that are overridden by derived classes to handle writing data to the particular file format.  It uses the MongoAnnotationClientInterface to find the specified dataset.  It uses ExportDataSetDispatcher to send a response in the API method's response stream.
 
