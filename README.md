@@ -54,10 +54,14 @@ Use the links below to learn more about the Data Platform project.
   * [data platform installation options](doc/user/installation.md#data-platform-installation-options)
 * [data platform ecosystem tools](https://github.com/osprey-dcs/dp-support)
 
+## project documents
+* [techincal overview document - md](doc/documents/dp/dp-tech.md)
+* [technical overview document - pdf](doc/documents/dp/dp-tech.pdf)
+* [project overview slide deck - pdf](doc/documents/presentations/mldp-overview.pdf)
+
 ## technical details
 * [data platform API](https://github.com/osprey-dcs/data-platform/blob/main/doc/documents/dp/dp-tech.md#data-platform-api)
 * [data platform service implementations](https://github.com/osprey-dcs/data-platform/blob/main/doc/documents/dp/dp-tech.md#data-platform-service-implementations)
 
 ## developer notes
-
 * [data platform release process](doc/developer/release.md)
