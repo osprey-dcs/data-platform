@@ -82,18 +82,15 @@ Version 1.4 adds Ingestion and Query Service support for all data types defined 
 
 With version 1.5, we have now completed the implementation of the initial Data Platform API we defined at the outset for the Core Services.  This version focuses on adding the remaining unimplemented Ingestion Service features including: unidirectional client-side streaming data ingestion API, API for registering providers, API for querying ingestion request status details, testing for handling of value status information, validation of data ingestion providers, as well as improvements to the performance benchmark framework. The java dp-grpc and dp-service projects are updated to use Java 21 and the latest versions of 3rd party libraries.
 
+### v1.6 (October 2024)
+
+Version 1.6 includes a new Annotation Service API method for exporting time-series data from the archive to common file formats including HDF5, CSV, and XLSX (Excel).  It also provides an enhancement to the annotations query API method for filtering annotations by dataset id, in addition to the previously supported methods for filtering by owner and comment text field content.
+
+
 ## todo and road map
 
-
-### v1.6 planned features (September / October 2024)
-
-* Develop prototype API and implement export service RPC methods.
 * Add support for additional annotation types, including linked and derived data sets, and post-ingestion calculations.
 * Run more extensive load testing benchmarks.
-
-
-### features planned for future releases
-
 * Build simple data generator for demo and web application development.
 * Implement mechanism for ingestion data validation.
 * Add API for time-series data query by value status information?
@@ -103,6 +100,7 @@ With version 1.5, we have now completed the implementation of the initial Data P
 * Investigate MongoDB database clustering (replica sets), partitioning (sharding), and connection pooling.
 * Experiment with horizontal scaling alternatives.
 * Experiment with streaming architecture (e.g., Apache Kafka)
+
 
 ## project organization
 
@@ -579,7 +577,7 @@ The "queryAnnotations()" method is a single request/response method that searche
 
 A "QueryAnnotationsRequest" encapsulates the criteria for the query.  It contains a list of "QueryAnnotationsCriterion" messages.
 
-The "QueryAnnotationsCriterion" message defines a number of different criteria message types that can be added to the criterion list, including an "OwnerCriterion" (specifying the owner id to match in the annotation query) and "CommentCriterion" (specifying text to match against annotation comments).  Other types of criterion messages will be added as additional types of annotations are defined.
+The "QueryAnnotationsCriterion" message defines a number of different criteria message types that can be added to the criterion list, including an "OwnerCriterion" (specifying the owner id to match in the annotation query), "DataSetCriterion" (specifying the dataset id to match in the annotation query), and "CommentCriterion" (specifying text to match against annotation comments).  Other types of criterion messages will be added as additional types of annotations are defined.
 
 These query criteria can be used individually in the criteria list, or multiple criteria can be added to the list to specify a compound query.  E.g., adding an "OwnerCriterion" and "CommentCriterion" to the list will match comment annotations for the specified owner.
 
@@ -591,6 +589,27 @@ The "AnnotationsResult" message includes a list of "Annotation" messages, one fo
 
 An "Annotation" message includes the unique id of the annotation, the owner id, the id of the associated dataset identifying the data in the archive that the annotation applies to, and for convenience (so that a second query to retrieve the dataset is not required) a "DataSet" message containing the list of "DataBlocks" comprising the annotation's dataset.
 
+### exporting datasets
+
+The Data Platform Annotation Service provides a method for exporting data for a DataSet to common file formats.
+
+```
+rpc exportDataSet(ExportDataSetRequest) returns (ExportDataSetResponse);
+```
+
+#### exportDataSet()
+
+The method "exportDataSet()" exports data for the specified dataset to a file.  It accepts a "ExportDataSetRequest" message and returns a "ExportDataSetResponse" message.
+
+#### ExportDataSetRequest
+
+Parameters to the "exportDataSet()" method are encapsulated in an ExportDataSetRequest that includes fields for specifying the id of the DataSet to be exported, and an enum for specifying the desired output file format.
+
+#### ExportDataSetResponse
+
+The "exportDataSet()" method returns an ExportDataSetResponse, whose payload includes either an ExceptionalResult indicating a problem in handling the export request, or an ExportDataSetResult for a successful request.
+
+ExportDataSetResult includes fields specifying the full path for the export output file and (optionally if configured) the URL for accessing the file via a web server.
 
 # Data Platform Service Implementations
 
@@ -920,6 +939,30 @@ _configMgr().getConfigInteger(CFG_KEY_NUM_WORKERS, DEFAULT_NUM_WORKERS)_
 
 where "configMgr()" is a convenience method for accessing the singleton "ConfigurationManager" instance.
 
+### exporting data
+
+Export API requests are handled in the same fashion as all other API requests to the Data Platform Services.  A job is created for handling the request and added to the handler's task queue.  When the job is executed, it 1) retrieves the associated dataset from the database, 2) generates output file paths and URLs, 3) creates the directories in the file path as neeeded, and 4) exports the data for the dataset to file.
+
+The diagram below shows the classes involved in the export handling framework.
+
+![configuration manager](images/uml-dp-export.png "export framework")
+
+There is a single base class for all export jobs, ExportDataSetJob that controls the execution.  It defines abstract methods that are overridden by derived classes to handle writing data to the particular file format.  It uses the MongoAnnotationClientInterface to find the specified dataset.  It uses ExportDataSetDispatcher to send a response in the API method's response stream.
+
+The new class ExportConfiguration is responsible for reading the export-related config resources and generating file paths and URLs based on that configuration, and is used by the job to generate paths for the export file.
+
+There are two intermediate classes, BucketedDataExportJob and TabularDataExportJob, that provide common logic for writing time-series data organized in "buckets" and writing tabular file formats, respectively.
+
+There is a single concrete class for writing bucketed data, Hdf5ExportJob, that handles writing bucketed data to HDF5 format.
+
+TabularDataExportJob uses utility methods in TabularDataUtility to build a data structure for iterating and accessing data in a tabular fashion.  This functionality is contained in a standalone class so that it can be shared with other code working with tabular data (such as building the result for a tabular data query).
+
+There are two concrete classes for writing tabular data, CsvExportJob and ExcelExportJob, that handle writing tabular data to CSV and XLSX formats, respectively.
+
+The details of writing to specific file formats from the bucketed and tabular data export job classes are defined by two interfaces, BucketedDataExportFileInterface and TabularDataExportFileInterface, respectively.  Hdf5ExportJob uses the concrete interface implementation, DatasetExportHdf5File to write data to HDF5 format.  CsvExportJob uses DatasetExportCsvFile to write to CSV files.  ExcelExportJob uses DatasetExportXlsxFile to write to XLSX files.
+
+The file interface implementation classes use new third party library dependencies (defined in "pom.xml" for lower-level file access APIs.  The libraries "sis-base" and "sis-jhdf5" from "cisd" are used by DatasetExportHdf5File for writing HDF5 files.  The library "fastcsv" from "de.siegmar" is used by DatasetExportCsvFile for writing CSV files.  The library "poi-ooxml" from "org.apache.poi" is used by DatasetExportXlsxFile for writing XLSX files.
+
 
 ### performance benchmarking
 
@@ -1169,10 +1212,7 @@ We've used a naming convention for classes that contain jUnit test cases to end 
   </tr>
 </table>
 
-
-
 #### annotation service tests (com.ospreydcs.dp.service.annotation)
-
 
 <table>
   <tr>
@@ -1187,9 +1227,19 @@ We've used a naming convention for classes that contain jUnit test cases to end 
    <td>Base class for derived test classes providing annotation service test coverage.  Includes nested classes "CreateDataSetParams", "CreateAnnotationRequestParams", "CreateCommentAnnotationParams", "AnnotationDataSet" and "AnnotationDataBlock" to encapsulate the parameters for Annotation Service API requests.  Provides utility methods "buildCreateCommentAnnotationRequest()" and "buildQueryAnnotationsRequestOwnerComment()" for building gRPC request objects from params objects for the create annotation and query annotations APIs, respectively.
    </td>
   </tr>
+  <tr>
+   <td>ExportConfigurationTest
+   </td>
+   <td>Provides coverage for generating file paths and URL from export-related config resources.  Includes positive test cases for full and minimal configuration handling, and negative test cases for invalid configurations.
+   </td>
+  </tr>
+  <tr>
+   <td>DatasetExportHdf5FileTest
+   </td>
+   <td>Provides unit test coverage for writing a DataSetDocument object to HDF5 file format using class DatasetExportHdf5File.
+   </td>
+  </tr>
 </table>
-
-
 
 ### integration testing
 
@@ -1231,7 +1281,7 @@ The various integration test classes are summarized in the tables below.
   <tr>
    <td>AnnotationTest
    </td>
-   <td> This test provides coverage for various aspects of the AnnotationService API including creating and querying DataSets, and creating and querying Annotations. The test runs a simple ingestion scenario to create data for various devices.  It includes both negative and positive tests for createDataSet() using the ingested data.  It includes both negative and postive tests for the queryDataSets() API over the DataSets created by the test.  It includes both negative and positive tests for createAnnotation() using the DataSets created by the test.  It includes negative and positive coverage for queryAnnotations() using the annotations created by the test.  It includes a scenario to run a time-series data query using the DataSet returned by queryAnnotations().
+   <td> This test provides coverage for various aspects of the AnnotationService API including creating and querying DataSets, and creating and querying Annotations. The test runs a simple ingestion scenario to create data for various devices.  It includes both negative and positive tests for createDataSet() using the ingested data.  It includes both negative and postive tests for the queryDataSets() API over the DataSets created by the test.  It includes both negative and positive tests for createAnnotation() using the DataSets created by the test.  It includes negative and positive coverage for queryAnnotations() using the annotations created by the test.  It includes a scenario to run a time-series data query using the DataSet returned by queryAnnotations().  It includes positive and negative test cases for exporing datasets to HDF5, CSV, and XLSX formats.
    </td>
   </tr>
 </table>
