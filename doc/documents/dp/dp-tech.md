@@ -84,7 +84,7 @@ With version 1.5, we have now completed the implementation of the initial Data P
 
 ### v1.6 (October 2024)
 
-Version 1.6 includes a new Annotation Service API method for exporting time-series data from the archive to common file formats including HDF5, CSV, and XLSX (Excel).  It also provides an enhancement to the annotations query API method for filtering annotations by dataset id, in addition to the previously supported methods for filtering by owner and comment text field content.
+Version 1.6 includes a new Annotation Service API method for exporting time-series data from the archive to common file formats including HDF5, CSV, and XLSX (Excel).  It provides an enhancement to the annotations query API method for filtering annotations by dataset id, in addition to the previously supported methods for filtering by owner and comment text field content.  Support is also added for querying datasets and annotations by id.
 
 
 ## todo and road map
@@ -533,7 +533,7 @@ The "queryDataSets()" method is a single request/response method that searches f
 
 A "QueryDataSetsRequest" encapsulates the criteria for the query.  It contains a list of "QueryDataSetsCriterion" messages.
 
-The "QueryDataSetsCriterion" message defines a number of different criteria message types that can be added to the criterion list, including an "OwnerCriterion" (specifying the owner id to match in the annotation query), "NameCriterion" (specifying text to match against dataset name), and "DescriptionCriterion" (specifying text to match against dataset description.
+The "QueryDataSetsCriterion" message defines a number of different criteria message types that can be added to the criterion list, including "IdCriterion" (specifying the id of a dataset to match), "OwnerCriterion" (specifying the owner id to match in the annotation query), "NameCriterion" (specifying text to match against dataset name), and "DescriptionCriterion" (specifying text to match against dataset description).
 
 These query criteria can be used individually in the criteria list, or multiple criteria can be added to the list to specify a compound query.  E.g., adding an "OwnerCriterion" and "NameCriterion" to the list will match dataset names for the specified owner.
 
@@ -577,7 +577,7 @@ The "queryAnnotations()" method is a single request/response method that searche
 
 A "QueryAnnotationsRequest" encapsulates the criteria for the query.  It contains a list of "QueryAnnotationsCriterion" messages.
 
-The "QueryAnnotationsCriterion" message defines a number of different criteria message types that can be added to the criterion list, including an "OwnerCriterion" (specifying the owner id to match in the annotation query), "DataSetCriterion" (specifying the dataset id to match in the annotation query), and "CommentCriterion" (specifying text to match against annotation comments).  Other types of criterion messages will be added as additional types of annotations are defined.
+The "QueryAnnotationsCriterion" message defines a number of different criteria message types that can be added to the criterion list, including "IdCriterion" (specifying the id of an annotation to match), "OwnerCriterion" (specifying the owner id to match in the annotation query), "DataSetCriterion" (specifying the dataset id to match in the annotation query), and "CommentCriterion" (specifying text to match against annotation comments).  Other types of criterion messages will be added as additional types of annotations are defined.
 
 These query criteria can be used individually in the criteria list, or multiple criteria can be added to the list to specify a compound query.  E.g., adding an "OwnerCriterion" and "CommentCriterion" to the list will match comment annotations for the specified owner.
 
