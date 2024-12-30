@@ -1,13 +1,8 @@
-# v1.6 (september-october)
+# v1.7 (september-october)
 
-## export feature prototype
-* part of annotation service or new standalone service? initially will add to annotation service
-  * the export feature could get "busy" in a facility running continuous machine learning
-* use DataSet model from annotations in new API e.g., exportDataSet(DataSet) rpc method returns URL to exported file
-* what formats to support? bob said hdf5 initially, what else?
-  * probably 2 different hdf5 formats e.g, one for data platform archive format (using serialize data values) and one for user consumption (where DataValues are unpacked)
-* how to handle arbitrarily nested arrays of structures containing arrays of images etc.
-
+## ingestion stream processing
+* prototype w/ processing inside ingestion service
+* prototype w/ processing in separate service
 
 # ===== FEATURES FOR FUTURE VERSIONS =====
 
@@ -40,7 +35,6 @@
   * 1.8 TB / 30 min
 * probably need to either set up a server on AWS cloud, or buy external storage to do this test
 
-
 ## simple data generator for demo / web application data
 * data generator with broader time range and different data types
 * include datasets / annotations / ingestion attributes and event metadata
@@ -49,6 +43,12 @@
 ## ingestion provider validation
 * consider adding a config resource to disable provider id validation?
 * could validate providers "off-line" (post-ingestion)
+
+## provenance use case etc (from bob after oak ridge epics meeting )
+The Data Platform is optimized for recalling thousands of signals at a single point in time. The Archive Appliance is not. It is good at recall a small number of signals over a large period of time.
+
+The Data Platform is for managing data sets - annotating them, deleting them, and using them in the life cycle of the data. One of our use cases is experimental data.
+A scientist takes XRay data from some number of detectors, along with some scalar and vector data. The XRay data has to be processed as these XRays are taken from different angles at different distances into some normalized coordinate data. The original data must be preserved for verification of published results especially in proton studies. So the MLDP would have the raw data set stored. In it's Mongo index, this file would be noted for the sample, date and owner of the data. The data scientists would normalize the coordinates and create a new MLDP version of the data. The Mongo index would have a link to the RAW data file and include in the metadata the code / version of the algorithm used to normalize the coordinates, the date it was run, and the person that performed the normalization. This normalized data would then be processed further to reconstruct the protein structure. This file would point back to the normalized data - and add the information for this transformation. This is the provenance portion of the data and its most challenging scenario.
 
 ## provider metadata
 * do we want a provider metadata query and where does it belong?
