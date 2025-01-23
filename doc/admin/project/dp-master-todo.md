@@ -1,32 +1,56 @@
-# v1.7 (september-october)
+# development roadmap through august
 
-## ingestion stream processing
-* prototype w/ processing inside ingestion service
-* prototype w/ processing in separate service
+## additional annotation components - craig 1.8
+* Identify and add handling for other types of annotations we want to support (linked datasets, calculations, derivative/uploaded datasets, URLs, ...). All annotations have keywords / tags, key-value attribute
+  * association (component of an annotation): a list of associated datasets, comment
+  * calculation (component of an annotation): we are going to upload in an API that looks like ingestion with data columns (like PVs) and timestamps (e.g., sum of PVs or statistics on PVs)
+  * comment (component of an annotation - we already have)
+  * keywords / tags (component)
+  * key-value attributes (component)
+
+## metadata queries - craig 1.8
+* what are the providers
+* what are the sources for a provider
+* ...
+
+## ingestion stream service (service) - Craig
+* Build service that aggregates PV data into block/tabular structure into correlated blocks with API for consumption by algorithms and applications for data event monitoring.
+* Incorporate components built by Chris for aggregating bucket-oriented query results into correlated blocks.
+* Utilize Ingestion Service data subscription mechanism for accessing data from ingestion stream.
+* Filtering: 1.7 ingestion stream prototype includes a filtering (condition filter) mechanism with API, should this be part of ingestion stream service or a client application facility.  Could also apply to query results, and that might be a good reason to make it part of the client library.
+
+## plugin framework (Application Framework / Java API library) - Chris
+* Create application framework for building "plugins" for data event monitoring and algorithm processing.
+* Follow patterns and conventions Chris has used for the client libraries.
+* Access data using mechanisms provided by Ingestion Stream Service (aggregated data / correlated data blocks) and Ingestion Service subscription API (raw ingestion data).
+
+## integration testing
+* how to include michael's aggregator
+
+## web application - Mitch
+* Create data blocks from existing query for use in data sets
+* Streamline selection of pvs
+  * Regex pattern to select PVs? Select range of PVs in a query via clicking PV names?
+* Rerun raw data query with selected PVs
+* Tabbing system within the app
+  * Viewing a dataset will not take you to a new page but to a new tab within the app
+  * Copying and pasting the URL will bring you back to your existing tabs
+* handling for new annotation types / schema / api
 
 # ===== FEATURES FOR FUTURE VERSIONS =====
 
-## design/prototype for additional annotation types
-* think about how to handle linked dataset, and maybe implement it
-  * is there a list of linked dataset ids?  What about the model where an annotation is for a single dataset? Should we change annotation model to include a list of datasets instead of single one?
-  * should we consider one giant annotation structure that can include comment, list of links, etc (sort of what Chris had in the original proposal), or is it better to have different types of annotations with different fields?
-* consider other needed features for annotations / datasets, e.g,.
-  * what ownership/group/sharing/permissions/audit trail info do we want to attach to annotations and datasets?  Where else do we need this?
-  * how to handle keywords / attributes (and description?) generically so they can be used for dataset, annotation, (buckets? not sure that makes sense)
-    * Does this belong with ownership/sharing/etc properties or a separate object?
-* consider changes to data model
-  * consider eliminating different subtypes of annotation, and have one fat class/document that includes everything (comment, linked data sets, etc).
-  * consider adding a generic "text" field to base annotation document class that is used as needed by subclasses (e.g., comment for CommentAnnotation, description for LinkedDataSetAnnotation, ...).  Mongo only supports a single text indexed field per collection.
-  * Should we simplify the query methods to be a flat data structure with all the fields reflected in the list of criteria, or stick with list of criteria?
-*  from bob (need to clarify)
-* Perhaps point to a calibration file.
-  * Owner
-  * Date
-  * For data sets that were generated from raw data, a pointer to the raw data file, the code that produced this file and the version of that code.
-* Should ownerId be required on dataset queries?
+## sharing and access control
+* Define and implement model for ownership and sharing of data, datasets, and annotations.
+* Relationship to authentication/login mechanism (which I think we've said we're putting off beyond August - confirm).
 
+## load testing
+* Run large-scale load testing.
+* Try continuous capture for 24 hours of "typical" accelerator scenario (4000 pvs sampled at 1 KHz)?
+* Try NASA scenario with 250 KHz data for 30 minutes?
+* Measure impact of data subscription mechanism on Ingestion Service?
+* Use Chris's data generator?
 
-## extend ingestion benchmark to run NASA scenario
+# extend ingestion benchmark to run NASA scenario
 * either use ingestion benchmark framework, or create a new load test framework, but what's the difference?
 * signals sampled with 4 bytes data + 1 byte of status according to Bob
   * 1000 signals sampled at 250 kHz,
@@ -34,6 +58,11 @@
   * 60 GB / min
   * 1.8 TB / 30 min
 * probably need to either set up a server on AWS cloud, or buy external storage to do this test
+
+## bob's provenance scenario
+* The Data Platform is optimized for recalling thousands of signals at a single point in time. The Archive Appliance is not. It is good at recall a small number of signals over a large period of time.
+* The Data Platform is for managing data sets - annotating them, deleting them, and using them in the life cycle of the data. One of our use cases is experimental data.
+* A scientist takes XRay data from some number of detectors, along with some scalar and vector data. The XRay data has to be processed as these XRays are taken from different angles at different distances into some normalized coordinate data. The original data must be preserved for verification of published results especially in proton studies. So the MLDP would have the raw data set stored. In it's Mongo index, this file would be noted for the sample, date and owner of the data. The data scientists would normalize the coordinates and create a new MLDP version of the data. The Mongo index would have a link to the RAW data file and include in the metadata the code / version of the algorithm used to normalize the coordinates, the date it was run, and the person that performed the normalization. This normalized data would then be processed further to reconstruct the protein structure. This file would point back to the normalized data - and add the information for this transformation. This is the provenance portion of the data and its most challenging scenario.
 
 ## simple data generator for demo / web application data
 * data generator with broader time range and different data types
@@ -43,15 +72,6 @@
 ## ingestion provider validation
 * consider adding a config resource to disable provider id validation?
 * could validate providers "off-line" (post-ingestion)
-
-## provenance use case etc (from bob after oak ridge epics meeting )
-The Data Platform is optimized for recalling thousands of signals at a single point in time. The Archive Appliance is not. It is good at recall a small number of signals over a large period of time.
-
-The Data Platform is for managing data sets - annotating them, deleting them, and using them in the life cycle of the data. One of our use cases is experimental data.
-A scientist takes XRay data from some number of detectors, along with some scalar and vector data. The XRay data has to be processed as these XRays are taken from different angles at different distances into some normalized coordinate data. The original data must be preserved for verification of published results especially in proton studies. So the MLDP would have the raw data set stored. In it's Mongo index, this file would be noted for the sample, date and owner of the data. The data scientists would normalize the coordinates and create a new MLDP version of the data. The Mongo index would have a link to the RAW data file and include in the metadata the code / version of the algorithm used to normalize the coordinates, the date it was run, and the person that performed the normalization. This normalized data would then be processed further to reconstruct the protein structure. This file would point back to the normalized data - and add the information for this transformation. This is the provenance portion of the data and its most challenging scenario.
-
-## provider metadata
-* do we want a provider metadata query and where does it belong?
 
 ## data statistics framework
 * should we add a framework for measuring data statistics, e.g., add fields containing time data was captured, time request was sent, time request was received, and time bucket was created, etc.  Could put in requestStatus document, bucket documents, or new statistics collection.
