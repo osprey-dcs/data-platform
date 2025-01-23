@@ -39,6 +39,17 @@
 
 # ===== FEATURES FOR FUTURE VERSIONS =====
 
+## event monitoring prototype next steps (done in v1.7 as ingestionstream service, move to new application framework?  or add a filtering mechanism to new ingestionstream service focused on aggregating correlated data blocks)
+* ConditionMonitor.handleSubscribeDataResult(): Flesh out method to cover all data types, and all operator cases for each type.  We plan to do this as an example/tutorial for the "plugin framework" (application framework for implementing data event monitoring and algorithms). 
+* EventMonitorSubscribeDataResponseObserver.onError(), onCompleted(), onNext().RESULT_NOT_SET: notify subscriptionManager of problem so it can clean up,
+  * remove responseObserver and list of EventMonitors for PV name
+  * close streams for subscribeDataEvent() that use the PV
+  * should we try again to call subscribeData() for a PV when the ingestion service closes the stream but there are EventMonitors that want data for the PV?
+    * could try to resubscribe, but what if the ingestion service is shutting down?
+* add IngestionServiceClient.setChannel() for using inprocess grpc?  Should we change benchmark client to use the same mechanism?  Should we change everything to use the same mechanism and the test framework can setup inprocess grpc while everything else is out-of-process with the appropriate kind of channel builder?
+* add request validation that each PV name exists in archive in IngestionServiceImpl.subscribeData()?  Or do this in Ingestion Stream Service subscribeDataEvent() only?
+* measure impact of data subscription handling on performance benchmark
+
 ## sharing and access control
 * Define and implement model for ownership and sharing of data, datasets, and annotations.
 * Relationship to authentication/login mechanism (which I think we've said we're putting off beyond August - confirm).
@@ -168,6 +179,7 @@
 * Use CompletableFuture for non-blocking async?
   * https://medium.com/javarevisited/java-completablefuture-c47ca8c885af
 * Experiment with java virtual threads for some of the async libraries like mongo reactivestreams driver?
+* horizontal scaling: consider using a redis queue for ingestion, with multiple consumers processing queue (vs. handle with queue and threads) vs. grpc load balancer
 
 ## mongo
 * DB connection pooling (e.g., HikariCP or Apache DBCP)?
