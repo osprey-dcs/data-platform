@@ -1406,6 +1406,12 @@ The various integration test classes are summarized in the tables below.
    </td>
   </tr>
   <tr>
+   <td>SubscribeDataTest
+   </td>
+   <td> Provides coverage for the subscribeData() API method.
+   </td>
+  </tr>
+  <tr>
    <td>UnaryTest
    </td>
    <td> Provides coverage for ingestion of data using the unary ingestion API, ingestData().  Includes simple negative and positive test scenarios.
