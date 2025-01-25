@@ -60,7 +60,7 @@ Make sure this is all done before adding tags etc because it's a pain removing t
 ## merge changes from dev branch to main for each repo
 
 * git checkout main
-* git merge dev-1.6
+* git merge dev-1.7
 * git push
 
 ## add git tags for version and release
@@ -74,26 +74,26 @@ The ~/dp/data-platform/scripts/tag-repos script can be used for this
 I'm using a tag like v1.1, v1.2 to mark the major version as we do minor releases.  So the major version tag gets moved for each minor release.
 
 - cd ~/dp/data-platform/scripts
-- ./tag-repos v1.6
+- ./tag-repos v1.7
 
 ### tag for current release
 
 These tags should only need to be added once for a release, unless they need to be "moved" (removed and added) to pick up new files.
 
 - cd ~/dp/data-platform/scripts
-- ./tag-repos rel-1.6.0
+- ./tag-repos rel-1.7.0
 
 ### steps for removing tags
 
 The tag-repos script can be used to move an existing tag. If tags need to be (re)moved (this is unusual, for the releases anyway):
 
-- git tag -d v1.6
-- git push origin --delete v1.6
+- git tag -d v1.7
+- git push origin --delete v1.7
 
 ## build data-platform installer
 
 - cd ~/dp/data-platform/scripts
-- ./make-installer 1.6.0
+- ./make-installer 1.7.0
 
 Upload the installer to include it with the data-platform release.
 
@@ -114,8 +114,8 @@ Upload the installer built previously.
 If transitioning to a new major release, consider creating new dev branch from main.  E.g., for v1.2 to v1.3:
 
 - git checkout main
-- git checkout -b dev-1.6
+- git checkout -b dev-1.7
 - git merge main
-- git push --set-upstream origin dev-1.6
+- git push --set-upstream origin dev-1.7
 
 Also set the version numbers in pom.xml for dp-grpc and dp-service (both for the package itself, and where dp-service includes dp-grpc etc.)
