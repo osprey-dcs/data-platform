@@ -86,21 +86,29 @@ With version 1.5, we have now completed the implementation of the initial Data P
 
 Version 1.6 includes a new Annotation Service API method for exporting time-series data from the archive to common file formats including HDF5, CSV, and XLSX (Excel).  It provides an enhancement to the annotations query API method for filtering annotations by dataset id, in addition to the previously supported methods for filtering by owner and comment text field content.  Support is also added for querying datasets and annotations by id.
 
+### v1.7 (January 2025)
+
+Version 1.7 includes a new Ingestion Service API method for subscribing to data received in the ingestion stream, enabling downstream processing.  It also includes a prototype data event monitoring framework, implemented as a new "Ingestion Stream Service".  We decided to discontinue development on the new service for now.  We envision that the functionality in this prototype will probably be divided between the new Ingestion Stream Service and a client application framework for building data event monitors and more general algorithm data processing.  This partitioning will allow the user to create data event monitoring applications with computation that would be impossible to implement in a general way as a service.  We intend to revisit the design and partitioning of functionality for the service and application framework in an upcoming release.
 
 ## todo and road map
 
-* Add support for additional annotation types, including linked and derived data sets, and post-ingestion calculations.
+### near term development plans through 8/2025
+
+* Redesign annotation API to support modular annotations including components for free-form text comment, association / linking of datasets, calculations, keywords, and key / value attributes.
+* Support for additional metadata queries for providers and their data sources.
+* Ingestion Stream Service with API for subscribing to aggregated PV data from the ingestion data stream formatted as correlated data blocks.
+* Plugin Application Framework for building data event monitoring applications and developing algorithms utilizing the mechanisms for subscribing to raw ingestion stream data and correlated data blocks.
+
+### longer term objectives
+
 * Run more extensive load testing benchmarks.
-* Build simple data generator for demo and web application development.
 * Implement mechanism for ingestion data validation.
 * Add API for time-series data query by value status information?
-* Add API for provider metadata query.
 * Add framework for measuring data statistics.
 * Add support for authentication and authorization of query and annotation services.
 * Investigate MongoDB database clustering (replica sets), partitioning (sharding), and connection pooling.
 * Experiment with horizontal scaling alternatives.
 * Experiment with streaming architecture (e.g., Apache Kafka)
-
 
 ## project organization
 
@@ -411,6 +419,40 @@ Encapsulates parameters to queryRequestStatus() API method. Includes a list of c
 Encapsulates response from queryRequestStatus() API method. Payload is an ExceptionalResult if the query is rejected or there is an error handling it, otherwise payload is a RequestStatusResult which contains a list of RequestStatus messages, corresponding to the documents in the MongoDB "requestStatus" collection that match the specified query criteria.
 
 Each RequestStatus message includes details from the document in the "requestStatus" collection, including a unique identifier for the request status document, provider id and name, client request id, status enum value, status message, and a list of idsCreated in the MongoDB "buckets" collection for the request's data.
+
+### data subscription
+
+The subscribeData() API method allows the caller to register a subscription for data received in the ingestion stream.  As the Ingestion Service receives new data for subscribed PVs, it publishes that data to subscribers while also persisting it to the archive.
+
+```
+rpc subscribeData(stream SubscribeDataRequest) returns (stream SubscribeDataResponse);
+```
+
+This method allows the client to register a subscription for a list of PVs, and receive new data for those PVs received by the Ingestion Service after the subscription is created.  The method uses bidirectional streaming.  The client sends SubscribeDataRequest messages in the method's request stream, and receives SubscribeDataResponse messages in the response stream.
+
+To initiate a new subscription, the client sends a single SubscribeDataRequest message (containing a NewSubscription message payload) to register the new subscription.
+
+The service responds with a single SubscribeDataResponse message, containing either an ExceptionalResult message payload if the request is rejected by the service or an AckResult message if the service accepts the request and registers the subscription.
+
+The service then sends a stream of SubscribeDataResponse messages, each containing a SubscribeDataResult with published data for the registered PVs, until the client cancels the subscription, either by sending a SubscribeDataRequest containing a CancelSubscription payload or by closing the API method's request stream.
+
+The service sends a response with an ExceptionalResult payload if it rejects the subscription request or an error occurs while handling the subscription.  In either case, after sending the ExceptionalResult message the service closes the API method response stream.
+
+If the client sends subsequent NewSubscription messages after registering the initial subscription, the service responds with a reject message and closes the response stream.
+
+#### SubscribeDataRequest
+
+The client sends SubscribeDataRequest messages in the request stream for the subscribeData() API method.  Each message can contain one of two message payloads, either a NewSubscription message or a CancelSubscription message.
+
+The NewSubscription message contains a list of PVs to be included in the data subscription.
+
+The CancelSubscription message is an empty message that simply indicates the client wishes to end the subscription.
+
+#### SubscribeDataResponse
+
+The service sends SubscribeDataResponse messages in the response stream for the subscribeData() method.  Each response contains one of three payload messages.  1) An ExceptionalResult payload is sent if the service rejects the subscription request or an error occurs while processing the subscription. 2) An AckResult payload is sent when the service accepts a subscription request.  3) A SubscribeDataResult is sent when the service publishes new data for any of the PVs registered for the subscription.
+
+Each SubscribeDataResult message payload contains a DataTimestamps message, specifying the timestamps for the included data values (either using a SamplingClock or explicit list of timestamps), and a list of DataColumn messages, each a column data vector for one of the PVs registered for the subscription.
 
 ## Data Platform API - query service
 
@@ -899,11 +941,43 @@ The class diagram below shows part of the original polymorphic "BucketDocument" 
 
 The diagram also shows that the base class uses fields to capture the details for the bucket's "DataTimestamps", with fields for both "SamplingClock" and "TimestampsList" details.
 
-![database interface framework](images/uml-dp-bucket-document-hierarchy.png "database interface framework")
+![bucket document hierarchy](images/uml-dp-bucket-document-hierarchy.png "bucket document hierarchy")
 
 In Data Platform version 1.4, the polymorphic "BucketDocument" hierarchy shown above is replaced by the new standalone "BucketDocument" class shown in the class diagram below.  It contains byte array fields "dataColumnBytes" and "dataTimestampsBytes" to hold the serialized "DataColumn" and "DataTimestamps" for the bucket, respectively.  It provides methods for reading and writing the serialized object to the bucket, and getting the API type case and name for the serialized object.
 
-![database interface framework](images/uml-dp-bucket-document-standalone.png "database interface framework")
+![bucket document standalone](images/uml-dp-bucket-document-standalone.png "bucket document standalone")
+
+### data subscription framework
+
+As of v1.7, the Ingestion Service provides a mechanism for subscribing to new data received in the ingestion stream, via the subscribeData() API method.  Key components involved in the data subscription handling framework are described in more detail below.
+
+![data subscription framework](images/uml-dp-data-subscription.png "data subscription framework")
+
+Invocations of the Ingestion Service's subscribeData() API method are dispatched to IngestionServiceImpl.subscribeData().  That method simply creates an instance of SubscribeDataRequestObserver to handle messages sent by the client in the API method's request stream.
+
+SubscribeDataRequestObserver implements the StreamObserver<SubscribeDataRequest> interface.  Its onNext() method receives incoming request messages and performs further processing depending on the message payload.  For NewSubscription payloads, it performs validation and either sends a reject for an invalid request or creates a SourceMonitor instance encapsulating subscription details and handling.  For CancelSubscription payloads, if there is a gRPC error (onError() is invoked) or the client closes the request stream (onCompleted() is invoked), SourceMonitor.requestCancel() is called to cancel the subscription before closing the API response stream.
+
+A new class, DataSubscriptionManager, is added to the handler framework for managing data subscription registrations and publishing data to subscribers as it is received by the Ingestion Service.  The data structures employed by DataSubscriptionManager use concurrency mechanisms for thread safety since requests might arrive on different threads.
+
+The new SourceMonitor instance is passed by SubscribeDataRequestObserver to MongoIngestionHandler.addSourceMonitor(), which calls DataSubscriptionManager.addSubscription() to register the new subscription and then uses SourceMonitor.sendAck() to send an acknowledgment message in the response stream.
+
+The only change to data ingestion handling is in the method IngestDataJob.handleIngestionRequest(), the method responsible for persisting ingested data to MongoDB.  After saving data to the database, the method calls DataSubscriptionManager.publishDataSubscription() with the ingestion request.  That subscription manager method iterates through the DataColumns in the ingestion request, and publishes data for each column where there are subscriptions for the column's PV.  The subscription manager uses SourceMonitor.publishData() to send a response message in the API method's response stream.
+
+SourceMonitor.requestCancel() uses a concurrency mechanism to ensure that only a single request to cancel the subscription is processed.  It calls MongoIngestionHandler.removeSourceMonitor() to unregister the subscription, which dispatches to DataSubscriptionManager.removeSubscriptions() to remove subscription details for the specified SourceMonitor from the data structures for managing subscriptions.
+
+### data event monitoring framework
+
+In v1.7, A new Ingestion Stream Service is added to the dp-service repo implementing a data event monitoring prototype with handling for the subscribeDataEvent() API method.  Because the prototype implementation is not complete and will be refactored, only a brief description of the key components of the handling framework is given below.
+
+- ingestionstream package: This new package contains the classes implementing the new Ingestion Stream Service.
+- IngestionStreamGrpcServer: Implements a gRPC server for the Ingestion Stream Service.
+- IngestionStreamServiceImpl: Implements the Ingestion Stream Service API methods, at this point only subscribeDataEvent(), and provides supporting utility methods for building and sending SubscribeDataEventResponse messages in the response stream.
+- IngestionStreamHandlerInterface: Defines the interface required of a handler for use by IngestionStreamServiceImpl to dispatch incoming requests to the handler.
+- IngestionStreamHandler: Concrete implementation of the handler interface using a task queue to service incoming subscription requests and worker threads to process those requests.
+- IngestionStreamHandler: Encapsulates the processing of each SubscribeDataEventRequest, for use in the handler's task queue.  Creates an EventMonitor for the request and adds it to the DataEventSubscriptionManager.
+- EventMonitor: Base class for different types of data event monitors, corresponding to the different data event definition types supported in the SubscribeDataEventRequest. Defines abstract method for handling new data from the subscribeData() API method's response stream.
+- ConditionMonitor: Concrete data event monitor implementation corresponding to the ConditionEventDef message payload in SubscribeDataEventRequest.  Implements the abstract method for handling data from the subscribeData() API method by checking to see if data values satisfy the condition for the monitor by comparing the data value and operand using specified operator.
+- DataEventSubscriptionManager: Manages data event subscriptions and uses the Ingestion Service's subscribeData() API method to receive data from the ingestion stream for PVs used by EventMonitors.  Provides methods for adding and removing EventMonitors, and dispatching incoming data from the subscribeData() API method response stream to the appropriate EventMonitor(s) for handling.
 
 ### configuration
 
