@@ -1,23 +1,34 @@
 # Data Platform Overview
 
+
 ## motivation
 
 The Data Platform provides tools for managing the data captured in an experimental research facility, such as a particle accelerator. The data are used within control systems and analytics applications, and facilitate the creation of machine learning models for those applications.
 
 The Data Platform is agnostic to the source and acquisition of the data. A project goal is to manage data captured from the [EPICS "Experimental Physics and Industrial Control System"](https://epics-controls.org/), however, use of EPICS is not required. The Data Platform APIs are generic and can be used from essentially all programming languages and any type of application.
 
+
 ## requirements and objectives
 
-* Provide an API for ingestion of heterogeneous data including scalar values, arrays, structures, and images.
+* Provide an API for ingestion of heterogeneous time-series data including scalar values, arrays, structures, and images.
 * Handle the data rates expected for an experimental research facility such as a particle accelerator.  A baseline performance requirement is to handle 4,000 scalar data sources sampled at 1 KHz, or 4 million samples per second.
-* Provide an API for retrieval of ingested data.
+* Provide an API for retrieval of ingested time-series data.
+* Provide mechanisms for adding post-ingestion annotations and calculations to the archive, and performing queries over those annotations.
 * Provide an API for exploring metadata for data sources available in the archive.
-* Provide mechanisms for adding post-ingestion annotations to the archive, and performing queries over those annotations.
 * Provide mechanism for exporting data from the archive to common formats.
+
 
 ## data platform elements
 
-The Data Platform includes two primary technical components, including an API utilizing the gRPC framework, and a suite of services built using the Java programming language.  The project also includes utilities for deploying and managing those components.  A JavaScript web application for exploring the data archive and working with data is under development.  Each element is described in more detail below.
+The Data Platform includes the following technical components:
+
+- An API built upon the gRPC communication framework.
+- A suite of services built using the Java programming language.  
+- A JavaScript web application for exploring the data archive.
+- Utilities for deploying and managing the ecosystem.  
+- High-level Java client libraries for building applications.
+
+Each of these elements is described in more detail below.
 
 ### gRPC API
 
@@ -39,24 +50,24 @@ The Data Platform Web Application is under development using the [JavaScript Rea
 
 A set of utilities is provided to help manage the Data Platform ecosystem.  There are scripts for managing infrastructure services including MongoDB and the Envoy proxy (used for deploying the web application), and a set of simple process-management utilities for managing the Data Platform server and benchmark applications.
 
+### high-level client libraries
+
+A suite of high-level client libraries is being developed that hide the details of the service APIs and provide a more convenient interface for building client applications.  The libraries are written in Java and are intended to be used by Java applications that need to interact with the Data Platform services.
+
 
 ## status and milestones
-
 
 ### "datastore" prototype (2022)
 
 A prototype implementation of the Data Platform services was built focusing on the creation of a general API supporting ingestion and query of heterogeneous data types including scalar, array / table, structure, and image. Service implementations were created using Java for both the Ingestion and Query Services, as well as libraries for building client applications. The prototype technology stack included both [InfluxDB](https://www.influxdata.com/) (for time series data) and MongoDB (for metadata). This prototype successfully demonstrated the use of gRPC APIs for ingestion and retrieval of heterogeneous, but did not meet the baseline performance requirements.
 
-
 ### datastore web application prototype (2022)
 
 The datastore prototype included development of a web application using JavaScript React and Tailwind libraries.  The prototype provided simple user interfaces for navigating metadata, as well as querying and displaying time-series data.  It demonstrated calling gRPC APIs from a browser-based application using the [gRPC Web](https://github.com/grpc/grpc-web/) JavaScript implementation of gRPC for browser clients.
 
-
 ### technology performance benchmarking (September 2023)
 
 Performance benchmark applications were developed and utilized to evaluate candidate technologies for use in the Data Platform implementation in light of the project performance goal stated above. Benchmarks focused on gRPC for API communication; InfluxDB, MongoDB and MariaDB for database storage; and writing JSON and HDF5 files to disk. The benchmark results showed that it was likely we could build service implementations meeting our performance requirements by using gRPC for communication and [MongoDB for storing "buckets" of time series data](https://www.mongodb.com/blog/post/building-with-patterns-the-bucket-pattern).
-
 
 ### Data Platform v1.0 (November 2023)
 
@@ -90,12 +101,16 @@ Version 1.6 includes a new Annotation Service API method for exporting time-seri
 
 Version 1.7 includes a new Ingestion Service API method for subscribing to data received in the ingestion stream, enabling downstream processing.  It also includes a prototype data event monitoring framework, implemented as a new "Ingestion Stream Service".  We decided to discontinue development on the new service for now.  We envision that the functionality in this prototype will probably be divided between the new Ingestion Stream Service and a client application framework for building data event monitors and more general algorithm data processing.  This partitioning will allow the user to create data event monitoring applications with computation that would be impossible to implement in a general way as a service.  We intend to revisit the design and partitioning of functionality for the service and application framework in an upcoming release.
 
+### v1.8 (March 2025)
+
+The primary focus of version 1.8 is an expanded API for creating and querying Annotations.  The Annotation API is redesigned to support modular annotations including components for free-form text comments, linking of associated datasets and other annotations, user-defined calculations, and additional descriptive fields.  This release also includes two new API methods for querying details and ingestion stats for data Providers, queryProviders() and queryProviderMetadata().  Behind the scenes changes include some bulk renaming of Java classes to follow a more consistent naming convention, and a more unified approach to the Java BSON document class framework used to store data in MongoDB for the application entities.
+
+
 ## todo and road map
 
 ### near term development plans through 8/2025
 
-* Redesign annotation API to support modular annotations including components for free-form text comment, association / linking of datasets, calculations, keywords, and key / value attributes.
-* Support for additional metadata queries for providers and their data sources.
+* Mechanism for including user-defined Calculations in time-series data queries and export.
 * Ingestion Stream Service with API for subscribing to aggregated PV data from the ingestion data stream formatted as correlated data blocks.
 * Plugin Application Framework for building data event monitoring applications and developing algorithms utilizing the mechanisms for subscribing to raw ingestion stream data and correlated data blocks.
 
@@ -110,10 +125,10 @@ Version 1.7 includes a new Ingestion Service API method for subscribing to data 
 * Experiment with horizontal scaling alternatives.
 * Experiment with streaming architecture (e.g., Apache Kafka)
 
+
 ## project organization
 
 The Data Platform project is organized using the following github repositories:
-
 
 ### dp-grpc
 
@@ -138,6 +153,8 @@ The [data-platform repo](https://github.com/osprey-dcs/data-platform) is the pri
 ### dp-benchmark
 
 The [dp-benchmark repo](https://github.com/osprey-dcs/dp-benchmark) is not currently active, but contains code developed for evaluating the performance of some candidate technologies considered for use in the Data Platform service technology stack.  It includes an overview of the benchmark process with a summary of results.
+
+
 
 # Data Platform API
 
@@ -330,7 +347,7 @@ The message "EventMetadata", also defined in "common.proto", allows incoming dat
 
 ### provider registration
 
-Data providers must be registered with the Ingestion Service before using ingestion API methods to send data to the ardhive.  This is accomplished via the provider registration API:
+Data providers must be registered with the Ingestion Service before using ingestion API methods to send data to the archive.  This is accomplished via the provider registration API:
 
 ```
 rpc registerProvider (RegisterProviderRequest) returns (RegisterProviderResponse);
@@ -338,7 +355,7 @@ rpc registerProvider (RegisterProviderRequest) returns (RegisterProviderResponse
 
 This unary method sends a single RegisterProviderRequest and receives a single RegisterProviderResponse.  It is required to call this method to register a data provider before calling one of the data ingestion methods using the id of that provider.
 
-Provider name is required in the RegisterProviderRequest, which may also contain optional metadata key/value attributes describing the provider.
+Provider name is required in the RegisterProviderRequest, which may also contain optional fields including description, tags, and key / value attributes.
 
 The response message indicates whether the registration was successful.  The response payload is an ExceptionalResult if the request is unsuccessful, otherwise it is a RegistrationResult that includes details about the new provider including providerId (for use in calls to data ingestion methods) and a flag indicating if the provider is new.  On success, if a document already exists in the MongoDB "providers" collection for the provider name specified in the RegisterProviderRequest, the method returns the corresponding provider id in the response, otherwise a new document is created in the "providers" collection and its id returned in the response.
 
@@ -346,7 +363,7 @@ It is safe (and recommended) to call this method each time a data ingestion clie
 
 #### RegisterProviderRequest
 
-Encapsulates parameters for a registerProvider() API method request.  The required providerName field uniquely identifies a provider.  The list of descriptive metadata key/value attributes is optional.
+Encapsulates parameters for a registerProvider() API method request.  The required providerName field uniquely identifies a provider.  The other descriptive fields are optional.
 
 #### RegisterProviderResponse
 
@@ -506,7 +523,7 @@ A "CursorOperation" payload is a special case and applies only to the "queryData
 
 Except for "queryDataTable()", all time-series data query methods return "QueryDataResponse" messages.  A "QueryDataResponse" contains one of two message payloads, "ExceptionalResult" if an error is encountered or no data is found (described above) or "QueryData".
 
-A "QueryData" message includes a list of "DataBucket" messages.  Each "DataBucket" contains a vector of data in a "DataColumn" message for a single PV, along with time expressed using "DataTimestamps" (described above), with either an explicit list of timestamps for the bucket data values, or a SamplingClock with start time and sample period.  The "DataBucket" also includes a list of key/value "Attribute" messages and/or "EventMetadata" message if specified on the ingestion request that created the bucket.
+A "QueryData" message includes a list of "DataBucket" messages.  Each "DataBucket" contains a vector of data in a "DataColumn" message for a single PV, along with time expressed using "DataTimestamps" (described above), with either an explicit list of timestamps for the bucket data values, or a SamplingClock with start time and sample period.  The "DataBucket" also includes a list of tags, a list of key/value "Attribute" pairs, and/or "EventMetadata" message if those descriptive fields were specified on the ingestion request that created the bucket.
 
 
 #### QueryTableResponse
@@ -516,28 +533,61 @@ The "queryDataTable()" time-series data query method returns its result via a "Q
 A "TableResult" message contains a list of PV column data vectors, one for each PV specified in the "QueryDataRequest".  It also contains a "DataTimestamps" message with a "TimestampList" of timestamps, one for each data row in the table.  The column data vectors are the same size as the list of timestamps, and are padded with empty values where a column doesn't contain a value at the specified timestamp.
 
 
-### metadata query
+### PV metadata query
 
 The Data Platform Query Service includes a single method for querying the archive's metadata about the PVs available in the archive.
 
 ```
-rpc queryMetadata(QueryMetadataRequest) returns (QueryMetadataResponse);
+rpc queryPvMetadata(QueryPvMetadataRequest) returns (QueryPvMetadataResponse);
 ```
 
-"queryMetadata()" is a single request/response unary method that accepts a "QueryMetadataRequest" and returns a "QueryMetadataResponse".
+"queryPvMetadata()" is a single request/response unary method that accepts a "QueryPvMetadataRequest" and returns a "QueryPvMetadataResponse".
 
 
-#### QueryMetadataRequest
+#### QueryPvMetadataRequest
 
-The "QueryMetadataRequest" message is defined in query.proto, and contains one of two payloads, "PvNameList" or "PvNamePattern".  A "PvNameList" message specifies an explicit list of PVs to find metadata for.  A "PvNamePattern" specifies a regular expression pattern for matching against PV names available in the archive.
+The "QueryPvMetadataRequest" message is defined in query.proto, and contains one of two payloads, "PvNameList" or "PvNamePattern".  A "PvNameList" message specifies an explicit list of PVs to find metadata for.  A "PvNamePattern" specifies a regular expression pattern for matching against PV names available in the archive.
 
 
-#### QueryMetadataResponse
+#### QueryPvMetadataResponse
 
-The "QueryMetadataResponse" message contains the result of a metadata query and includes one of two payloads, either an "ExceptionalResult" if an error is encountered or no data is found (described above) or "MetadataResult".
+The "QueryPvMetadataResponse" message contains the result of a metadata query and includes one of two payloads, either an "ExceptionalResult" if an error is encountered or no data is found (described above) or "MetadataResult".
 
 A "MetadataResult" message contains a list of "PvInfo" messages, one for each PV specified for the query (either explicitly in the PV name list or by matching the supplied PV name pattern).  A "PvInfo" message contains metadata for an individual PV in the archive, including name, timestamps for the first and last PV measurement in the archive, and stats for the most recent bucket including bucket id, data type information, data timestamps details, and sample count/period.
 
+
+### Provider query
+
+```
+rpc queryProviders(QueryProvidersRequest) returns (QueryProvidersResponse);
+```
+
+The "queryProviders()" API method is used by clients to retrieve details about ingestion data Providers defined in the archive.  It accepts a single "QueryProvidersRequest" containing the query parameters and returns a single "QueryProvidersResponse".  The response may indicate an exceptional result such as rejection or error in handling the request, otherwise it contains information about each Provider matching the query criteria.
+
+#### QueryProvidersRequest
+
+A "QueryProvidersRequest" contains a list of criteria for querying Providers.  Criterion options include 1) IdCriterion for query by unique id, 2) TextCriterion for full text query over Provider name and description, 3) TagsCriterion for query by tag value, and 4) AttributesCriterion for query by attribute key and value.  The list may contain a single criterion or list of multiple criteria.  For example, the query might use both a TagsCriterion and AttributesCriterion to query over tags and attributes, respectively.
+
+#### QueryProvidersResponse
+
+Contains results from a queryProviders() API method request.  Message payload is either an "ExceptionalResult" indicating rejection or an error handling the request, or a ProvidersResult with ProviderEntry for each Provider matching the query criteria.
+
+
+### Provider metadata query
+
+```
+rpc queryProviderMetadata(QueryProviderMetadataRequest) returns (QueryProviderMetadataResponse);
+```
+
+The "queryProviderMetadata()" query is used by clients to retrieve ingestion statistics for data Providers defined in the archive.  It accepts a single "QueryProviderMetadataRequest" message containing the query parameters, and returns a single "QueryProviderMetadataResponse".  The response may indicate an exceptional result such as rejection or error in handling the request, otherwise it contains ingestion metadata for the specified data provider.
+
+#### QueryProviderMetadataRequest
+
+Encapsulates the single parameter for a queryProviderMetadata() request, the unique id of a data Provider.
+
+#### QueryProviderMetadataResponse
+
+Contains results from a queryProviderMetadata() API method request.  Message payload is either an "ExceptionalResult" indicating rejection or an error handling the request, or a MetadataResult with a ProviderMetadata entry for the Provider matching the id specified in the request.
 
 ## Data Platform API - annotation service
 
@@ -575,9 +625,9 @@ The "queryDataSets()" method is a single request/response method that searches f
 
 A "QueryDataSetsRequest" encapsulates the criteria for the query.  It contains a list of "QueryDataSetsCriterion" messages.
 
-The "QueryDataSetsCriterion" message defines a number of different criteria message types that can be added to the criterion list, including "IdCriterion" (specifying the id of a dataset to match), "OwnerCriterion" (specifying the owner id to match in the annotation query), "NameCriterion" (specifying text to match against dataset name), and "DescriptionCriterion" (specifying text to match against dataset description).
+The "QueryDataSetsCriterion" message defines a number of different criteria message types that can be added to the criterion list, including "IdCriterion" (specifying the id of a dataset to match), "OwnerCriterion" (specifying the owner id to match in the annotation query), "TextCriterion" (specifying text for full-text search over name and description fields), and "PvNameCriterion" (to find DataSets whose list of PVs includes the specified name).
 
-These query criteria can be used individually in the criteria list, or multiple criteria can be added to the list to specify a compound query.  E.g., adding an "OwnerCriterion" and "NameCriterion" to the list will match dataset names for the specified owner.
+These query criteria can be used individually in the criteria list, or multiple criteria can be added to the list to specify a compound query.  E.g., adding an "OwnerCriterion" and "TextCriterion" to the list will match datasets for the  owner that contain the specified text.
 
 #### QueryDataSetsResponse
 
@@ -603,7 +653,33 @@ The method "createAnnotation()" creates an annotation for the specified dataset.
 
 #### CreateAnnotationRequest
 
-A "CreateAnnotationRequest" message specifies the id of the owner creating the annotation, and the id of the dataset to be annotated.  It uses a variable "oneof" payload for specifying the details specific to the type of annotation being created.  Currently there is a single type of annotation, "CommentAnnotation", which includes the text of the comment for the annotation.
+A "CreateAnnotationRequest" message includes three required fields: ownerId (unique id of owner), dataSetIds (list of unique ids of associated DataSets), and name (brief annotation name).  It includes the following optional fields:
+
+- annotationIds: list of unique ids for associated annotations
+- comment: free-form text comment
+- tags: list of tags / keywords for cataloging the annotation
+- attributes: list of key / value attribute pairs for cataloging the annotation
+- eventMetadata: used to associate the annotation with an event or experiment
+- calculations: used to attach user-defined calculations (more details below)
+
+The lists of associated DataSet ids and Annotation ids are an initial attempt to meet the requirement for tracking data provenance.  To add Calculations that are derived from (or related to) regular PV time-series data in the archive, the following steps are taken: 
+
+- Create a DataSet that contains one or more Data Blocks that reference the PVs and time range(s) from the archive used in the calculation.
+- Create an Annotation containing the unique id of that DataSet in the list of dataSetIds, and includes the desired Calculations.
+
+To add Calculations that are derived from other user-defined Calculations (that are part of another Annotation like the one crated above), the following step is taken:
+
+- Create an Annotation containing the unique id of the Annotation that contains the original Calculations in the list of associated annotationIds, and includes the new Calculations derived from the original.
+
+#### Calculations
+
+The Calculations object is defined in the proto file for the Annotation Service and defines the data structure used for representing Calculations in both creating and querying Annotations.
+
+To the extent possible, it parallels the data structures used in the ingestion of regular time-series data in order that user-defined Calculations can be treated in a similar fashion for the purposes of querying and exporting data that includes both PV data and user-defined Calculations.
+
+The Calculations object includes a list of CalculationsDataFrames.  Each CalculationsDataFrame includes 1) a DataTimestamps object, and 2) a list of DataColumns, each of which contains a vector of data values for a single Calculation and specifies a DataValue for each timestamp specified by the corresponding DataTimestamps object.
+
+It might be helpful to use the analogy of an Excel workbook.  The Calculations object is the workbook, and each CalculationDataFrame is a worksheet in that workbook that contains a column of timestamps and columns of calculated data with a value for each timestamp.
 
 #### CreateAnnotationResponse
 
@@ -619,7 +695,7 @@ The "queryAnnotations()" method is a single request/response method that searche
 
 A "QueryAnnotationsRequest" encapsulates the criteria for the query.  It contains a list of "QueryAnnotationsCriterion" messages.
 
-The "QueryAnnotationsCriterion" message defines a number of different criteria message types that can be added to the criterion list, including "IdCriterion" (specifying the id of an annotation to match), "OwnerCriterion" (specifying the owner id to match in the annotation query), "DataSetCriterion" (specifying the dataset id to match in the annotation query), and "CommentCriterion" (specifying text to match against annotation comments).  Other types of criterion messages will be added as additional types of annotations are defined.
+The "QueryAnnotationsCriterion" message defines a number of different criteria message types that can be added to the criterion list, including "IdCriterion" (specifying the unique id of an annotation to match), "OwnerCriterion" (specifying the owner id to match), "DataSetsCriterion" (specifying the unique id of an associated DataSet to match), "AnnotationsCriterion" (specifying the unique id of an associated Annotation to match), "TextCriterion" (specifying text to match in full text query over name, comment, and event description fields), "TagsCriterion" (specifying tag / keyword value to match), and "AttributesCriterion" (specifying the key and value to match against Attribute pairs).
 
 These query criteria can be used individually in the criteria list, or multiple criteria can be added to the list to specify a compound query.  E.g., adding an "OwnerCriterion" and "CommentCriterion" to the list will match comment annotations for the specified owner.
 
@@ -629,7 +705,7 @@ The "queryAnnotations()" method returns a "QueryAnnotationsResponse" message wit
 
 The "AnnotationsResult" message includes a list of "Annotation" messages, one for each annotation that matches the query's search criteria.
 
-An "Annotation" message includes the unique id of the annotation, the owner id, the id of the associated dataset identifying the data in the archive that the annotation applies to, and for convenience (so that a second query to retrieve the dataset is not required) a "DataSet" message containing the list of "DataBlocks" comprising the annotation's dataset.
+An "Annotation" message includes the unique id of the annotation, the owner id, list of associated DataSet ids, content of associated DataSets (for convenience so a second query isn't required), name, list of associated Annotation ids, comment text, list of tags, list of key / value attribute pairs, event metadata, and user-defined Calculations.
 
 ### exporting datasets
 
