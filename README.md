@@ -1,17 +1,26 @@
 # data-platform repo
 
-This document includes background for the Data Platform project, a description of the project's requirements and objectives, and a summary of the technical components.  It also provides a status update and a list of milestones for the project.  The document concludes with a list of near-term development plans and longer-term objectives.
+This is the primary repo for the Machine Learning Data Platform (MLDP), providing project background and including links to the various project elements.  This document includes the following details:
 
-You can continue reading the background materials or jump ahead to the [additional documentation](#additional-documentation) section to learn how to install and get started with the Data Platform project.
+- [Project motivation](#motivation)
+- [Requirements and objectives](#requirements-and-objectives)
+- [MLDP Project elements](#data-platform-project-elements)
+- [Status and milestones](#status-and-milestones)
+- [Todo and road map](#todo-and-road-map)
+- [Additional documentation](#additional-documentation)
+- [Installation and getting started](#installation-and-getting-started)
 
-## motivation
+
+---
+## Motivation
 
 The Data Platform provides tools for managing the data captured in an experimental research facility, such as a particle accelerator. The data are used within control systems and analytics applications, and facilitate the creation of machine learning models for those applications.
 
 The Data Platform is agnostic to the source and acquisition of the data. A project goal is to manage data captured from the [EPICS "Experimental Physics and Industrial Control System"](https://epics-controls.org/), however, use of EPICS is not required. The Data Platform APIs are generic and can be used from essentially all programming languages and any type of application.
 
 
-## requirements and objectives
+---
+## Requirements and Objectives
 
 * Provide an API for ingestion of heterogeneous time-series data including scalar values, arrays, structures, and images.
 * Handle the data rates expected for an experimental research facility such as a particle accelerator.  A baseline performance requirement is to handle 4,000 scalar data sources sampled at 1 KHz, or 4 million samples per second.
@@ -21,15 +30,17 @@ The Data Platform is agnostic to the source and acquisition of the data. A proje
 * Provide mechanism for exporting data from the archive to common formats.
 
 
-## data platform elements
+---
+## Data Platform Project Elements
 
 The Data Platform includes the following technical components:
 
 - An API built upon the gRPC communication framework.
 - A suite of services built using the Java programming language.
-- A JavaScript web application for exploring the data archive.
 - Utilities for deploying and managing the ecosystem.
 - High-level Java client libraries for building applications.
+- A JavaScript web application for exploring the data archive.
+- Benchmarks for comparing alternative technologies.
 
 Each of these elements is described in more detail below.
 
@@ -39,25 +50,30 @@ The Data Platform API is built upon the [gRPC open-source high-performance remot
 
 We chose to use the gRPC framework for the Data Platform API because it can meet our performance requirements for data ingestion, and bindings are provided for virtually any programming language.
 
-The API definition is managed separately from the service implementations so that it can be utilized for building client applications that are independent of other Data Platform technology.  The Data Platform gRPC API is described in more detail in [section "Data Platform API"](#data-platform-api).
+The API definition is managed separately from the service implementations so that it can be utilized for building client applications that are independent of other Data Platform technology.  The Data Platform gRPC API is documented in the [dp-grpc repo](https://github.com/osprey-dcs/dp-grpc).
 
-### service implementations
+### Service Implementations
 
-The Data Platform Services are implemented as Java server applications.  There are three independent server applications, providing ingestion, query, and annotation services, respectively.  The [MongoDB document-oriented database management system](https://www.mongodb.com/) is used by the services for persistence.  [Section "Data Platform Service Implementations"](#data-platform-service-implementations) provides more detail about the Java service implementations and the frameworks used to build them.
+The Data Platform Services are implemented as Java server applications.  There are three independent server applications, providing ingestion, query, and annotation services, respectively.  The [MongoDB document-oriented database management system](https://www.mongodb.com/) is used by the services for persistence.  The [dp-service repo](https://github.com/osprey-dcs/dp-service) provides more detail about the Java service implementations and the frameworks used to build them.
 
-### web application
+### Installation and Deployment Support Tools
 
-The Data Platform Web Application is under development using the [JavaScript React library](https://react.dev/).  It will provide a user interface for navigating archive metadata and time-series data, viewing and creating annotations, and other tools for visualizing and exporting data.
+A set of utilities is provided to help manage the Data Platform ecosystem.  There are scripts for managing infrastructure services including MongoDB and the Envoy proxy (used for deploying the web application), and a set of simple process-management utilities for managing the Data Platform server and benchmark applications.  The [dp-support repo](https://github.com/osprey-dcs/dp-support) contains the scripts and utilities for managing the components of the Data Platform ecosystem.  It includes documentation for using those tools.
 
-### installation and deployment support tools
-
-A set of utilities is provided to help manage the Data Platform ecosystem.  There are scripts for managing infrastructure services including MongoDB and the Envoy proxy (used for deploying the web application), and a set of simple process-management utilities for managing the Data Platform server and benchmark applications.
-
-### high-level client libraries
+### High-Level Client Libraries
 
 A suite of high-level client libraries is being developed that hide the details of the service APIs and provide a more convenient interface for building client applications.  The libraries are written in Java and are intended to be used by Java applications that need to interact with the Data Platform services.
 
+### Web Application
 
+The Data Platform Web Application is under development using the [JavaScript React framework](https://react.dev/).  It will provide a user interface for navigating archive metadata and time-series data, viewing and creating annotations, and other tools for visualizing and exporting data.  The [dp-web-app repo](https://github.com/osprey-dcs/dp-web-app) contains the JavaScript code for the Data Platform Web Application, with documentation about the project.
+
+### Technology Benchmarks
+
+The [dp-benchmark repo](https://github.com/osprey-dcs/dp-benchmark) is not currently active, but contains code developed for evaluating the performance of some candidate technologies considered for use in the Data Platform service technology stack.  It includes an overview of the benchmark process with a summary of results.
+
+
+---
 ## status and milestones
 
 ### "datastore" prototype (2022)
@@ -109,6 +125,7 @@ Version 1.7 includes a new Ingestion Service API method for subscribing to data 
 The primary focus of version 1.8 is an expanded API for creating and querying Annotations.  The Annotation API is redesigned to support modular annotations including components for free-form text comments, linking of associated datasets and other annotations, user-defined calculations, and additional descriptive fields.  This release also includes two new API methods for querying details and ingestion stats for data Providers, queryProviders() and queryProviderMetadata().  Behind the scenes changes include some bulk renaming of Java classes to follow a more consistent naming convention, and a more unified approach to the Java BSON document class framework used to store data in MongoDB for the application entities.
 
 
+---
 ## todo and road map
 
 ### near term development plans through 8/2025
@@ -129,36 +146,8 @@ The primary focus of version 1.8 is an expanded API for creating and querying An
 * Experiment with streaming architecture (e.g., Apache Kafka)
 
 
-## project organization
 
-The Data Platform project is organized using the following github repositories:
-
-### dp-grpc
-
-The [dp-grpc repo](https://github.com/osprey-dcs/dp-grpc) contains the Data Platform API definition.  It includes documentation for the Platform's data and service models, and a description of the gRPC "proto" files containing the API definition, which is provided in [section "Data Platform API"](#data-platform-api) of this document.
-
-### dp-service
-
-The [dp-service repo](https://github.com/osprey-dcs/dp-service) contains the Java code for implementations of the Data Platform services, including the shared frameworks used to build them.  It includes documentation about those frameworks and the underlying MongoDB database schema utilized by the services, which is provided by [Section "Data Platform Service Implementations"](#data-platform-service-implementations) of this document.
-
-### dp-web-app
-
-The [dp-web-app repo](https://github.com/osprey-dcs/dp-web-app) contains the JavaScript code for the Data Platform Web Application, with documentation about the approach.
-
-### dp-support
-
-The [dp-support repo](https://github.com/osprey-dcs/dp-support) contains the scripts and utilities for managing the components of the Data Platform ecosystem.  It includes documentation for using those tools.
-
-### data-platform
-
-This [data-platform repo](https://github.com/osprey-dcs/data-platform) is the primary repo for the Data Platform project.  It contains documentation about the approach with links to the other repos, provided in [Section "project organization"](#project-organization) of this document.  It also includes a Quick Start guide for running the Data Platform ecosystem from the installer.
-
-### dp-benchmark
-
-The [dp-benchmark repo](https://github.com/osprey-dcs/dp-benchmark) is not currently active, but contains code developed for evaluating the performance of some candidate technologies considered for use in the Data Platform service technology stack.  It includes an overview of the benchmark process with a summary of results.
-
-
-
+---
 # Additional Documentation
 
 Use the links below to learn more about the Data Platform project.
