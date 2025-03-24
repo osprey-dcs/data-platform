@@ -1,18 +1,5 @@
 # development roadmap through august
 
-## additional annotation components - craig 1.8
-* Identify and add handling for other types of annotations we want to support (linked datasets, calculations, derivative/uploaded datasets, URLs, ...). All annotations have keywords / tags, key-value attribute
-  * association (component of an annotation): a list of associated datasets, comment
-  * calculation (component of an annotation): we are going to upload in an API that looks like ingestion with data columns (like PVs) and timestamps (e.g., sum of PVs or statistics on PVs)
-  * comment (component of an annotation - we already have)
-  * keywords / tags (component)
-  * key-value attributes (component)
-
-## metadata queries - craig 1.8
-* what are the providers
-* what are the sources for a provider
-* ...
-
 ## ingestion stream service (service) - Craig
 * Build service that aggregates PV data into block/tabular structure into correlated blocks with API for consumption by algorithms and applications for data event monitoring.
 * Incorporate components built by Chris for aggregating bucket-oriented query results into correlated blocks.
@@ -112,8 +99,7 @@
 ## ValueStatus / EPICS status and alarm handling
 * do we need a way to query by alarm conditions, or add it to metadata for a PV (last alarm etc), this would mean unpacking the serialized DataColumn byte array values (or setting fields in the bucket indicating alarms during ingestion which would affect performance, e.g., probably would reduce performance to the level before we used serialization to persist data values since we have to iterate through the whole data vector to find alarms)
 
-## use annotation model to store ingestion metadata like attributes and event metadata?
-* Consider using annotations collection / data model for storing event metadata, attribues attached to ingestion requests?
+## ingestion service
 * use parallel stream iteration in ingesting the batch of data buckets for an ingestion request? e.g.,
 <pre>
   List<Integer> squaredNumbers = numbers.parallelStream()
@@ -121,10 +107,13 @@
   .collect(Collectors.toList());
 </pre>
 
-## query
+## query service
 * should we change the query handler tests in MongoQueryHandlerTestBase / MongoSyncQueryHandlerTest to be integration tests?  The code inserts bucket documents manually for use in the query tests, and this is a completely different path than the buckets created by the ingestion service.  It caused a failure because the code to insert bucket documents was not properly naming the DataColumns serialized to the database, so the deserialized columns caused assertion failures checking the column name in query results.
 * Should we add check that query time range is less than some configured maximum time range size?
 * I only implemented a single HandlerQueryInterface concrete class using the "sync" mongodb driver, since this meets our performance requirements (and seems to outperform the async/reactivestreams driver for our use) and is in some ways less complex to work with.  Should we try building a handler using the async/reactivestreams mongodb driver to compare performance?
+
+## annotation service
+* should we allow deleting datasets and annotations?
 
 ## annotation to bucket collection database document cross reference
 * Should we cross reference annotations to buckets and/or vice versa? 
