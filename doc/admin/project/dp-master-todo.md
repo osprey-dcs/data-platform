@@ -1,6 +1,6 @@
 # development roadmap through august
 
-## ingestion stream service (service) - Craig
+## ingestion stream service - Craig
 * Build service that aggregates PV data into block/tabular structure into correlated blocks with API for consumption by algorithms and applications for data event monitoring.
 * Incorporate components built by Chris for aggregating bucket-oriented query results into correlated blocks.
 * Utilize Ingestion Service data subscription mechanism for accessing data from ingestion stream.
@@ -24,6 +24,13 @@
   * Copying and pasting the URL will bring you back to your existing tabs
 * handling for new annotation types / schema / api
 
+## side projects for investigation
+* load balancer / kubernetes prototype
+* kafka prototype for data subscription?
+* spring boot retrofit prototype
+* mongo connection pooling prototype
+* mongo sharding prototype
+
 # ===== FEATURES FOR FUTURE VERSIONS =====
 
 ## event monitoring prototype next steps (done in v1.7 as ingestionstream service, move to new application framework?  or add a filtering mechanism to new ingestionstream service focused on aggregating correlated data blocks)
@@ -36,6 +43,16 @@
 * add IngestionServiceClient.setChannel() for using inprocess grpc?  Should we change benchmark client to use the same mechanism?  Should we change everything to use the same mechanism and the test framework can setup inprocess grpc while everything else is out-of-process with the appropriate kind of channel builder?
 * add request validation that each PV name exists in archive in IngestionServiceImpl.subscribeData()?  Or do this in Ingestion Stream Service subscribeDataEvent() only?
 * measure impact of data subscription handling on performance benchmark
+
+## SerializedDataColumn
+* add more attributes? E.g., for specifying the data type in the request (instead of determining it from the type of the first DataValue)?  Other metadata like sampleCount?
+
+## downstream monitoring of data
+* mechanism for validating contents of SerializedDataColumns - is this a monitoring tool?  Try to deserialize contents outside of ingestion process and flag issues with contents?
+
+## excel export
+* each data block is a sheet in the workbook (as opposed to one giant sheet)
+* each Calculations frame is a sheet in the workbook
 
 ## sharing and access control
 * Define and implement model for ownership and sharing of data, datasets, and annotations.
@@ -179,6 +196,3 @@
 ## configuration
 * Add a configuration report to ConfigurationManager that returns an object containing properties read from config file, properties overridden on command line, etc? (for testing, not sure we need it).
 * Add a mechanism for the application to specify configuration properties that it expects to find, e.g., a list of properties during initialization, so that we can check up front instead of one at a time as we need them - not sure this is useful either, but might be good to know where the configuration doesn't contain expected values and we'll be using defaults?
-
-## blue sky
-* Kafka ingestion prototype?

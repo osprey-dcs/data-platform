@@ -124,13 +124,16 @@ Version 1.7 includes a new Ingestion Service API method for subscribing to data 
 
 The primary focus of version 1.8 is an expanded API for creating and querying Annotations.  The Annotation API is redesigned to support modular annotations including components for free-form text comments, linking of associated datasets and other annotations, user-defined calculations, and additional descriptive fields.  This release also includes two new API methods for querying details and ingestion stats for data Providers, queryProviders() and queryProviderMetadata().  Behind the scenes changes include some bulk renaming of Java classes to follow a more consistent naming convention, and a more unified approach to the Java BSON document class framework used to store data in MongoDB for the application entities.
 
+### v1.9 (May 2025)
+
+The main new features added in version 1.9 are 1) a mechanism for including user-defined Calculations alongside PV time-series data in the API for exporting data to CSV, XLSX, and HDF5 files, and 2) facilities for sending byte data in the ingestion, query, and subscription APIs for improved performance (on the order of 2-3x improvement for ingestion and query) by eliminating extra serialization operations in the gRPC communication framework and service implementations.  The release also includes enhancements to the data query handling framework, and updates and testing to use MongoDB 8 as the official reference version for the Data Platform.
+
 
 ---
 ## todo and road map
 
 ### near term development plans through 8/2025
 
-* Mechanism for including user-defined Calculations in time-series data queries and export.
 * Ingestion Stream Service with API for subscribing to aggregated PV data from the ingestion data stream formatted as correlated data blocks.
 * Plugin Application Framework for building data event monitoring applications and developing algorithms utilizing the mechanisms for subscribing to raw ingestion stream data and correlated data blocks.
 
@@ -138,19 +141,18 @@ The primary focus of version 1.8 is an expanded API for creating and querying An
 
 * Run more extensive load testing benchmarks.
 * Implement mechanism for ingestion data validation.
-* Add API for time-series data query by value status information?
 * Add framework for measuring data statistics.
 * Add support for authentication and authorization of query and annotation services.
 * Investigate MongoDB database clustering (replica sets), partitioning (sharding), and connection pooling.
 * Experiment with horizontal scaling alternatives.
-* Experiment with streaming architecture (e.g., Apache Kafka)
+* Experiment with streaming architecture (e.g., Apache Kafka).
 
 
 
 ---
 # Additional Documentation
 
-Use the links below to learn more about the Data Platform project.
+Use the links below to learn more about the Data Platform project, or the links above to navigate to the other project repositories.
 
 ## installation and getting started
 * [quick start guide](doc/user/quick-start.md)
