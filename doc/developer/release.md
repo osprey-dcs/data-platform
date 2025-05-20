@@ -15,7 +15,6 @@ Run Data Platform regression tests and benchmarks as part of testing.
 
 As necessary, update dp-support scripts for local mongo install, docker deployment, and compass.
 
-
 ## complete development work
 
 Edit pom.xml for all repos to reflect current version number!
@@ -50,13 +49,11 @@ Edit pom.xml for all repos to reflect current version number!
 
 Make sure this is all done before adding tags etc because it's a pain removing tags, deleting releases, adding tags, creating releases etc.
 
-
 ## merge changes from dev branch to main for each repo
 
 * git checkout main
-* git merge dev-1.8
+* git merge dev-1.9
 * git push
-
 
 ## add git tags for version and release
 
@@ -69,30 +66,32 @@ The ~/dp/data-platform/scripts/tag-repos script can be used for this
 I'm using a tag like v1.1, v1.2 to mark the major version as we do minor releases.  So the major version tag gets moved for each minor release.
 
 - cd ~/dp/data-platform/scripts
-- ./tag-repos v1.8
+- ./tag-repos v1.9
 
 ### tag for current release
 
 These tags should only need to be added once for a release, unless they need to be "moved" (removed and added) to pick up new files.
 
 - cd ~/dp/data-platform/scripts
-- ./tag-repos rel-1.8.0
+- ./tag-repos rel-1.9.0
 
 ### steps for removing tags
 
 The tag-repos script can be used to move an existing tag. If tags need to be (re)moved (this is unusual, for the releases anyway):
 
-- git tag -d v1.8
-- git push origin --delete v1.8
+- git tag -d v1.9
+- git push origin --delete v1.9
 
+## create pull requests
+
+If working in a fork, create a github pull request from the fork to the upstream for each project repo.
 
 ## build data-platform installer
 
 - cd ~/dp/data-platform/scripts
-- ./make-installer 1.8.0
+- ./make-installer 1.9.0
 
 Upload the installer to include it with the data-platform release.
-
 
 ## create github release for each repo
 
@@ -112,8 +111,8 @@ Upload the installer built previously.
 If transitioning to a new major release, consider creating new dev branch from main.  E.g., for v1.2 to v1.3:
 
 - git checkout main
-- git checkout -b dev-1.8
+- git checkout -b dev-1.9
 - git merge main
-- git push --set-upstream origin dev-1.8
+- git push --set-upstream origin dev-1.9
 
 Also set the version numbers in pom.xml for dp-grpc and dp-service (both for the package itself, and where dp-service includes dp-grpc etc.)
