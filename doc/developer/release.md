@@ -49,7 +49,6 @@ Edit pom.xml for all repos to reflect current version number!
 
 Make sure this is all done before adding tags etc because it's a pain removing tags, deleting releases, adding tags, creating releases etc.
 
-
 ## merge changes from dev branch to main for each repo
 
 * git checkout main
@@ -83,6 +82,9 @@ The tag-repos script can be used to move an existing tag. If tags need to be (re
 - git tag -d v1.9
 - git push origin --delete v1.9
 
+## create pull requests
+
+If working in a fork, create a github pull request from the fork to the upstream for each project repo.
 
 ## build data-platform installer
 
