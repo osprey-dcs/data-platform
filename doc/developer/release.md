@@ -46,12 +46,7 @@ If working in a fork, create a github pull request to merge the development bran
 
 ### merge changes from dev branch to main for each repo
 
-Merge the development branch to the main branch in the upstream repo.
-
-* git checkout main
-* git merge dev-1.10
-* git push
-
+Create pull requests to merge the development branch to the main branch in the upstream repo.
 
 ## add git tags for version and release
 
