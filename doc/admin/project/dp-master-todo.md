@@ -25,7 +25,7 @@
 * handling for new annotation types / schema / api
 
 ## side projects for investigation
-* load balancer / kubernetes prototype
+* grpc load balancer / kubernetes prototype
 * kafka prototype for data subscription?
 * spring boot retrofit prototype
 * mongo connection pooling prototype
@@ -107,6 +107,8 @@
 * or do off-line (post-ingestion) validation to avoid performance impacts, part of monitoring tools like looking for ingestion errors
 
 ## documentation
+* try tools for generating UML from code e.g., mermaid 
+  * https://medium.com/@optimzationking2/stop-drawing-diagrams-manually-8-game-changing-tools-that-generate-architecture-diagrams-from-code-71d4067092b5
 * UML for important grpc API elements
 * interaction diagram for job execution?
 
@@ -188,6 +190,8 @@
 * horizontal scaling: consider using a redis queue for ingestion, with multiple consumers processing queue (vs. handle with queue and threads) vs. grpc load balancer
 
 ## mongo
+* investigate mongodb log size issue (causes disk full warnings)  
+  * fix with "sudo cp /dev/null /var/log/mongodb/mongod.log"
 * DB connection pooling (e.g., HikariCP or Apache DBCP)?
 * change to replica set cluster (required for using transactions)
 * Mongo database sharding
