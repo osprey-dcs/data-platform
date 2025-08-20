@@ -4,15 +4,11 @@
 * Build service that aggregates PV data into block/tabular structure into correlated blocks with API for consumption by algorithms and applications for data event monitoring.
 * Incorporate components built by Chris for aggregating bucket-oriented query results into correlated blocks.
 * Utilize Ingestion Service data subscription mechanism for accessing data from ingestion stream.
-* Filtering: 1.7 ingestion stream prototype includes a filtering (condition filter) mechanism with API, should this be part of ingestion stream service or a client application facility.  Could also apply to query results, and that might be a good reason to make it part of the client library.
 
 ## plugin framework (Application Framework / Java API library) - Chris
 * Create application framework for building "plugins" for data event monitoring and algorithm processing.
 * Follow patterns and conventions Chris has used for the client libraries.
 * Access data using mechanisms provided by Ingestion Stream Service (aggregated data / correlated data blocks) and Ingestion Service subscription API (raw ingestion data).
-
-## integration testing
-* how to include michael's aggregator
 
 ## web application - Mitch
 * Create data blocks from existing query for use in data sets
@@ -32,17 +28,6 @@
 * mongo sharding prototype
 
 # ===== FEATURES FOR FUTURE VERSIONS =====
-
-## event monitoring prototype next steps (done in v1.7 as ingestionstream service, move to new application framework?  or add a filtering mechanism to new ingestionstream service focused on aggregating correlated data blocks)
-* ConditionMonitor.handleSubscribeDataResult(): Flesh out method to cover all data types, and all operator cases for each type.  We plan to do this as an example/tutorial for the "plugin framework" (application framework for implementing data event monitoring and algorithms). 
-* EventMonitorSubscribeDataResponseObserver.onError(), onCompleted(), onNext().RESULT_NOT_SET: notify subscriptionManager of problem so it can clean up,
-  * remove responseObserver and list of EventMonitors for PV name
-  * close streams for subscribeDataEvent() that use the PV
-  * should we try again to call subscribeData() for a PV when the ingestion service closes the stream but there are EventMonitors that want data for the PV?
-    * could try to resubscribe, but what if the ingestion service is shutting down?
-* add IngestionServiceClient.setChannel() for using inprocess grpc?  Should we change benchmark client to use the same mechanism?  Should we change everything to use the same mechanism and the test framework can setup inprocess grpc while everything else is out-of-process with the appropriate kind of channel builder?
-* add request validation that each PV name exists in archive in IngestionServiceImpl.subscribeData()?  Or do this in Ingestion Stream Service subscribeDataEvent() only?
-* measure impact of data subscription handling on performance benchmark
 
 ## SerializedDataColumn
 * add more attributes? E.g., for specifying the data type in the request (instead of determining it from the type of the first DataValue)?  Other metadata like sampleCount?
@@ -78,11 +63,6 @@
 * The Data Platform is optimized for recalling thousands of signals at a single point in time. The Archive Appliance is not. It is good at recall a small number of signals over a large period of time.
 * The Data Platform is for managing data sets - annotating them, deleting them, and using them in the life cycle of the data. One of our use cases is experimental data.
 * A scientist takes XRay data from some number of detectors, along with some scalar and vector data. The XRay data has to be processed as these XRays are taken from different angles at different distances into some normalized coordinate data. The original data must be preserved for verification of published results especially in proton studies. So the MLDP would have the raw data set stored. In it's Mongo index, this file would be noted for the sample, date and owner of the data. The data scientists would normalize the coordinates and create a new MLDP version of the data. The Mongo index would have a link to the RAW data file and include in the metadata the code / version of the algorithm used to normalize the coordinates, the date it was run, and the person that performed the normalization. This normalized data would then be processed further to reconstruct the protein structure. This file would point back to the normalized data - and add the information for this transformation. This is the provenance portion of the data and its most challenging scenario.
-
-## simple data generator for demo / web application data
-* data generator with broader time range and different data types
-* include datasets / annotations / ingestion attributes and event metadata
-* what is the relationship to simulator that Chris is building
 
 ## ingestion provider validation
 * consider adding a config resource to disable provider id validation?
