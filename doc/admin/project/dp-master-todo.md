@@ -1,83 +1,70 @@
-# development roadmap through august
+# DP-GRPC (Data Platform API definition)
 
-## ingestion stream service - Craig
-* Build service that aggregates PV data into block/tabular structure into correlated blocks with API for consumption by algorithms and applications for data event monitoring.
-* Incorporate components built by Chris for aggregating bucket-oriented query results into correlated blocks.
-* Utilize Ingestion Service data subscription mechanism for accessing data from ingestion stream.
+### (2) sharing and access control
+* In the current MLDP implementation all data, metadata, and annotations are accessible by all users.  We recognize that this is not a suitable situation for every facility and use case, thus, fine-grained access control and sharing mechanisms over data, metadata, and annotations could be implemented for a variety of data security, sharing, and ownership scenarios.  Such an effort should be relatively straightforward as there are common access control methodologies and common encryption technologies supporting them (e.g., TLS, JWP, LDAP, etc.).
+* Define and implement model for ownership and sharing of data, datasets, and annotations.
+  * Relationship to authentication/login mechanism
 
-## plugin framework (Application Framework / Java API library) - Chris
-* Create application framework for building "plugins" for data event monitoring and algorithm processing.
-* Follow patterns and conventions Chris has used for the client libraries.
-* Access data using mechanisms provided by Ingestion Stream Service (aggregated data / correlated data blocks) and Ingestion Service subscription API (raw ingestion data).
+### query API
+* (2) API change to queryTable() to support calculationsSpect or data frame
+  QueryTableDispatcher.handleResult() builds the tabular result from the mongo query result cursor.  That method could be modified to also include Calculations following the pattern of ExportDataJobAbstractTabular.exportData_() where it uses TabularDataUtility.addCalculationsToTable() around line 143 to add Calculations to the table structure after having used TabularDataUtility.addBucketsToTable() to add the query result to the table (as is done in QueryTableDispatcher.handleResult().
 
-## web application - Mitch
-* Create data blocks from existing query for use in data sets
-* Streamline selection of pvs
-  * Regex pattern to select PVs? Select range of PVs in a query via clicking PV names?
-* Rerun raw data query with selected PVs
-* Tabbing system within the app
-  * Viewing a dataset will not take you to a new page but to a new tab within the app
-  * Copying and pasting the URL will bring you back to your existing tabs
-* handling for new annotation types / schema / api
+### annotation API
+* (2) ad hoc export mechanism - Extend the existing MLDP export API with a streamlined mechanism for ad hoc export by simplify specifying list of PV names and time range, avoiding the need to create persistent dataset objects first.
+* (2) annotation mechanism targeting individual data points - The existing MLDP DataSet Annotation mechanism could be used to annotate individual data points (e.g., as suspect or invalid) but is probably not very efficient for navigating the annotations.  We could develop a new API optimized for annotating an individual data point and navigating those annotations.
+  * maybe annotateDataSet() is too broad for this, and we should add something like annotateData()
+    show annotations within the bucket that they target, don't add them to the main dataset annotations collection
+* (2) APIs for managing and navigating descriptive elements - The MLDP APIs include descriptive elements such as tags (keywords), lists of key-value attribute pairs, and event association, but there are not APIs for managing and navigating the universe of descriptive elements in use within the archive.  Such APIs could be defined and implemented.
+  * is the current separation of ingestion event metadata / tags / attributes from annotation event metadata / tags / attributes a problem?  E.g., how to update ingestion details after ingestion?  How to search across both domains?
+* (3) should we allow deleting datasets and annotations?
 
-## side projects for investigation
-* grpc load balancer / kubernetes prototype
-* kafka prototype for data subscription?
-* spring boot retrofit prototype
-* mongo connection pooling prototype
-* mongo sharding prototype
+### ingestion API
+* (3) subscribeData() handling: could return PV metadata details in the subscribeData() response stream for use by the caller in dynamically handling subscription data (like data type, sample period etc that might be useful to subscribeDataEvent()  for use in buffer age limit determination, checking data type of pv condition trigger, etc).
 
-# ===== FEATURES FOR FUTURE VERSIONS =====
-
-## SerializedDataColumn
+### (3) serialized data column handling
 * add more attributes? E.g., for specifying the data type in the request (instead of determining it from the type of the first DataValue)?  Other metadata like sampleCount?
 
-## downstream monitoring of data
-* mechanism for validating contents of SerializedDataColumns - is this a monitoring tool?  Try to deserialize contents outside of ingestion process and flag issues with contents?
+### (3) ValueStatus / EPICS status and alarm handling
+* do we need a way to query by alarm conditions, or add it to metadata for a PV (last alarm etc), this would mean unpacking the serialized DataColumn byte array values (or setting fields in the bucket indicating alarms during ingestion which would affect performance, e.g., probably would reduce performance to the level before we used serialization to persist data values since we have to iterate through the whole data vector to find alarms)
 
-## excel export
-* each data block is a sheet in the workbook (as opposed to one giant sheet)
-* each Calculations frame is a sheet in the workbook
+# DP-SERVICE (Data Platform service implementations)
 
-## sharing and access control
-* Define and implement model for ownership and sharing of data, datasets, and annotations.
-* Relationship to authentication/login mechanism (which I think we've said we're putting off beyond August - confirm).
+### v1.11 test coverage for features added to gui
+* (1) test coverage for ProviderMetadata embedded in ProviderInfo in QueryProvidersTest (need to ingest data to test)
+* (1) test coverage for new ApiClient stuff?
 
-## load testing
-* Run large-scale load testing.
-* Try continuous capture for 24 hours of "typical" accelerator scenario (4000 pvs sampled at 1 KHz)?
-* Try NASA scenario with 250 KHz data for 30 minutes?
-* Measure impact of data subscription mechanism on Ingestion Service?
-* Use Chris's data generator?
+### authentication / authorization
+* Implement JWT-based authentication mechanism (find preliminary write up and paste here).
+* Implement role-based authorization mechanism.
+* (3) Add coverage for TLS encryption in gRPC communication to see performance compared to no encryption.  Does it make sense to enable TLS encryption without authentication if we are running infrastructure behind a firewall (similar to EPICS components)?  What is the performance impact of encryption?
 
-# extend ingestion benchmark to run NASA scenario
-* either use ingestion benchmark framework, or create a new load test framework, but what's the difference?
-* signals sampled with 4 bytes data + 1 byte of status according to Bob
-  * 1000 signals sampled at 250 kHz,
-  * 1GB / sec
-  * 60 GB / min
-  * 1.8 TB / 30 min
-* probably need to either set up a server on AWS cloud, or buy external storage to do this test
+### (3) java performance tuning
+* Experiment with java virtual threads for some of the async libraries like mongo reactivestreams driver?
+* Tuning (heap, garbage collection, dynamic thread allocation to worker pool)
+* Multithreading controls - custom executor with core/max threads, mechanism for creating new workers when they are needed?
+* Experiment with different number of threads / workers in handler?  investigate how to find max number of threads available to java and experiment within that range?
 
-## bob's provenance scenario
-* The Data Platform is optimized for recalling thousands of signals at a single point in time. The Archive Appliance is not. It is good at recall a small number of signals over a large period of time.
-* The Data Platform is for managing data sets - annotating them, deleting them, and using them in the life cycle of the data. One of our use cases is experimental data.
-* A scientist takes XRay data from some number of detectors, along with some scalar and vector data. The XRay data has to be processed as these XRays are taken from different angles at different distances into some normalized coordinate data. The original data must be preserved for verification of published results especially in proton studies. So the MLDP would have the raw data set stored. In it's Mongo index, this file would be noted for the sample, date and owner of the data. The data scientists would normalize the coordinates and create a new MLDP version of the data. The Mongo index would have a link to the RAW data file and include in the metadata the code / version of the algorithm used to normalize the coordinates, the date it was run, and the person that performed the normalization. This normalized data would then be processed further to reconstruct the protein structure. This file would point back to the normalized data - and add the information for this transformation. This is the provenance portion of the data and its most challenging scenario.
+### export data to file
+* (3) improved excel export
+  * each data block is a sheet in the workbook (as opposed to one giant sheet)
+  * each Calculations frame is a sheet in the workbook
 
-## ingestion provider validation
-* consider adding a config resource to disable provider id validation?
-* could validate providers "off-line" (post-ingestion)
+### misc mongodb
+* (1) DB connection pooling (e.g., HikariCP or Apache DBCP)?
+* (2) change to replica set cluster (required for using transactions)
+* (2) database sharding
+* (2) Use retryable writes, exactly once for handling transient network errors and replica set elections https://www.mongodb.com/docs/manual/core/retryable-writes
 
-## data statistics framework
-* should we add a framework for measuring data statistics, e.g., add fields containing time data was captured, time request was sent, time request was received, and time bucket was created, etc.  Could put in requestStatus document, bucket documents, or new statistics collection.
+### data curation and aging
+* (2) Complementary to MongoDB scaling and performance optimization is the idea of MLDP “Data Curation” (covered in the Phase IIB Project Narrative).  We could develop tools for moving PV time-series data out of MongoDB to file storage (e.g., HDF5) for long-term archival (and sharing with other facilities), while maintaining the ability to index those files from the MLDP.
 
-## use transaction for writing ingestion artifacts
+### (3) mongodb transaction handling
 * I started down this path in v1.5 issue #103, but discovered transactions can't be used with standalone mongodb.
 * Requires conversion to "replica set" cluster or sharded database.
 * Can convert standalone database to replica set, but that has implications for development and deployment to casual users because can't use vanilla mongodb install
 * see dp-service #103 for details, created new method MongoIngestionClientInterface.ingestionTransaction containing code for 3 steps (verifying provider, writing buckets, writing request status)
 
-## strategy/design/prototype for ingestion data validation
+### (3) strategy/design/prototype for ingestion data validation
 * do we want to enforce data type for PV in ingestion? what about array dimensions and nested data types etc
   * explicit registration of data type for each PV (register PV name, data type, dimensionality, sample period etc) vs. registration on first ingested data etc ?
   * specify dimensionality in PV registration or ingestion request?
@@ -86,43 +73,57 @@
 * make this a configurable option?
 * or do off-line (post-ingestion) validation to avoid performance impacts, part of monitoring tools like looking for ingestion errors
 
-## documentation
-* try tools for generating UML from code e.g., mermaid 
-  * https://medium.com/@optimzationking2/stop-drawing-diagrams-manually-8-game-changing-tools-that-generate-architecture-diagrams-from-code-71d4067092b5
-* UML for important grpc API elements
-* interaction diagram for job execution?
+### ingestion service
+* (3) dp-service #143: cache registered providers to expedite validation of incoming ingestData() requests.
+* (3) dp-service #144: store serialized size for buckets in mongo BucketDocuments in ingestion to improve query performance in calculating bucket size for message size limits.
 
-## general
-* make collection names (or database name) configurable?
-
-## ValueStatus / EPICS status and alarm handling
-* do we need a way to query by alarm conditions, or add it to metadata for a PV (last alarm etc), this would mean unpacking the serialized DataColumn byte array values (or setting fields in the bucket indicating alarms during ingestion which would affect performance, e.g., probably would reduce performance to the level before we used serialization to persist data values since we have to iterate through the whole data vector to find alarms)
-
-## ingestion service
-* use parallel stream iteration in ingesting the batch of data buckets for an ingestion request? e.g.,
-<pre>
-  List<Integer> squaredNumbers = numbers.parallelStream()
-  .map(number -> number * number)
-  .collect(Collectors.toList());
-</pre>
-
-## query service
-* should we change the query handler tests in MongoQueryHandlerTestBase / MongoSyncQueryHandlerTest to be integration tests?  The code inserts bucket documents manually for use in the query tests, and this is a completely different path than the buckets created by the ingestion service.  It caused a failure because the code to insert bucket documents was not properly naming the DataColumns serialized to the database, so the deserialized columns caused assertion failures checking the column name in query results.
+### (3) query service
 * Should we add check that query time range is less than some configured maximum time range size?
 * I only implemented a single HandlerQueryInterface concrete class using the "sync" mongodb driver, since this meets our performance requirements (and seems to outperform the async/reactivestreams driver for our use) and is in some ways less complex to work with.  Should we try building a handler using the async/reactivestreams mongodb driver to compare performance?
 
-## annotation service
-* should we allow deleting datasets and annotations?
+### ingestion stream service
+* (3) do we need to check that SubscribeDataEventRequest.DataEventOperation.DataEventWindow TimeInterval negative trigger time value is "reasonable", whatever that means? E.g., negative trigger time offset determines the age limit for the buffer, which might be sized to be excessively large, but would still be subject to the byte and number of item limits…
 
-## annotation to bucket collection database document cross reference
-* Should we cross reference annotations to buckets and/or vice versa? 
-  * E.g., annotation documents have references to the affected buckets by bucket id? 
-  * bucket documents contain list of annotations that apply to bucket? (which would complicate modifying annotation)?
-  * Query and modification implications, e.g,
-    * If we need to update annotations, we probably want to keep a metadata collection with one or two way references between the metadata document and the bucket documents that it applies to, but this is messy if we are specifying the metadata on each individual request, at that point it might make sense to register the metadata, get an id for it, and the send the id in requests.
-    * Relationship between event metadata and attributes added during ingestion to the annotation information, is it the same schema?  Do we need to change something about ingestion?
 
-## envoy configuration
+# DP-DESKTOP-APP (Data Platform desktop gui app)
+
+## annotation builder
+* (1) Calculations Data Frame button "Add to Query Editor"
+(requires API change to queryTable() to support calculationsSpect or data frame)
+  * add new calculations data frame field to Query Editor that shows display string
+  * copy time range of data frame to query begin/end time
+    * e.g., user enters pv names and gets PV time-series data side by side with calculations
+
+## remote gRPC targets
+* (1) mechanism for switching between in-process and remote grpc targets
+* (2) do we want to always drop and recreate dp-demo database, or would it be better to just have a Tools->Delete Data option to clear it on request?
+* (3) disable data generation when connected to remote grpc targets
+* (3) enable Explore menu items by default, so that when we connect to remote system, we can query without ingesting data first
+
+## general navigation
+* (2) don't clear explore views when navigating to other views?
+  * e.g., when navigating from annotation-explore and dataset-explore to Annotation Builder and Dataset Builder, keep contents of explore views for navigating back to them
+
+## pv-explore
+* (2) add mechanism for initiating a data event subscription from the pv-explore view, e.g., add hyperlink/button that moves you to dataset-explore view with selected PV name filled in etc.
+  * Could use the type specified in the metadata to determine the proper DataValueType to use for the PvConditionTrigger value so that it matches the PV data.
+
+## deployment
+* (3) packaging / deployment
+  * jpackage to create native installers 
+  * dockerized version for demo environment with in-process gRPC pre-wired 
+  * intelli-j javafx docs mention jlink https://www.jetbrains.com/help/idea/javafx.html#package-app-with-jlink
+* (3) UI testing: TestFX for JavaFX GUI tests 
+* (3) Logging / Debugging: Use SLF4J + Logback and expose logs in the GUI for visibility
+
+
+
+# DP-WEB-APP (Data Platform web app)
+
+### AI experiment?
+* (2) Use claude or some AI agent to build a web app that "looks like" the desktop app?  Maybe a better use of time than hand-coding the existing React web app.
+
+### (3) envoy configuration
 * envoy config: can we use a single envoy.yaml for mac and non-mac?  The difference is literally a single line, maybe we could use localhost or 127.0.0.1 or whatever?
 ```
   diff envoy.yaml envoy.mac.yaml
@@ -132,51 +133,83 @@
 >                     address: host.docker.internal
 ```
 
-## installation and deployment
-* make-installer: check dp-grpc version number in dp-service pom.xml using version number on command line.
-* make-installer: add parameter for release tag and use it for naming tar file? 
-* make-installer: set up to run on new host/vm as different user with fresh clone of repos etc, delete maven repo to make sure we get a new dp-grpc in dp-service etc.
+### (3) Mitch's web app todo list
+* Create data blocks from existing query for use in data sets
+* Streamline selection of pvs
+  * Regex pattern to select PVs? Select range of PVs in a query via clicking PV names?
+* Rerun raw data query with selected PVs
+* Tabbing system within the app
+  * Viewing a dataset will not take you to a new page but to a new tab within the app
+  * Copying and pasting the URL will bring you back to your existing tabs
+* handling for new annotation types / schema / api
+
+
+# DP-SUPPORT (Data Platform deployment and ecosystem support)
+
+### horizontal scaling of services
+* (1) grpc load balancer / kubernetes prototype
+
+### (3) script for building installer (make-installer)
+* check dp-grpc version number in dp-service pom.xml using version number on command line.
+* add parameter for release tag and use it for naming tar file?
+* set up to run on new host/vm as different user with fresh clone of repos etc, delete maven repo to make sure we get a new dp-grpc in dp-service etc.
+
+### (3) mongo password handling
 * extract MongoDB user/name password for dp-support docker and compass scripts from a config file
 
-## java client
-* Create client to subscribe to query stream for specified PVs?  E.g., 
-  * write data to file at some time interval (hdf5, numpy), allow consumer to subscribe to notification when new data is ready, use onNext() etc pattern 
-  * keep a rolling window looking back some specified time window
 
-## authentication / authorization
-* Add coverage for TLS encryption in gRPC communication to see performance compared to no encryption.  Does it make sense to enable TLS encryption without authentication if we are running infrastructure behind a firewall (similar to EPICS components)?  What is the performance impact of encryption?
+# DATA-PLATFORM (Data Platform installer and documentation)
 
-## benchmarking
-* Exit benchmarks if corresponding service is not running.
+### (2) documentation
+* try tools for generating UML from code e.g., mermaid
+  * https://medium.com/@optimzationking2/stop-drawing-diagrams-manually-8-game-changing-tools-that-generate-architecture-diagrams-from-code-71d4067092b5
+* UML for important grpc API elements
+* interaction diagram for job execution?
 
-## integration test
-* Add support for running integration test with out-of-process grpc against running ingestion and query servers?
-  * Add methods for determining whether to run requestObserver.onNext(), onCompleted(), onError() in a different thread for in-process but directly for out-of-process?  Or just leave it the way it is with sending requestObserver messages in a different thread (added because in-process grpc runs sending request and receiving response in same thread, which can cause some issues for re-entering synchronized handler code that was designed to expect different threads).
-* Add in-process grpc test coverage for ingestion and query rejects and error conditions? Added coverage for the getColumnInfo() API so can follow that pattern.  Do we need coverage?  There is some other coverage already.
 
-## testing
-* More sophisticated grpc test coverage using mockito etc?  Maybe not necessary with integration test coverage.  See:
-  * https://github.com/grpc/grpc-java/blob/master/examples/src/test/java/io/grpc/examples/helloworld/HelloWorldClientTest.java
-  * https://github.com/grpc/grpc-java/blob/master/examples/src/test/java/io/grpc/examples/routeguide/RouteGuideClientTest.java
+# Monitoring
 
-## architecture and performance tuning
-* Tuning (heap, garbage collection, dynamic thread allocation to worker pool)
-* Multithreading controls - custom executor with core/max threads, mechanism for creating new workers when they are needed?
-* Experiment with different number of threads / workers in handler?  investigate how to find max number of threads available to java and experiment within that range?
-* test horizontal scaling of ingestion and query services?
-* Use CompletableFuture for non-blocking async?
-  * https://medium.com/javarevisited/java-completablefuture-c47ca8c885af
-* Experiment with java virtual threads for some of the async libraries like mongo reactivestreams driver?
-* horizontal scaling: consider using a redis queue for ingestion, with multiple consumers processing queue (vs. handle with queue and threads) vs. grpc load balancer
+### (3) data statistics framework
+* should we add a framework for measuring data statistics, e.g., add fields containing time data was captured, time request was sent, time request was received, and time bucket was created, etc.  Could put in requestStatus document, bucket documents, or new statistics collection.
 
-## mongo
-* investigate mongodb log size issue (causes disk full warnings)  
-  * fix with "sudo cp /dev/null /var/log/mongodb/mongod.log"
-* DB connection pooling (e.g., HikariCP or Apache DBCP)?
-* change to replica set cluster (required for using transactions)
-* Mongo database sharding
-* Use retryable writes, exactly once for handling transient network errors and replica set elections https://www.mongodb.com/docs/manual/core/retryable-writes
+### downstream monitoring of data
+* (3) mechanism for validating contents of SerializedDataColumns - is this a monitoring tool?  Try to deserialize contents outside of ingestion process and flag issues with contents?
 
-## configuration
-* Add a configuration report to ConfigurationManager that returns an object containing properties read from config file, properties overridden on command line, etc? (for testing, not sure we need it).
-* Add a mechanism for the application to specify configuration properties that it expects to find, e.g., a list of properties during initialization, so that we can check up front instead of one at a time as we need them - not sure this is useful either, but might be good to know where the configuration doesn't contain expected values and we'll be using defaults?
+
+# Client Tools (client-level frameworks, tools)
+
+### EPIC aggregator streaming
+* (2) EPICS aggregator  infrastructure component that streams data to MLDP instead of writing hdf5 file
+
+### ingestion automation
+* (2) Explore development of tools to automate the ingestion of tabular data files (CSV / Excel) containing PV time-series data, combined with a directory watcher mechanism to trigger automatic ingestion of files added to the input directory.  The new ImportUtility added to dp-service for the desktop application might be used for this purpose.
+
+### automation for data cleaning
+* (3) Use the MLDP Ingestion Stream Service as the foundation for automation of data cleaning including data event monitoring, tagging suspicious / erroneous data points, normalizing data and uploading calculated data to the archive via the Annotation Service’s Calculations mechanism.
+
+### client ingestion stream processing
+* (3) Build framework that aggregates PV data into block/tabular structure into correlated blocks with API for consumption by algorithms and applications for data event monitoring. Incorporate components built by Chris for aggregating bucket-oriented query results into correlated blocks. Utilize Ingestion and Ingestion Stream Service subscription mechanisms for accessing data from ingestion stream.
+
+### plugin framework (Application Framework / Java API library)
+* (3) Create application framework for building "plugins" for data event monitoring and algorithm processing. Follow patterns and conventions Chris has used for the client libraries. Utilize Ingestion and Ingestion Stream Service subscription mechanisms for accessing data from ingestion stream.
+
+### (3) python client library development
+* Many public Off-The-Shelf ML/AI and data analysis libraries are written in Python (e.g., TensorFlow, Keros, scikit-learn, NumPy, etc.) and are familiar to data scientists.  The availability of a Python Client Library for the Data Platform would support direct integration with these Python libraries.  The Python API Library would support the following: Heterogeneous, time-series data search and query; Metadata queries, data provenance, etc; Annotations – comments, data relationships, post-ingestion calculations; Support for data ingestion with Python is probably unwarranted, and ill advised (too inefficient).
+
+# Side Projects / Prototypes
+
+### (2) load testing
+* Run large-scale load testing.
+* Try continuous capture for 24 hours of "typical" accelerator scenario (4000 pvs sampled at 1 KHz)?
+* Try NASA scenario with 250 KHz data for 30 minutes?
+* Measure impact of data subscription mechanism on Ingestion Service?
+* Use Chris's data generator?
+
+### communication
+* (3) kafka prototype for data subscription - what would we gain
+* (3) redis prototype
+  * horizontal scaling: consider using a redis queue for ingestion, with multiple consumers processing queue (vs. handle with queue and threads) vs. grpc load balancer
+
+
+### application framework
+* (2) spring boot retrofit prototype
