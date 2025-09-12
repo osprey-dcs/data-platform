@@ -11,12 +11,34 @@ This is the primary repo for the Machine Learning Data Platform (MLDP), providin
 - [Installation and getting started](#installation-and-getting-started)
 
 
+
 ---
 ## Motivation
 
 The Data Platform provides tools for managing the data captured in an experimental research facility, such as a particle accelerator. The data are used within control systems and analytics applications, and facilitate the creation of machine learning models for those applications.
 
 The Data Platform is agnostic to the source and acquisition of the data. A project goal is to manage data captured from the [EPICS "Experimental Physics and Industrial Control System"](https://epics-controls.org/), however, use of EPICS is not required. The Data Platform APIs are generic and can be used from essentially all programming languages and any type of application.
+
+### How is the Data Patform different from the Epics Archive Appliance?
+
+This is a common question.  The Data Platform is optimized for recalling thousands of signals at a single point in time. The Archive Appliance is not. It is good at recalling a small number of signals over a large period of time.
+
+### Data Provenance
+
+The Data Platform is for managing data sets - annotating them, deleting them, and using them in the life cycle of the data. One of our use cases is managing experimental data.
+
+A scientist takes XRay data from some number of detectors, along with some scalar and vector data. The XRay data must be processed as these XRays are taken from different angles at different distances into some normalized coordinate data. The original data must be preserved for verification of published results especially in proton studies. The raw data set is stored in the archive noting important details about the data. 
+
+Data scientists normalize the coordinates and upload the normalized data to the archive, linking it to the RAW data set and including details about the code / version of the algorithm used to normalize the coordinates, the date it was run, and the person that performed the normalization. 
+
+This normalized data is then processed further to reconstruct the protein structure, creating a new data set that is uploaded to the archive and linked to the normalized data along with information about the data transformation. 
+
+Data provenance is a challenging problem and a key feature of the MLDP archive.
+
+### Data Cleaning Workflow
+
+Using the same features as for tracking data provenance, the MLDP supports the MLOps data cleaning workflow with tools for identifying suspect data, annotating and marking up that data, downloading data for further processing, and uploading new datasets to the archive that are linked to the datasets from which they are derived.
+
 
 
 ---
@@ -28,6 +50,7 @@ The Data Platform is agnostic to the source and acquisition of the data. A proje
 * Provide mechanisms for adding post-ingestion annotations and calculations to the archive, and performing queries over those annotations.
 * Provide an API for exploring metadata for data sources available in the archive.
 * Provide mechanism for exporting data from the archive to common formats.
+
 
 
 ---
@@ -56,6 +79,14 @@ The API definition is managed separately from the service implementations so tha
 
 The Data Platform Services are implemented as Java server applications.  There are three independent server applications, providing ingestion, query, and annotation services, respectively.  The [MongoDB document-oriented database management system](https://www.mongodb.com/) is used by the services for persistence.  The [dp-service repo](https://github.com/osprey-dcs/dp-service) provides more detail about the Java service implementations and the frameworks used to build them.
 
+### Desktop GUI Application
+
+Though not a primary project requirement, we decided it was useful to build a Java desktop GUI application to demonstrate the features of the MLDP.  However, instead of making an application that can only be used as a demo, we decided to build a full-featured tool useful for navigating the MLDP data archive.  It provides a user interface for navigating archive metadata and time-series data, viewing and creating annotations, and other tools for visualizing and exporting data.  The application uses the MLDP gRPC API and provides a useful reference for calling those APIs from a Java client.  The application is managed in the [dp-desktop-app repo](https://github.com/osprey-dcs/dp-desktop-app), which contains details for installing and using the GUI application.
+
+### Web Application
+
+The Data Platform Web Application is under development using the [JavaScript React framework](https://react.dev/).  It will provide similar features to the desktop GUI application.  The [dp-web-app repo](https://github.com/osprey-dcs/dp-web-app) contains the JavaScript code for the Data Platform Web Application, with documentation about the project.
+
 ### Installation and Deployment Support Tools
 
 A set of utilities is provided to help manage the Data Platform ecosystem.  There are scripts for managing infrastructure services including MongoDB and the Envoy proxy (used for deploying the web application), and a set of simple process-management utilities for managing the Data Platform server and benchmark applications.  The [dp-support repo](https://github.com/osprey-dcs/dp-support) contains the scripts and utilities for managing the components of the Data Platform ecosystem.  It includes documentation for using those tools.
@@ -64,13 +95,10 @@ A set of utilities is provided to help manage the Data Platform ecosystem.  Ther
 
 A suite of high-level client libraries is being developed that hide the details of the service APIs and provide a more convenient interface for building client applications.  The libraries are written in Java and are intended to be used by Java applications that need to interact with the Data Platform services.
 
-### Web Application
-
-The Data Platform Web Application is under development using the [JavaScript React framework](https://react.dev/).  It will provide a user interface for navigating archive metadata and time-series data, viewing and creating annotations, and other tools for visualizing and exporting data.  The [dp-web-app repo](https://github.com/osprey-dcs/dp-web-app) contains the JavaScript code for the Data Platform Web Application, with documentation about the project.
-
 ### Technology Benchmarks
 
 The [dp-benchmark repo](https://github.com/osprey-dcs/dp-benchmark) is not currently active, but contains code developed for evaluating the performance of some candidate technologies considered for use in the Data Platform service technology stack.  It includes an overview of the benchmark process with a summary of results.
+
 
 
 ---
@@ -128,16 +156,18 @@ The primary focus of version 1.8 is an expanded API for creating and querying An
 
 The main new features added in version 1.9 are 1) a mechanism for including user-defined Calculations alongside PV time-series data in the API for exporting data to CSV, XLSX, and HDF5 files, and 2) facilities for sending byte data in the ingestion, query, and subscription APIs for improved performance (on the order of 2-3x improvement for ingestion and query) by eliminating extra serialization operations in the gRPC communication framework and service implementations.  The release also includes enhancements to the data query handling framework, and updates and testing to use MongoDB 8 as the official reference version for the Data Platform.
 
+### v1.10 (July 2025)
+
+Version 1.10 includes the new Ingestion Stream Service providing a mechanism for subscribing to "data events".  Using the subscribeDataEvent() API, a client registers one or more triggers each specifying a PV name, a condition (e.g., equal to, greater than, less than, etc.), and a trigger data value.  When the condition is triggered by data in the ingestion stream for the specified PV, the client receives an Event notification that specifies the event time, condition that was triggered, and the data value that triggered the event.  The client can optionally register to receive EventData for a list of PVs when an Event is triggered for a window of time offset from the event trigger time.  This is useful for monitoring data conditions in "real-time", and building models and applications that respond to conditions in the data ingestion stream.  The data event monitoring mechanism uses the Ingestion Service's data subscription API to receive data from the ingestion stream for specified PVs.  The release includes improvements to data subscription handling in support of the new data event subscription API, as well as new Data Platform ecosystem scripts for managing the new Ingestion Stream Service.
+
+### v1.11 (September 2025)
+
+Though not a primary project requirement, we decided it was useful to build a Java desktop GUI application to demonstrate the features of the MLDP.  However, instead of making an application that can only be used as a demo, we decided to build a full-featured tool useful for navigating the MLDP data archive.  Version 1.11 includes a new application that provides a user interface for navigating archive metadata and time-series data, viewing and creating annotations, and other tools for visualizing and exporting data.  The application uses the MLDP gRPC API and provides a useful reference for calling those APIs from a Java client.  The application is managed in the [dp-desktop-app repo](https://github.com/osprey-dcs/dp-desktop-app), which contains details for installing and using the GUI application.
+
+
 
 ---
 ## todo and road map
-
-### near term development plans through 8/2025
-
-* Ingestion Stream Service with API for subscribing to aggregated PV data from the ingestion data stream formatted as correlated data blocks.
-* Plugin Application Framework for building data event monitoring applications and developing algorithms utilizing the mechanisms for subscribing to raw ingestion stream data and correlated data blocks.
-
-### longer term objectives
 
 * Run more extensive load testing benchmarks.
 * Implement mechanism for ingestion data validation.
@@ -163,6 +193,7 @@ Use the links below to learn more about the Data Platform project, or the links 
 
 ## project documents
 * [project overview slide deck - pdf](doc/documents/presentations/mldp-overview.pdf)
+* [mldp by example pdf](doc/documents/presentations/mldp-by-example.pdf)
 
 ## developer notes
 * [data platform release process](doc/developer/release.md)
