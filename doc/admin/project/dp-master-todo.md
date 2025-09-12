@@ -74,12 +74,14 @@
 * or do off-line (post-ingestion) validation to avoid performance impacts, part of monitoring tools like looking for ingestion errors
 
 ### ingestion service
-* (3) dp-service #143: cache registered providers to expedite validation of incoming ingestData() requests.
-* (3) dp-service #144: store serialized size for buckets in mongo BucketDocuments in ingestion to improve query performance in calculating bucket size for message size limits.
+* (3) dp-service #143: The biggest performance issue that is most directly under our control in the Ingestion Service is the lookup to verify provider by id for each ingestion request, 2% in the stream / bidi stream benchmarks but 6% in the byte stream scenario (IngestDataJob.handleIngestionRequest() 5% time spent in providerNameForId()). This could be improved by a caching mechanism with some ideas for implementation:
+  * If a provider is not in the cache, refresh the cache and check again. Would need a mechanism for tracking unregistered / invalid providers so we don't keep checking a bad one.
+  * Fetch the list of providers at start up, and then keep it fresh with calls to registerProvider().
 
-### (3) query service
-* Should we add check that query time range is less than some configured maximum time range size?
-* I only implemented a single HandlerQueryInterface concrete class using the "sync" mongodb driver, since this meets our performance requirements (and seems to outperform the async/reactivestreams driver for our use) and is in some ways less complex to work with.  Should we try building a handler using the async/reactivestreams mongodb driver to compare performance?
+### query service
+* (3) dp-service #144: store serialized size for regular DataColumns in Mongo bucket documents: The biggest performance issue in the Query Service that is under our control is calling getSerializedSize() on each bucket (for checking response message size against the limit), which is 8-10% of the performance for the stream scenario but only 0.15% for the byte stream scenario (called from QueryDataStreamDispatcher.handleResult_()). I did some investigation of the gRPC code and this makes sense because in the former case we are getting the size of a DataColumn object and the size must be calculated based on each of the DataValues contained in the column, whereas in the latter case we are using a byte array containing the serialized DataColumn so the size can be calculated directly. I'm not going to make it a high priority to investigate this further at the moment, since I think/hope facilities that care about overall performance will use the byte data mechanism anyway. Potential solutions would include storing the serialized size of buckets in mongo on ingestion (when we are using regular DataColumns and not Serialized ones).
+* (3) Should we add check that query time range is less than some configured maximum time range size?
+* (3) I only implemented a single HandlerQueryInterface concrete class using the "sync" mongodb driver, since this meets our performance requirements (and seems to outperform the async/reactivestreams driver for our use) and is in some ways less complex to work with.  Should we try building a handler using the async/reactivestreams mongodb driver to compare performance?
 
 ### ingestion stream service
 * (3) do we need to check that SubscribeDataEventRequest.DataEventOperation.DataEventWindow TimeInterval negative trigger time value is "reasonable", whatever that means? E.g., negative trigger time offset determines the age limit for the buffer, which might be sized to be excessively large, but would still be subject to the byte and number of item limits…
@@ -149,22 +151,30 @@
 ### horizontal scaling of services
 * (1) grpc load balancer / kubernetes prototype
 
-### (3) script for building installer (make-installer)
-* check dp-grpc version number in dp-service pom.xml using version number on command line.
-* add parameter for release tag and use it for naming tar file?
-* set up to run on new host/vm as different user with fresh clone of repos etc, delete maven repo to make sure we get a new dp-grpc in dp-service etc.
-
 ### (3) mongo password handling
 * extract MongoDB user/name password for dp-support docker and compass scripts from a config file
 
 
 # DATA-PLATFORM (Data Platform installer and documentation)
 
-### (2) documentation
-* try tools for generating UML from code e.g., mermaid
+### documentation
+* (1) try tools for generating UML from code e.g., mermaid
   * https://medium.com/@optimzationking2/stop-drawing-diagrams-manually-8-game-changing-tools-that-generate-architecture-diagrams-from-code-71d4067092b5
-* UML for important grpc API elements
-* interaction diagram for job execution?
+* (1) generate UML for
+  * data event subscription class diagram, interaction diagram (for incoming subscribeData() response stream)
+  * GUI class diagram(s)
+  * UML for important grpc API elements
+  * interaction diagram for job execution?
+
+### make-installer script
+* (1) should clean / compile / install dp-grpc, then clean / compile / package dp-service
+  * i think right now the installed version of dp-grpc is used, which might be the wrong version if the upstream directory is pointing at an older release branch than the current dev branch (which is likely)
+* (3) check dp-grpc version number in dp-service pom.xml using version number on command line.
+* (3) add parameter for release tag and use it for naming tar file?
+* (3) set up to run on new host/vm as different user with fresh clone of repos etc, delete maven repo to make sure we get a new dp-grpc in dp-service etc.
+
+
+
 
 
 # Monitoring
