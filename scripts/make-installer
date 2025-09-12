@@ -40,6 +40,13 @@ test -e "$APP_CONFIG_SRC" || { echo "fatal error: APP_CONFIG_SRC $APP_CONFIG_SRC
 cp "$APP_CONFIG_SRC" "$APP_CONFIG_TARGET" || { echo "fatal error: cp failed for APP_CONFIG_SRC $APP_CONFIG_SRC"; exit 1; }
 echo "copied APP_CONFIG_SRC $APP_CONFIG_SRC"
 
+# copy dp-desktop-app config
+APP_CONFIG_SRC="/home/craigmcc/dp/dp-java/dp-desktop-app/src/main/resources/application.yml"
+APP_CONFIG_TARGET="$TARGET_DIR/config/dp-desktop-app.yml"
+test -e "$APP_CONFIG_SRC" || { echo "fatal error: APP_CONFIG_SRC $APP_CONFIG_SRC not found"; exit 1; }
+cp "$APP_CONFIG_SRC" "$APP_CONFIG_TARGET" || { echo "fatal error: cp failed for APP_CONFIG_SRC $APP_CONFIG_SRC"; exit 1; }
+echo "copied APP_CONFIG_SRC $APP_CONFIG_SRC"
+
 # copy log config
 LOG_CONFIG_SRC="/home/craigmcc/dp/dp-java/dp-service/src/main/resources/log4j2.xml"
 LOG_CONFIG_TARGET="$TARGET_DIR/config/log4j2.xml"
@@ -74,6 +81,20 @@ popd || { echo "fatal error: popd failed"; exit 1; }
 # copy dp-service jar
 JAR_SRC="/home/craigmcc/dp/dp-java/dp-service/target/dp-service-$VERSION-shaded.jar"
 JAR_TARGET="$TARGET_DIR/lib/dp-service.jar"
+test -e "$JAR_SRC" || { echo "fatal error: JAR_SRC $JAR_SRC not found"; exit 1; }
+cp "$JAR_SRC" "$JAR_TARGET" || { echo "fatal error: cp failed for JAR_SRC $JAR_SRC"; exit 1; }
+echo "copied JAR_SRC $JAR_SRC"
+
+# generate dp-desktop-app jar
+pushd "/home/craigmcc/dp/dp-java/dp-desktop-app" || { echo "fatal error: pushd failed for /home/craigmcc/dp/dp-java/dp-desktop-app"; exit 1; }
+MVN_CMD="mvn package -DskipTests"
+eval "$MVN_CMD" || { echo "fatal error: MVN_CMD $MVN_CMD failed"; exit 1; }
+echo "MVN_CMD: $MVN_CMD"
+popd || { echo "fatal error: popd failed"; exit 1; }
+
+# copy dp-desktop-app jar
+JAR_SRC="/home/craigmcc/dp/dp-java/dp-desktop-app/target/dp-desktop-app-$VERSION-shaded.jar"
+JAR_TARGET="$TARGET_DIR/lib/dp-desktop-app.jar"
 test -e "$JAR_SRC" || { echo "fatal error: JAR_SRC $JAR_SRC not found"; exit 1; }
 cp "$JAR_SRC" "$JAR_TARGET" || { echo "fatal error: cp failed for JAR_SRC $JAR_SRC"; exit 1; }
 echo "copied JAR_SRC $JAR_SRC"
