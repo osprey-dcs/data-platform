@@ -44,9 +44,13 @@ Make sure this is all done before adding tags etc because it's a pain removing t
 
 If working in a fork, create a github pull request to merge the development branch in the fork to the development branch in the upstream repo.
 
+### pull dev branch in upstream directory
+
+Change to the directory for each of the upstream repos, checkout and pull the dev branch to pick up the files from the pull request merge.
+
 ### merge changes from dev branch to main for each repo
 
-Merge the development branch to the main branch in the upstream repo.
+Merge the new files just merged to the development branch to the main branch in each upstream repo directory:
 
 * git checkout main
 * git merge dev-1.10
