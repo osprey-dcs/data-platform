@@ -41,6 +41,18 @@ eval "$TAG_ADD_CMD" || { echo "fatal error: $TAG_ADD_CMD failed: $$TAG_ADD_CMD";
 echo "added $TAG $SERVICE_DIR"
 popd > /dev/null 2>&1
 
+# remove/add tag for dp-desktop-app
+echo
+DESKTOP-APP_DIR="/home/craigmcc/dp/dp-java/dp-desktop-app"
+echo "===== DESKTOP-APP_DIR: $DESKTOP-APP_DIR ====="
+pushd "$DESKTOP-APP_DIR" > /dev/null 2>&1 || { echo "fatal error: pushd failed DESKTOP-APP_DIR: $DESKTOP-APP_DIR"; exit 1; }
+# remove tag if it exists
+eval "$TAG_SHOW_CMD" && { echo; echo "removing $TAG $DESKTOP-APP_DIR"; eval "$TAG_DEL_CMD" || { echo "fatal error: pushd failed DESKTOP-APP_DIR: $DESKTOP-APP_DIR"; exit 1; }; echo "removed $TAG $DESKTOP-APP_DIR"; }
+echo "adding $TAG $DESKTOP-APP_DIR"
+eval "$TAG_ADD_CMD" || { echo "fatal error: $TAG_ADD_CMD failed: $$TAG_ADD_CMD"; exit 1; }
+echo "added $TAG $DESKTOP-APP_DIR"
+popd > /dev/null 2>&1
+
 # remove/add tag for dp-support
 echo
 SUPPORT_DIR="/home/craigmcc/dp/dp-support"
