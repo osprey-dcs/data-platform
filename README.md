@@ -169,33 +169,33 @@ Though not a primary project requirement, we decided it was useful to build a Ja
 ---
 ## todo and road map
 
-* APIs
+#### APIs
   * Annotation mechanism targeting individual data points.
   * Ad hoc export mechanism to trigger export by specifying pv names and time range.
   * APIs for navigating tags, attributes, and experiment metadata in use within archive.
 
-* Archive
+#### Archive
   * Add mechanism for sharing and access control.
   * Add tools for data curation and aging.
   * Add support for authentication and authorization of query and annotation services.
 
-* GUI apps
+#### GUI apps
   * Support for remote gRPC targets in desktop app. 
   * Viewer for uploaded calculations alongside PV data from archive.
   * Add desktop gui app features to web app.
 
-* Performance and Scaling
+#### Performance and Scaling
   * Run more extensive load testing benchmarks.
   * Investigate MongoDB database clustering (replica sets), partitioning (sharding), and connection pooling.
   * Experiment with horizontal scaling alternatives.
   * Experiment with streaming architecture (e.g., Apache Kafka).
 
-* Client Tools
+#### Client Tools
   * Build EPICS aggregator component to stream data via gRPC API to Ingestion Service.
   * Python client library development.
   * Automation for batch ingestion using directory watcher and file import.
 
-* Monitoring and Administration
+#### Monitoring and Administration
   * Implement mechanism for ingestion data validation.
   * Add framework for measuring data statistics.
 

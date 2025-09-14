@@ -53,7 +53,7 @@ Change to the directory for each of the upstream repos, checkout and pull the de
 Merge the new files just merged to the development branch to the main branch in each upstream repo directory:
 
 * git checkout main
-* git merge dev-1.10
+* git merge dev-1.11
 * git push
 
 
@@ -68,27 +68,27 @@ The ~/dp/data-platform/scripts/tag-repos script can be used for this.
 I'm using a tag like v1.1, v1.2 to mark the major version as we do minor releases.  So the major version tag gets moved for each minor release.
 
 - cd ~/dp/data-platform/scripts
-- ./tag-repos v1.10
+- ./tag-repos v1.11
 
 ### tag for current release
 
 These tags should only need to be added once for a release, unless they need to be "moved" (removed and added) to pick up new files.
 
 - cd ~/dp/data-platform/scripts
-- ./tag-repos rel-1.10.0
+- ./tag-repos rel-1.11.0
 
 ### steps for removing tags
 
 The tag-repos script can be used to move an existing tag. If tags need to be (re)moved (this is unusual, for the releases anyway):
 
-- git tag -d v1.10
-- git push origin --delete v1.10
+- git tag -d v1.11
+- git push origin --delete v1.11
 
 
 ## build data-platform installer
 
 - cd ~/dp/data-platform/scripts
-- ./make-installer 1.10.0
+- ./make-installer 1.11.0
 
 Upload the installer to include it with the data-platform release.
 
