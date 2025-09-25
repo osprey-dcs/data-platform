@@ -6,15 +6,15 @@
   * Relationship to authentication/login mechanism
 
 ### query API
-* (2) API change to queryTable() to support calculationsSpect or data frame
+* (2, v1.12) API change to queryTable() to support calculationsSpec or data frame
   QueryTableDispatcher.handleResult() builds the tabular result from the mongo query result cursor.  That method could be modified to also include Calculations following the pattern of ExportDataJobAbstractTabular.exportData_() where it uses TabularDataUtility.addCalculationsToTable() around line 143 to add Calculations to the table structure after having used TabularDataUtility.addBucketsToTable() to add the query result to the table (as is done in QueryTableDispatcher.handleResult().
 
 ### annotation API
-* (2) ad hoc export mechanism - Extend the existing MLDP export API with a streamlined mechanism for ad hoc export by simplify specifying list of PV names and time range, avoiding the need to create persistent dataset objects first.
-* (2) annotation mechanism targeting individual data points - The existing MLDP DataSet Annotation mechanism could be used to annotate individual data points (e.g., as suspect or invalid) but is probably not very efficient for navigating the annotations.  We could develop a new API optimized for annotating an individual data point and navigating those annotations.
+* (2, v1.12) ad hoc export mechanism - Extend the existing MLDP export API with a streamlined mechanism for ad hoc export by simplify specifying list of PV names and time range, avoiding the need to create persistent dataset objects first.
+* (2, v1.12) annotation mechanism targeting individual data points - The existing MLDP DataSet Annotation mechanism could be used to annotate individual data points (e.g., as suspect or invalid) but is probably not very efficient for navigating the annotations.  We could develop a new API optimized for annotating an individual data point and navigating those annotations.
   * maybe annotateDataSet() is too broad for this, and we should add something like annotateData()
     show annotations within the bucket that they target, don't add them to the main dataset annotations collection
-* (2) APIs for managing and navigating descriptive elements - The MLDP APIs include descriptive elements such as tags (keywords), lists of key-value attribute pairs, and event association, but there are not APIs for managing and navigating the universe of descriptive elements in use within the archive.  Such APIs could be defined and implemented.
+* (2, v1.12) APIs for managing and navigating descriptive elements - The MLDP APIs include descriptive elements such as tags (keywords), lists of key-value attribute pairs, and event association, but there are not APIs for managing and navigating the universe of descriptive elements in use within the archive.  Such APIs could be defined and implemented.
   * is the current separation of ingestion event metadata / tags / attributes from annotation event metadata / tags / attributes a problem?  E.g., how to update ingestion details after ingestion?  How to search across both domains?
 * (3) should we allow deleting datasets and annotations?
 
@@ -30,8 +30,9 @@
 # DP-SERVICE (Data Platform service implementations)
 
 ### v1.11 test coverage for features added to gui
-* (1) test coverage for ProviderMetadata embedded in ProviderInfo in QueryProvidersTest (need to ingest data to test)
-* (1) test coverage for new ApiClient stuff?
+* (1, v1.12) test coverage for ProviderMetadata embedded in ProviderInfo in QueryProvidersTest (need to ingest data to test)
+* (1, v1.12) test coverage for new ApiClient stuff?
+* (1, v1.12) test coverage for GUI (to learn more about gui testing framework)
 
 ### authentication / authorization
 * Implement JWT-based authentication mechanism (find preliminary write up and paste here).
@@ -39,7 +40,7 @@
 * (3) Add coverage for TLS encryption in gRPC communication to see performance compared to no encryption.  Does it make sense to enable TLS encryption without authentication if we are running infrastructure behind a firewall (similar to EPICS components)?  What is the performance impact of encryption?
 
 ### (3) java performance tuning
-* Experiment with java virtual threads for some of the async libraries like mongo reactivestreams driver?
+* (v1.12) Experiment with java virtual threads for some of the async libraries like mongo reactivestreams driver?
 * Tuning (heap, garbage collection, dynamic thread allocation to worker pool)
 * Multithreading controls - custom executor with core/max threads, mechanism for creating new workers when they are needed?
 * Experiment with different number of threads / workers in handler?  investigate how to find max number of threads available to java and experiment within that range?
@@ -50,9 +51,9 @@
   * each Calculations frame is a sheet in the workbook
 
 ### misc mongodb
-* (1) DB connection pooling (e.g., HikariCP or Apache DBCP)?
-* (2) change to replica set cluster (required for using transactions)
-* (2) database sharding
+* (1, v1.12) DB connection pooling (e.g., HikariCP or Apache DBCP)?
+* (2, v1.12) change to replica set cluster (required for using transactions)
+* (2, v1.12) database sharding
 * (2) Use retryable writes, exactly once for handling transient network errors and replica set elections https://www.mongodb.com/docs/manual/core/retryable-writes
 
 ### data curation and aging
@@ -90,17 +91,17 @@
 # DP-DESKTOP-APP (Data Platform desktop gui app)
 
 ## annotation builder
-* (1) Calculations Data Frame button "Add to Query Editor"
+* (1, v1.12) Calculations Data Frame button "Add to Query Editor"
 (requires API change to queryTable() to support calculationsSpect or data frame)
   * add new calculations data frame field to Query Editor that shows display string
   * copy time range of data frame to query begin/end time
     * e.g., user enters pv names and gets PV time-series data side by side with calculations
 
 ## remote gRPC targets
-* (1) mechanism for switching between in-process and remote grpc targets
-* (2) do we want to always drop and recreate dp-demo database, or would it be better to just have a Tools->Delete Data option to clear it on request?
-* (3) disable data generation when connected to remote grpc targets
-* (3) enable Explore menu items by default, so that when we connect to remote system, we can query without ingesting data first
+* (1, v1.12) mechanism for switching between in-process and remote grpc targets
+* (2, v1.12) do we want to always drop and recreate dp-demo database, or would it be better to just have a Tools->Delete Data option to clear it on request?
+* (3, v1.12) disable data generation when connected to remote grpc targets
+* (3, v1.12) enable Explore menu items by default, so that when we connect to remote system, we can query without ingesting data first
 
 ## general navigation
 * (2) don't clear explore views when navigating to other views?
@@ -115,7 +116,7 @@
   * jpackage to create native installers 
   * dockerized version for demo environment with in-process gRPC pre-wired 
   * intelli-j javafx docs mention jlink https://www.jetbrains.com/help/idea/javafx.html#package-app-with-jlink
-* (3) UI testing: TestFX for JavaFX GUI tests 
+* (3, v1.12) UI testing: TestFX for JavaFX GUI tests 
 * (3) Logging / Debugging: Use SLF4J + Logback and expose logs in the GUI for visibility
 
 
@@ -123,7 +124,7 @@
 # DP-WEB-APP (Data Platform web app)
 
 ### AI experiment?
-* (2) Use claude or some AI agent to build a web app that "looks like" the desktop app?  Maybe a better use of time than hand-coding the existing React web app.
+* (2, v1.12) Use claude or some AI agent to build a web app that "looks like" the desktop app?  Maybe a better use of time than hand-coding the existing React web app.
 
 ### (3) envoy configuration
 * envoy config: can we use a single envoy.yaml for mac and non-mac?  The difference is literally a single line, maybe we could use localhost or 127.0.0.1 or whatever?
@@ -149,7 +150,7 @@
 # DP-SUPPORT (Data Platform deployment and ecosystem support)
 
 ### horizontal scaling of services
-* (1) grpc load balancer / kubernetes prototype
+* (1, v1.12) grpc load balancer / kubernetes prototype
 
 ### (3) mongo password handling
 * extract MongoDB user/name password for dp-support docker and compass scripts from a config file
@@ -158,16 +159,16 @@
 # DATA-PLATFORM (Data Platform installer and documentation)
 
 ### documentation
-* (1) try tools for generating UML from code e.g., mermaid
+* (1, v1.12) try tools for generating UML from code e.g., mermaid
   * https://medium.com/@optimzationking2/stop-drawing-diagrams-manually-8-game-changing-tools-that-generate-architecture-diagrams-from-code-71d4067092b5
-* (1) generate UML for
+* (1, v1.12) generate UML for
   * data event subscription class diagram, interaction diagram (for incoming subscribeData() response stream)
   * GUI class diagram(s)
   * UML for important grpc API elements
   * interaction diagram for job execution?
 
 ### make-installer script
-* (1) should clean / compile / install dp-grpc, then clean / compile / package dp-service
+* (1, v1.12) should clean / compile / install dp-grpc, then clean / compile / package dp-service
   * i think right now the installed version of dp-grpc is used, which might be the wrong version if the upstream directory is pointing at an older release branch than the current dev branch (which is likely)
 * (3) check dp-grpc version number in dp-service pom.xml using version number on command line.
 * (3) add parameter for release tag and use it for naming tar file?
@@ -188,7 +189,7 @@
 
 # Client Tools (client-level frameworks, tools)
 
-### EPIC aggregator streaming
+### EPICS aggregator streaming
 * (2) EPICS aggregator  infrastructure component that streams data to MLDP instead of writing hdf5 file
 
 ### ingestion automation
@@ -204,11 +205,11 @@
 * (3) Create application framework for building "plugins" for data event monitoring and algorithm processing. Follow patterns and conventions Chris has used for the client libraries. Utilize Ingestion and Ingestion Stream Service subscription mechanisms for accessing data from ingestion stream.
 
 ### (3) python client library development
-* Many public Off-The-Shelf ML/AI and data analysis libraries are written in Python (e.g., TensorFlow, Keros, scikit-learn, NumPy, etc.) and are familiar to data scientists.  The availability of a Python Client Library for the Data Platform would support direct integration with these Python libraries.  The Python API Library would support the following: Heterogeneous, time-series data search and query; Metadata queries, data provenance, etc; Annotations – comments, data relationships, post-ingestion calculations; Support for data ingestion with Python is probably unwarranted, and ill advised (too inefficient).
+* Many public Off-The-Shelf ML/AI and data analysis libraries are written in Python (e.g., TensorFlow, Keros, scikit-learn, NumPy, etc.) and are familiar to data scientists.  The availability of a Python Client Library for the Data Platform would support direct integration with these Python libraries.  The Python API Library would support the following: Heterogeneous, time-series data search and query; Metadata queries, data provenance, etc; Annotations – comments, data relationships, post-ingestion calculations; Support for data ingestion with Python is probably unwarranted, and ill-advised (too inefficient).
 
 # Side Projects / Prototypes
 
-### (2) load testing
+### (2, v1.12) load testing
 * Run large-scale load testing.
 * Try continuous capture for 24 hours of "typical" accelerator scenario (4000 pvs sampled at 1 KHz)?
 * Try NASA scenario with 250 KHz data for 30 minutes?
@@ -216,10 +217,10 @@
 * Use Chris's data generator?
 
 ### communication
-* (3) kafka prototype for data subscription - what would we gain
-* (3) redis prototype
+* (3, v1.12) kafka prototype for data subscription - what would we gain
+* (3, v1.12) redis prototype
   * horizontal scaling: consider using a redis queue for ingestion, with multiple consumers processing queue (vs. handle with queue and threads) vs. grpc load balancer
 
 
 ### application framework
-* (2) spring boot retrofit prototype
+* (2, v1.12) spring boot retrofit prototype
