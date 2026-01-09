@@ -29,6 +29,8 @@ jobs:
         run: |
           mkdir -p data-platform/config
           mkdir -p data-platform/bin
+          mkdir -p data-platform/docker
+          mkdir -p data-platform/kubernetes
           mkdir -p data-platform/lib
           mkdir -p data-platform/templates
           mkdir -p data-platform/proto
@@ -46,6 +48,11 @@ jobs:
       - name: Copy support scripts
         run: |
           test -d bin && cp -r bin/* data-platform/bin/ || true
+
+      - name: Copy docker and kubernetes assets
+        run: |
+          test -d docker && cp -r docker data-platform/ || true
+          test -d kubernetes && cp -r kubernetes data-platform/ || true
 
       - name: Download dp-grpc release JAR
         uses: robinraju/release-downloader@v1
@@ -93,6 +100,12 @@ jobs:
         run: |
           ls -lh data-platform/lib
 
+      - name: Ensure all jars present
+        run: |
+          test -f data-platform/lib/dp-grpc.jar
+          test -f data-platform/lib/dp-service.jar
+          test -f data-platform/lib/dp-desktop-app.jar
+
       # Create tarball
       - name: Create tarball
         run: |
@@ -100,12 +113,19 @@ jobs:
           tar czf $TAR_FILE -C data-platform .
           echo "Created tarball: $TAR_FILE"
 
-      # Publish GitHub release
+      - name: Generate checksum
+        run: |
+          sha256sum data-platform-${{ env.VERSION }}.tar.gz \
+            > data-platform-${{ env.VERSION }}.tar.gz.sha256
+
       - name: Publish GitHub Release
         uses: softprops/action-gh-release@v2
         with:
-          files: data-platform-${{ env.VERSION }}.tar.gz
+          files: |
+            data-platform-${{ env.VERSION }}.tar.gz
+            data-platform-${{ env.VERSION }}.tar.gz.sha256
           overwrite_files: true
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+
 
