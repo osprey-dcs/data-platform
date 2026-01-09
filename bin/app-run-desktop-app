@@ -1,0 +1,45 @@
+#/bin/bash
+
+echo
+echo '================================================================'
+echo 'app-run-desktop-app'
+echo '================================================================'
+echo
+
+# look for environment config file and source it if it exists
+DP_ENV=( ~/.dp.env )
+test -e "$DP_ENV" || { echo "fatal error: required file $DP_ENV not found"; exit 1; }
+echo "found environment config file: $DP_ENV"
+source $DP_ENV
+
+# check that DP_HOME is defined
+test -z "$DP_HOME" && { echo "fatal error: required DP_HOME variable is not set in $DP_ENV"; exit 1; }
+echo "using DP_HOME: $DP_HOME"
+
+# check that DP_HOME directory exists
+test -d "$DP_HOME" || { echo "fatal error: configured DP_HOME directory $DP_HOME does not exist"; exit 1; }
+
+APP_NAME='desktop-app'
+
+APP_JAR="$DP_HOME/lib/dp-desktop-app.jar"
+APP_CONFIG="$DP_HOME/config/dp-desktop-app.yml"
+LOG4J_CONFIG="$DP_HOME/config/log4j2.xml"
+
+# check java home
+test -z "$JAVA_HOME" && { echo "fatal error: JAVA_HOME variable is not set"; exit 1; }
+
+# check for presence of jar
+test -e "$APP_JAR" || { echo "file APP_JAR $APP_JAR not found"; exit 1; }
+
+# check that app config exists
+test -e "$APP_CONFIG" || { echo "fatal error: app config file: $APP_CONFIG not found"; exit 1; }
+
+# check that log4j config exists
+test -e "$LOG4J_CONFIG" || { echo "fatal error: log4j config file: $LOG4J_CONFIG not found"; exit 1; }
+
+APP_CMD="java -Ddp.config=$APP_CONFIG -Dlog4j.configurationFile=$LOG4J_CONFIG -cp $APP_JAR com.ospreydcs.dp.gui.DpDesktopApplicationRunner"
+
+echo "app_name: $APP_NAME"
+echo "app_cmd: $APP_CMD"
+
+eval "$APP_CMD"

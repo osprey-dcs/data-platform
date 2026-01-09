@@ -1,0 +1,30 @@
+#!/bin/bash
+
+echo
+echo '================================================================'
+echo 'server-ingestion-stream-stop'
+echo '================================================================'
+echo
+
+# look for environment config file and source it if it exists
+DP_ENV=( ~/.dp.env )
+test -e "$DP_ENV" || { echo "fatal error: required file $DP_ENV not found"; exit 1; }
+echo "found environment config file: $DP_ENV"
+source $DP_ENV
+
+# check that DP_HOME is defined
+test -z "$DP_HOME" && { echo "fatal error: required DP_HOME variable is not set in $DP_ENV"; exit 1; }
+echo "using DP_HOME: $DP_HOME"
+
+# check that DP_HOME directory exists
+test -d "$DP_HOME" || { echo "fatal error: configured DP_HOME directory $DP_HOME does not exist"; exit 1; }
+
+# check that bin directory exists
+DP_BIN=$DP_HOME/bin
+test -d "$DP_BIN" || { echo "fatal error: $DP_BIN directory does not exist"; exit 1; }
+
+SVC_NAME='ingestion-stream-server'
+
+echo "service name: $SVC_NAME"
+
+$DP_BIN/util-pm-stop \'"$SVC_NAME"\'

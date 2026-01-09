@@ -1,0 +1,24 @@
+apiVersion: v1
+kind: Service
+metadata:
+  name: ingestion-stream-service
+  namespace: dp-ecosystem
+  labels:
+    app: ingestion-stream-service
+    component: backend
+spec:
+  type: NodePort  # Use NodePort for snap k8s - LoadBalancer stays pending
+  selector:
+    app: ingestion-stream-service
+  ports:
+  - port: 8083        # External port (different from other services)
+    targetPort: 50054  # Internal container port (ingestion stream service)
+    nodePort: 32610    # Fixed external port for HTTP/gRPC-Web
+    protocol: TCP
+    name: grpc-web
+  # For gRPC, you might also want to expose the raw gRPC port
+  - port: 50054
+    targetPort: 50054
+    nodePort: 31409    # Fixed external port for gRPC
+    protocol: TCP
+    name: grpc

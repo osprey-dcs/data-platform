@@ -1,0 +1,33 @@
+#/bin/bash
+
+echo
+echo '================================================================'
+echo 'util-pm-stop'
+echo '================================================================'
+echo
+
+# use eval to eat single quotes containing each param value (so that they can include spaces etc)
+eval SVC_NAME="$1"
+
+echo "stopping service: $SVC_NAME"
+
+test -z "$SVC_NAME" && { echo "util-pm-stop fatal error: service name parameter not specified"; exit 1; }
+test -z "$DP_HOME" && { echo "util-pm-stop fatal error: DP_HOME variable not set"; exit 1; }
+
+LOCKFILE="$DP_HOME/var/lock/$SVC_NAME.pid"
+
+echo "lockfile: $LOCKFILE"
+
+if [ ! -f "$LOCKFILE" ]; then
+    echo "$LOCKFILE does not exist, don't know process id to kill"
+    exit 1
+fi
+
+# stop service using pid in lock file
+PID=`cat "$LOCKFILE"`
+echo "killing process id: $PID"
+kill $PID || { echo "failed to kill process id: $PID"; exit 1; }
+
+echo "removing lock file: $LOCKFILE"
+rm "$LOCKFILE" || { echo "failed to remove: $LOCKFILE"; exit 1; }
+

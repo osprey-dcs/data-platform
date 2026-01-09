@@ -1,0 +1,35 @@
+#/bin/bash
+
+echo
+echo '================================================================'
+echo 'util-pm-status'
+echo '================================================================'
+echo
+
+# use eval to eat single quotes containing each param value (so that they can include spaces etc)
+eval SVC_NAME="$1"
+
+echo "checking status for service: $SVC_NAME"
+
+test -z "$SVC_NAME" && { echo "util-pm-status fatal error: service name parameter not specified"; exit 1; }
+test -z "$DP_HOME" && { echo "util-pm-status fatal error: DP_HOME variable not set"; exit 1; }
+
+LOCKFILE="$DP_HOME/var/lock/$SVC_NAME.pid"
+
+echo "lockfile: $LOCKFILE"
+
+if [ ! -f "$LOCKFILE" ]; then
+    echo "$LOCKFILE doesn't exist, service doesn't appear to be running"
+    exit 1
+fi
+
+PID=$(cat "$LOCKFILE")
+# after running ps, "$?" is zero if process is running
+ps -p "$PID" > /dev/null
+if [ "$?" -eq 0 ]; then
+    echo "service is running with process id: $PID"
+    ps -p "$PID" -o pid,vsz=MEMORY -o comm,args=ARGS
+else
+    echo "service is not running with process id: $PID"
+fi
+

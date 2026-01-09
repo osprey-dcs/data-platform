@@ -1,0 +1,55 @@
+#/bin/bash
+
+echo
+echo '================================================================'
+echo 'util-pm-start'
+echo '================================================================'
+echo
+
+# use eval to eat single quotes containing each param value (so that they can include spaces etc)
+eval SVC_NAME="$1"
+eval APP_CMD="$2"
+
+echo "starting service: $SVC_NAME"
+echo "service command: $APP_CMD"
+
+test -z "$SVC_NAME" && { echo "util-pm-start fatal error: service name parameter not specified"; exit 1; }
+test -z "$APP_CMD" && { echo "util-pm-start fatal error: start command parameter not specified"; exit 1; }
+test -z "$DP_HOME" && { echo "util-pm-start fatal error: DP_HOME not set"; exit 1; }
+
+# using parens to expand the ~ character since double quoting doesn't expand it, alternative is to use:
+# eval LOCKFILE="~/datastore/datastore-deployment/var/lock/$SVC_NAME.pid"
+# which could be dangerous if the value is entered by the user
+LOCKFILE="$DP_HOME/var/lock/$SVC_NAME.pid"
+LOGFILE="$DP_HOME/var/log/$SVC_NAME.log"
+
+echo "lockfile: $LOCKFILE"
+echo "logfile: $LOGFILE"
+
+if test -f "$LOCKFILE" ; then
+    echo "$LOCKFILE exists, service appears to be running already"
+    PID=$(cat "$LOCKFILE")
+    # after running ps, "$?" is zero if process is running
+    ps -p "$PID" > /dev/null
+    if [ "$?" -eq 0 ]; then
+        echo "service is running with process id: $PID"
+	exit 1
+    else
+	echo "service is not running with process id: $PID, removing $LOCKFILE"
+        rm "$LOCKFILE"
+    fi
+else
+    echo "lock file: $LOCKFILE not found, service is not running"
+fi
+
+# start server app
+REDIRECT_AND_DISOWN=" >& "$LOGFILE" & disown"
+SVC_CMD="$APP_CMD$REDIRECT_AND_DISOWN"
+echo 'executing service start command with redirect.....'
+echo "$SVC_CMD"
+eval "$SVC_CMD" || { echo "failed to start service using command: $START_CMD"; exit 1; }
+PID="$!"
+echo "$PID" >& "$LOCKFILE" &
+echo "started service: $SVC_NAME"
+echo "process id: $PID"
+

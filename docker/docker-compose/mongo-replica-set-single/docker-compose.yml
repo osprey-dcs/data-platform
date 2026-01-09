@@ -1,0 +1,15 @@
+services:
+  mongo:
+    image: mongo:8.0.6
+    container_name: mongo
+    ports:
+      - "27017:27017"
+    environment:
+      MONGO_INITDB_ROOT_USERNAME: admin
+      MONGO_INITDB_ROOT_PASSWORD: admin
+    volumes:
+      - ./data/mongo:/data/db
+      - ./mongo-keyfile:/tmp/mongo-keyfile:ro
+    command: [
+      "sh", "-c", "cp /tmp/mongo-keyfile /etc/mongo-keyfile && chown mongodb:mongodb /etc/mongo-keyfile && chmod 600 /etc/mongo-keyfile && exec mongod --replSet rs0 --bind_ip_all --auth --keyFile /etc/mongo-keyfile"
+    ]

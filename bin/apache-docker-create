@@ -1,0 +1,3 @@
+#!/bin/sh
+
+docker create -p 8081:80 --name dp-apache -v /tmp:/usr/local/apache2/htdocs/ httpd:2.4
