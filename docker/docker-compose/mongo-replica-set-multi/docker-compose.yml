@@ -1,0 +1,55 @@
+services:
+  mongo1:
+    image: mongo:8.0.6
+    container_name: mongo1
+    ports:
+      - "27017:27017"
+    environment:
+      MONGO_INITDB_ROOT_USERNAME: admin
+      MONGO_INITDB_ROOT_PASSWORD: admin
+    volumes:
+      - ./data/mongo1:/data/db
+      - ./mongo-keyfile:/tmp/mongo-keyfile:ro
+    networks:
+      - mongo-cluster
+    command: [
+      "sh", "-c", "cp /tmp/mongo-keyfile /etc/mongo-keyfile && chown mongodb:mongodb /etc/mongo-keyfile && chmod 600 /etc/mongo-keyfile && exec mongod --replSet rs0 --bind_ip_all --auth --keyFile /etc/mongo-keyfile"
+    ]
+
+  mongo2:
+    image: mongo:8.0.6
+    container_name: mongo2
+    ports:
+      - "27018:27017"
+    environment:
+      MONGO_INITDB_ROOT_USERNAME: admin
+      MONGO_INITDB_ROOT_PASSWORD: admin
+    volumes:
+      - ./data/mongo2:/data/db
+      - ./mongo-keyfile:/tmp/mongo-keyfile:ro
+    networks:
+      - mongo-cluster
+    command: [
+      "sh", "-c", "cp /tmp/mongo-keyfile /etc/mongo-keyfile && chown mongodb:mongodb /etc/mongo-keyfile && chmod 600 /etc/mongo-keyfile && exec mongod --replSet rs0 --bind_ip_all --auth --keyFile /etc/mongo-keyfile"
+    ]
+
+  mongo3:
+    image: mongo:8.0.6
+    container_name: mongo3
+    ports:
+      - "27019:27017"
+    environment:
+      MONGO_INITDB_ROOT_USERNAME: admin
+      MONGO_INITDB_ROOT_PASSWORD: admin
+    volumes:
+      - ./data/mongo3:/data/db
+      - ./mongo-keyfile:/tmp/mongo-keyfile:ro
+    networks:
+      - mongo-cluster
+    command: [
+      "sh", "-c", "cp /tmp/mongo-keyfile /etc/mongo-keyfile && chown mongodb:mongodb /etc/mongo-keyfile && chmod 600 /etc/mongo-keyfile && exec mongod --replSet rs0 --bind_ip_all --auth --keyFile /etc/mongo-keyfile"
+    ]
+
+networks:
+  mongo-cluster:
+    driver: bridge

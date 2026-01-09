@@ -1,0 +1,45 @@
+#/bin/bash
+
+echo
+echo '================================================================'
+echo 'app-run-docker-test-data-generator'
+echo '================================================================'
+echo
+
+# Runs test data generator with configurable docker network and gRPC connection string.
+# Parameters:
+#   $1 - DOCKER_NETWORK: Docker network name to connect to
+#   $2 - GRPC_CONNECT_STRING: gRPC server connection string (host:port)
+
+if [ $# -ne 2 ]; then
+  echo "Usage: $0 <DOCKER_NETWORK> <GRPC_CONNECT_STRING>"
+  echo "Example: $0 dp-ecosystem_eco-network eco-envoy:8080"
+  exit 1
+fi
+
+# Change to the script's directory to ensure relative paths work correctly
+SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
+cd "$SCRIPT_DIR"
+
+APP_NAME="mldp-app-test-data-generator:latest"
+APP_DOCKERFILE="../docker/applications/JavaApp/Dockerfile"
+APP_BUILD_CONTEXT=".."
+DOCKER_NETWORK="$1"
+GRPC_CONNECT_STRING="$2"
+
+echo "🔧 Building app: $APP_NAME"
+docker build -f "$APP_DOCKERFILE" -t "$APP_NAME" "$APP_BUILD_CONTEXT"
+if [ $? -ne 0 ]; then
+  echo "❌ Docker build failed."
+  exit 1
+fi
+
+echo "🚀 Running app: $APP_NAME"
+docker run --rm --network "$DOCKER_NETWORK"  "$APP_NAME" \
+  -Ddp.GrpcClient.ingestionConnectString="$GRPC_CONNECT_STRING" \
+  -cp /app/dp-service.jar \
+  com.ospreydcs.dp.service.ingest.utility.TestDataGenerator
+if [ $? -ne 0 ]; then
+  echo "❌ Docker run failed."
+  exit 1
+fi

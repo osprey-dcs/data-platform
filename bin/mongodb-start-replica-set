@@ -1,0 +1,141 @@
+#!/bin/bash
+
+# Single-node MongoDB replica set with authentication
+
+# This script uses mongod to start a single-node MongoDB replica set configuration for testing on a dev system.
+
+# The URI for connecting to the cluster is:
+# mongodb://admin:admin@localhost:27017/?replicaSet=rs0&authSource=admin
+
+# Useful commands
+# Check status: mongosh -u admin -p admin --authenticationDatabase admin --port 27017 --eval 'rs.status()'
+#  Stop server: pkill -f 'mongod.*--port 27017'     # or sudo systemctl stop mongod
+# remove database files: rm -rf ~/mongo/rs0
+#  View logs: tail -f /home/craigmcc/mongo/rs0/mongod.log
+
+set -e  # Exit on any error
+
+DBPATH=~/mongo/rs0
+LOGPATH=$DBPATH/mongod.log
+KEYFILE=$DBPATH/mongo-keyfile
+PORT=27017
+REPLSET=rs0
+ROOT_USER=admin
+ROOT_PASS=admin
+
+echo "Starting MongoDB single-node replica set..."
+
+# Create directory
+mkdir -p $DBPATH
+
+# Stop any existing MongoDB process on this port
+echo "Checking for existing MongoDB processes..."
+if pgrep -f "mongod.*--port $PORT" > /dev/null; then
+  echo "Stopping existing MongoDB on port $PORT..."
+  pkill -f "mongod.*--port $PORT" || true
+  sleep 3
+fi
+
+# Create keyfile if it doesn't exist
+if [ ! -f "$KEYFILE" ]; then
+  echo "Generating keyfile..."
+  openssl rand -base64 756 > $KEYFILE
+  chmod 600 $KEYFILE
+else
+  echo "Using existing keyfile..."
+fi
+
+# Step 1: Start MongoDB WITH auth and keyfile (using localhost exception)
+echo "Starting MongoDB with authentication..."
+if ! mongod \
+  --replSet $REPLSET \
+  --auth \
+  --keyFile $KEYFILE \
+  --dbpath $DBPATH \
+  --port $PORT \
+  --bind_ip localhost \
+  --fork \
+  --logpath $LOGPATH; then
+  echo "❌ Failed to start MongoDB"
+  exit 1
+fi
+
+echo "Waiting for MongoDB to be ready..."
+sleep 5
+
+# Step 2: Check if admin user exists and replica set is initialized
+echo "Checking if admin user exists..."
+if mongosh -u $ROOT_USER -p $ROOT_PASS --authenticationDatabase admin --port $PORT --eval "db.hello()" > /dev/null 2>&1; then
+  echo "✅ Admin user exists, checking replica set status..."
+  if mongosh -u $ROOT_USER -p $ROOT_PASS --authenticationDatabase admin --port $PORT --eval "rs.status()" > /dev/null 2>&1; then
+    echo "✅ Replica set already initialized"
+  else
+    echo "Initializing replica set with authentication..."
+    mongosh -u $ROOT_USER -p $ROOT_PASS --authenticationDatabase admin --port $PORT --eval "
+rs.initiate({
+  _id: '$REPLSET',
+  members: [{ _id: 0, host: 'localhost:$PORT' }]
+})"
+    echo "✅ Replica set initialized!"
+    sleep 2
+  fi
+else
+  echo "Admin user does not exist, using localhost exception to initialize..."
+  
+  # Step 3: Initialize replica set using localhost exception
+  echo "Initializing replica set..."
+  if mongosh --port $PORT --eval "
+rs.initiate({
+  _id: '$REPLSET',
+  members: [{ _id: 0, host: 'localhost:$PORT' }]
+})
+" > /dev/null 2>&1; then
+    echo "✅ Replica set initialized"
+  else
+    echo "ℹ️  Replica set may already be initialized"
+  fi
+  
+  echo "Waiting for replica set to become primary..."
+  # Wait for the replica set to be ready
+  for i in {1..10}; do
+    if mongosh --port $PORT --eval "rs.status().myState" 2>/dev/null | grep -q "1"; then
+      echo "✅ Replica set is now primary"
+      break
+    fi
+    echo "Waiting for replica set to become primary... ($i/10)"
+    sleep 2
+  done
+  
+  # Step 4: Create admin user using localhost exception
+  echo "Creating admin user..."
+  if mongosh --port $PORT admin --eval "
+db.createUser({
+  user: '$ROOT_USER',
+  pwd: '$ROOT_PASS',
+  roles: ['root']
+})
+"; then
+    echo "✅ Admin user created successfully!"
+  else
+    echo "❌ Failed to create admin user"
+    exit 1
+  fi
+fi
+
+# Final verification
+echo "Final verification..."
+if mongosh -u $ROOT_USER -p $ROOT_PASS --authenticationDatabase admin --port $PORT --eval "rs.status()" > /dev/null 2>&1; then
+  echo "✅ Authentication and replica set working"
+else
+  echo "❌ Final verification failed"
+  exit 1
+fi
+
+echo ""
+echo "✅ Single-node replica set ready!"
+echo "Connection URI: mongodb://$ROOT_USER:$ROOT_PASS@localhost:$PORT/?replicaSet=$REPLSET&authSource=admin"
+echo ""
+echo "Useful commands:"
+echo "  Check status: mongosh -u $ROOT_USER -p $ROOT_PASS --authenticationDatabase admin --port $PORT --eval 'rs.status()'"
+echo "  Stop server: pkill -f 'mongod.*--port $PORT'"
+echo "  View logs: tail -f $LOGPATH"

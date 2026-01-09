@@ -1,0 +1,5 @@
+#!/bin/sh
+
+docker rm dp-mongo
+
+docker network remove dp-network

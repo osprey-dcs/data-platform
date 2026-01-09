@@ -1,0 +1,8 @@
+#!/bin/sh
+
+docker run -it --rm --network dp-network mongo:7.0.5 \
+	mongosh --host dp-mongo \
+		-u admin \
+		-p admin \
+		--authenticationDatabase admin \
+		dp
