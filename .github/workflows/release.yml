@@ -15,16 +15,16 @@ jobs:
     runs-on: ubuntu-latest
     steps:
 
-      # 1. Checkout data-platform repo
+      # Checkout data-platform repo
       - name: Checkout
         uses: actions/checkout@v3
 
-      # 2. Extract version from tag
+      # Extract version from tag
       - name: Set VERSION env
         run: |
           echo "VERSION=${GITHUB_REF_NAME#rel-}" >> $GITHUB_ENV
 
-      # 3. Create directory structure
+      # Create directory structure
       - name: Create installer directories
         run: |
           mkdir -p data-platform/config
@@ -35,53 +35,72 @@ jobs:
           mkdir -p data-platform/var/lock
           mkdir -p data-platform/var/log
 
-      # 4. Copy static config and templates from repo
+      # Copy static config and templates from repo
       - name: Copy config and templates
         run: |
           cp config/* data-platform/config/ || true
           cp templates/* data-platform/templates/ || true
           test -e README.env && cp README.env data-platform/ || true
 
-      # 5. Download dp-service shaded JAR
-      - name: Download dp-service release
-        uses: robinraju/release-downloader@v1
-        with:
-          repository: ${{ env.DP_SERVICE_REPO }}
-          tag: rel-${{ env.VERSION }}
-          fileName: dp-service-${{ env.VERSION }}-shaded.jar
-          destination: data-platform/lib/dp-service.jar
+      # Copy support scripts (optional, if hosted in repo)
+      - name: Copy support scripts
+        run: |
+          test -d bin && cp -r bin/* data-platform/bin/ || true
 
-      # 6. Download dp-desktop-app shaded JAR
-      - name: Download dp-desktop-app release
-        uses: robinraju/release-downloader@v1
-        with:
-          repository: ${{ env.DP_DESKTOP_APP_REPO }}
-          tag: rel-${{ env.VERSION }}
-          fileName: dp-desktop-app-${{ env.VERSION }}-shaded.jar
-          destination: data-platform/lib/dp-desktop-app.jar
-
-      # 7. Download dp-grpc JAR (if needed)
-      - name: Download dp-grpc release
+      - name: Download dp-grpc release JAR
         uses: robinraju/release-downloader@v1
         with:
           repository: ${{ env.DP_GRPC_REPO }}
           tag: rel-${{ env.VERSION }}
           fileName: dp-grpc-${{ env.VERSION }}.jar
-          destination: data-platform/lib/dp-grpc.jar
+          out-file-path: data-platform/lib
+          token: ${{ secrets.GITHUB_TOKEN }}
 
-      # 8. Copy support scripts (optional, if hosted in repo)
-      - name: Copy support scripts
+      - name: Normalize dp-grpc JAR name
         run: |
-          test -d bin && cp -r bin/* data-platform/bin/ || true
+          mv data-platform/lib/dp-grpc-${VERSION}.jar \
+             data-platform/lib/dp-grpc.jar
 
-      # 9. Create tarball
+      - name: Download dp-service release JAR
+        uses: robinraju/release-downloader@v1
+        with:
+          repository: ${{ env.DP_SERVICE_REPO }}
+          tag: rel-${{ env.VERSION }}
+          fileName: dp-service-${{ env.VERSION }}.jar
+          out-file-path: data-platform/lib
+          token: ${{ secrets.GITHUB_TOKEN }}
+      
+      - name: Normalize dp-service JAR name
+        run: |
+          mv data-platform/lib/dp-service-${VERSION}.jar \
+             data-platform/lib/dp-service.jar
+
+      - name: Download dp-desktop-app release JAR
+        uses: robinraju/release-downloader@v1
+        with:
+          repository: ${{ env.DP_DESKTOP_APP_REPO }}
+          tag: rel-${{ env.VERSION }}
+          fileName: dp-desktop-app-${{ env.VERSION }}.jar
+          out-file-path: data-platform/lib
+          token: ${{ secrets.GITHUB_TOKEN }}
+      
+      - name: Normalize dp-desktop-app JAR name
+        run: |
+          mv data-platform/lib/dp-desktop-app-${VERSION}.jar \
+             data-platform/lib/dp-desktop-app.jar
+
+      - name: Verify lib contents
+        run: |
+          ls -lh data-platform/lib
+
+      # Create tarball
       - name: Create tarball
         run: |
           TAR_FILE=data-platform-${{ env.VERSION }}.tar.gz
           tar czf $TAR_FILE -C data-platform .
           echo "Created tarball: $TAR_FILE"
 
-      # 10. Publish GitHub release
+      # Publish GitHub release
       - name: Publish GitHub Release
         uses: softprops/action-gh-release@v2
         with:
