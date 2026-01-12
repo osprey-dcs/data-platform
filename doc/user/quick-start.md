@@ -34,14 +34,14 @@ These instructions assume that the "docker" and "docker-compose" tools are insta
 
 Use "docker compose" to start the Data Platform ecosystem, including MongoDB and the Ingestion, Query, Annotation, and Ingestion Stream Services, e.g.:
 ```
-docker compose -f ~/data-platform/docker/docker-compose/mldp-ecosystem/docker-compose.yml -p mldp-ecosystem up -d
+~/data-platform/docker/docker-compose/dp-ecosystem/start-dp-ecosystem.sh
 ```
 
 ### Generating test data
 
 Once the ecosystem is up and running, any Data Platform client can be used to interact with the services.  For example, to use Docker to run a Java client application that generates some test data, run the following script:
 ```
-~/data-platform/bin/app-run-docker-test-data-generator
+~/data-platform/docker/docker-compose/dp-ecosystem/run-test-data-generator.sh
 ```
 
 This will generate and send some test data to the Ingestion Service for archival.
