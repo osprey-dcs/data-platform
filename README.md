@@ -222,7 +222,7 @@ Use the links below to learn more about the Data Platform project, or the links 
 * [installation details](doc/user/installation.md)
   * [installation prerequisites](doc/user/installation.md#installation-prerequisites)
   * [data platform installation options](doc/user/installation.md#data-platform-installation-options)
-* [data platform ecosystem tools](https://github.com/osprey-dcs/dp-support)
+* [data platform ecosystem tools](README-dp-support.md)
 
 ## project documents
 * [project overview slide deck - pdf](doc/documents/presentations/mldp-overview.pdf)
