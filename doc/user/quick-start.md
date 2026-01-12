@@ -6,10 +6,10 @@ In either case, it is necessary to 1) download and extract the Data Platform ins
 
 ### Download and extract the Data Plaform installer
 
-This repo includes an installer that contains everything needed to run the Data Platform.  Navigate to the [most recent data-platform release](https://github.com/osprey-dcs/data-platform/releases/latest) and download the file "data-platform-installer.tar.gz" to the desired installation location (e.g., the user's home directory).  Extract the installer using:
+This repo includes an installer that contains everything needed to run the Data Platform.  Navigate to the [most recent data-platform release](https://github.com/osprey-dcs/data-platform/releases/latest) and download the installer tarball to the desired installation location (e.g., the user's home directory).  Extract the installer using:
 
 ```
-tar xvf data-platform-installer.tar.gz
+tar xvf data-platform-1.12.0.tar.gz
 ```
 
 ### Create Data Platform environment config file
