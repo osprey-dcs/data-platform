@@ -1,8 +1,8 @@
-# dp-support
+# MLDP Deployment and Ecosystem Tools
 
-This repo is part of the Data Platform project.  The Data Platform consists of services for capturing and providing access to data captured from a particle accelerator facility.  The [data-platform repo](https://github.com/osprey-dcs/data-platform) provides a project overview and links to the various project componnents, as well as an installer for running the latest version.
+The Data Platform consists of services for capturing and providing access to data captured from a particle accelerator facility.  The [data-platform repo](https://github.com/osprey-dcs/data-platform) provides a project overview and links to the various project componnents, as well as an installer for running the latest version.
 
-This repo, [dp-support](https://github.com/osprey-dcs/dp-support) includes a set of utilities for managing the processes comprising the Data Platform ecosystem.
+The data-platform repo also includes a set of utilities for managing the processes comprising the Data Platform ecosystem. These tools were previously managed in a separate dp-support repo, but have been moved in order to streamline project management.
 
 The Data Platform ecosystem consists of the following components:
 
@@ -114,53 +114,16 @@ The bin directory contains scripts for managing the Data Platform server applica
 
 ## Data Platform Docker support
 
-The data-platform installation directory includes a "docker" subdirectory that contains tools for running Data Platform services and applications using Docker.
+The data-platform installation directory includes a "docker" subdirectory that contains tools for running Data Platform services and applications using Docker.  It also includes three different docker compose scenarious for running components of the MLDP ecosystem.  Each scenario includes a README with instructions for running the scenario:
 
-### Running Data Platform services using docker compose
-
-The "docker" directory in the installation contains a "docker-compose" subdirectory that includes configuration files for using "docker compose" to run Data Platform services.  The following scripts are provided:
-
-#### mldp-ecosystem
-
-This docker-compose configuration runs MongoDB as a Docker container, and starts the Data Platform services including Ingestion, Query, Annotation, and Ingestion Stream.  This is a simple way to run the Data Platform and supports using regular Java client applications and Dockerized client applications interacting with the services.  To start the ecosystem, use the following command:
-
-```
-docker compose -f ~/data-platform/docker/docker-compose/dp-ecosystem/docker-compose.yml -p dp-ecosystem up -d
-```
-
-To run a Dockerized Java client that generates some test data and sends it to the Ingestion Service for archival, use the following command:
-
-```
-~/data-platform/bin/app-run-docker-test-data-generator
-```
-#### ingestion-load-balancer
-
-This docker-compose configuration runs MongoDB as a Docker container, starts two instances of the Data Platform Ingestion Service (in performance benchmark mode), and runs the Envoy proxy as a Docker container configured to be a round-robin load balancer for the Ingestion Service instances.
-
-The main purpose of this docker-compose configuration is to demonstrate the static configuration using Envoy as a Data Platform ingestion load balancer.  To start the load balancer configuration, use the following command:
-
-```
-docker compose -f ~/data-platform/docker/docker-compose/ingestion-load-balancer/docker-compose.yml -p ingestion-load-balancer up -d
-```
-
-To run a Dockerized Java client that runs the Ingestion Service performance benchmark against the load balancer, use the following command:
-
-```
-~/data-platform/bin/app-run-docker-lb-ingestion-benchmark
-```
-
-This sends ingestion requests to the load balancer on port 8080, which dispatches the requests to the two Ingestion Service instances using a round-robin policy.
+* [dp-ecosystem](./docker/docker-compose/dp-ecosystem/README.md) - Runs the full MLDP ecosystem including MongoDB and a static Envoy load balancer front-end for the ingestion service instances. Includes script for running the test data generator.
+* [single node Mongo replica set](./docker/docker-compose/mongo-replica-set-single/README.md) - Runs MongoDB in a single-node replica set configuration.  Includes scripts for staring an ingestion server and running the test data generator.
+* [multi node Mongo replica set](./docker/docker-compose/mongo-replica-set-multi/README.md) - Runs MongoDB in a multi-node replica set configuration.  Includes scripts for staring an ingestion server and running the test data generator.
 
 
 ## Data Platform Kubernetes support
 
-The data-platform installation directory includes a "kubernetes" subdirectory that contains tools for running Data Platform services and applications using Kubernetes.  Inside that directory is a "dp-ecosystem" subdirectory that contains kubernetes config files for running the full Data Platform ecosystem.
-
-The file "deployment-script" illustrates the steps needed to run the system using kubernetes.  Because it uses Minikube to run Kubernetes on a local machine, it is not suitable for production.  However, the configuration files used by the script are a good starting place for running the Data Platform services on a Kubernetes cluster.
-
-The script loads Docker images for each of the Data Platform services into minikube so they can be used in the deployment configuration files for running each service.  It creates a "dp-ecosystem" namespace, and then applies the configuration files creating the Kubernetes deployment and service for each element of the ecosystem including MongoDB and the Data Platform Ingestion, Query, Annotation, and Ingestion Stream services.
-
-The configuration initially starts 2 replicas for each Data Platform service, and uses Kubernetes Horizontal Pod Autscaler (HPA) to manage horizontal scaling.  The "hpa.yaml" file specifies rules for scaling each service by CPU and memory utilization.
+The data-platform installation directory includes a "kubernetes" subdirectory that contains tools for running Data Platform services and applications using Kubernetes.  Inside that directory is a "dp-ecosystem" subdirectory that contains kubernetes config files for running the full Data Platform ecosystem with dynamic horizontal scaling for all MLDP services.  See the [included README](./kubernetes/dp-ecosystem/README.md) for additional details.
 
 
 ## GUI application scripts
