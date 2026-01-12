@@ -1,0 +1,58 @@
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: annotation-service
+  namespace: dp-ecosystem
+  labels:
+    app: annotation-service
+    component: backend
+spec:
+  replicas: 2  # Start with 2 replicas, HPA will manage scaling
+  selector:
+    matchLabels:
+      app: annotation-service
+  template:
+    metadata:
+      labels:
+        app: annotation-service
+    spec:
+      containers:
+      - name: annotation-service
+        # In a real deployment, you'd push this to a container registry
+        # For now, assume the image is built and available
+        image: dp-annotation-service:latest
+        imagePullPolicy: IfNotPresent  # Try local first, then pull
+        ports:
+        - containerPort: 50053
+          name: grpc
+          protocol: TCP
+        env:
+        - name: DP_MONGO_HOST
+          value: "mongodb"  # References the MongoDB service name
+        command:
+        - "java"
+        args:
+        - "-Xmx400m"  # Set max heap to 400MB, leave more room for off-heap
+        - "-Xms200m"  # Initial heap size
+        - "-Ddp.MongoClient.uri=mongodb://admin:admin@mongodb:27017/"
+        - "-cp"
+        - "/app/dp-service.jar"
+        - "com.ospreydcs.dp.service.annotation.server.AnnotationGrpcServer"
+        resources:
+          requests:
+            memory: "200Mi"
+            cpu: "100m"
+          limits:
+            memory: "800Mi"  # Further increased to prevent OOMKills
+            cpu: "300m"
+        # Health checks for gRPC services
+        livenessProbe:
+          tcpSocket:
+            port: 50053
+          initialDelaySeconds: 30
+          periodSeconds: 10
+        readinessProbe:
+          tcpSocket:
+            port: 50053
+          initialDelaySeconds: 5
+          periodSeconds: 5

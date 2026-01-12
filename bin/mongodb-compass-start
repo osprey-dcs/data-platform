@@ -1,0 +1,11 @@
+#!/bin/sh
+
+# mongodb-compass is a gui for navigating mongodb and is useful for admin and ad hoc queries.
+#
+# if mongodb-compass not installed (in /usr/bin on ubuntu):
+# 1. download appropriate version from https://www.mongodb.com/try/download/compass
+# 2. follow installation instructions for platform here https://www.mongodb.com/docs/compass/current/install/
+
+echo "for user/password = "admin" connect string is 'mongodb://admin:admin@localhost:27017'"
+
+nohup mongodb-compass mongodb://localhost:27017/ --username admin --password admin > /dev/null 2>&1 &

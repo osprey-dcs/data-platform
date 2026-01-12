@@ -1,0 +1,9 @@
+#/bin/bash
+
+echo
+echo '================================================================'
+echo 'envoy-docker-start'
+echo '================================================================'
+echo
+
+docker start envoy || { echo "fatal error: failed to start envoy docker container"; exit 1; }

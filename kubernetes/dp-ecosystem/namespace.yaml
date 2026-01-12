@@ -1,0 +1,7 @@
+apiVersion: v1
+kind: Namespace
+metadata:
+  name: dp-ecosystem
+  labels:
+    app.kubernetes.io/name: ingestion-load-balancer
+    app.kubernetes.io/part-of: data-platform

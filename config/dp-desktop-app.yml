@@ -1,0 +1,194 @@
+# MongoClient: Settings for connection to MongoDB.
+MongoClient:
+
+  # MongoClient.dbHost: The host that is running the MongoDB server.
+  # Default value is "localhost", specifying that the database is running on the same host as the Data Platform services.
+  dbHost: localhost
+
+  # MongoClient.dbPort: Network port on dbHost for the MongoDB service.  MongoDB default installation is 27017.
+  dbPort: 27017
+
+  # MongoClient.dbUser: Username for connection to MongoDB by Data Platform services.
+  dbUser: admin
+
+  # MongoClient.dbPassword: Password for dbUser for connection to MongoDB by Data Platform services.
+  dbPassword: admin
+
+# GrpcClient: General settings for gRPC clients.
+GrpcClient:
+
+  # GrpcClient.hostname: Name of host running Data Platform services.
+  hostname: localhost
+
+  # GrpcClient.keepAliveTimeSeconds: Sets the time (in seconds) since the last receipt before sending a keepalive ping.
+  keepAliveTimeSeconds: 45
+
+  # GrpcClient.keepAliveTimeoutSeconds: Sets the time (in seconds) to wait for a response after sending a keepalive ping.
+  keepAliveTimeoutSeconds: 20
+
+  # GrpcClient.keepAliveWithoutCalls: If true, enables sending keepalive pings even when no active RPCs are present on the channel.
+  keepAliveWithoutCalls: true
+
+# GrpcServer: General settings for running gRPC servers.
+GrpcServer:
+
+  # GrpcServer.maxMessageSizeBytesIncoming: Limit on incoming gRPC message size in bytes, enforced by gRPC framework.
+  incomingMessageSizeLimitBytes: 4096000
+
+  # GrpcServer.keepAliveTimeSeconds: Sets the time (in seconds) without read activity before a keepalive ping is sent.
+  keepAliveTimeSeconds: 60
+
+  # GrpcServer.keepAliveTimeoutSeconds: Sets the time (in seconds) to wait for read activity after sending a keepalive ping.
+  # If no activity is detected within this timeout, the connection is closed.
+  keepAliveTimeoutSeconds: 20
+
+  # GrpcServer.permitKeepAliveTimeSeconds: Sets the minimum keepalive time (in seconds) that clients are allowed to configure.
+  # This prevents clients from sending pings too frequently.
+  permitKeepAliveTimeSeconds: 30
+
+  # GrpcServer.permitKeepAliveWithoutCalls: If true, allows clients to send keepalive pings even when there are no active RPCs on the connection.
+  permitKeepAliveWithoutCalls: true
+
+# IngestionServer: Settings for the Ingestion server process.
+IngestionServer:
+
+  # IngestionServer.port: Network port for Ingestion Service gRPC.
+  port: 50051
+
+# IngestionHandler: Settings for the Ingestion Service request handler.
+IngestionHandler:
+
+  # IngestionHandler.numWorkers: Number of worker threads used by the Ingestion Service request handler.
+  # This parameter might take some tuning on deployments to get the best performance.
+  numWorkers: 7
+
+  SourceMonitor:
+
+    # IngestionHandler.SourceMonitor.validatePvs: True if the handler should check that subscribed PVs exist in the
+    # archive, false otherwise.
+    validatePvs: false
+
+# IngestionBenchmark: Settings for the Ingestion Service performance benchmark application.
+IngestionBenchmark:
+
+  # IngestionBenchmark.grpcConnectString: String used for gRPC connection to Ingestion Service including "host:port".
+  grpcConnectString: "localhost:50051"
+
+  # IngestionBenchmark.startSeconds: Specifies fixed start time for data created by Ingestion benchmark application.
+  startSeconds: 1698767462
+
+# QueryServer: Settings for the Query server process.
+QueryServer:
+
+  # QueryServer.port: Network port for Query Service gRPC.
+  port: 50052
+
+# QueryHandler: Settings for the Query Service request handler.
+QueryHandler:
+
+  # QueryHandler.numWorkers: Number of worker threads used by the Query Service request handler.
+  # This parameter might take some tuning on deployments to get the best performance.
+  numWorkers: 7
+
+  # QueryHandler.outgoingMessageSizeLimitBytes: Limit on outgoing gRPC message size in bytes, applied by query handler.
+  # gRPC framework only controls incoming message size, outgoing message size is unlimited, so we are adding this to
+  # control the size of messages for query responses.
+  outgoingMessageSizeLimitBytes: 4096000
+
+# QueryBenchmark: Settings for the Query Service performance benchmark applications.
+QueryBenchmark:
+
+  # QueryBenchmark.grpcConnectString: String used for gRPC connection to Query Service including "host:port".
+  grpcConnectString: "localhost:50052"
+
+# annotationServer: Settings for the annotation server process.
+AnnotationServer:
+
+  # annotationServer.port: Network port for Annotation Service gRPC.
+  port: 50053
+
+# annotationHandler: Settings for the annotation Service request handler.
+AnnotationHandler:
+
+  # annotationHandler.numWorkers: Number of worker threads used by the annotation Service request handler.
+  # This parameter might take some tuning on deployments to get the best performance.
+  numWorkers: 7
+
+# Export: Settings for the export mechanism.
+Export:
+
+  # serverMountPoint: Target base directory mounted to machine running Annotation Service for export output files.
+  # Setting must be specified to use the export feature.  Export requests will return an error response if not specified.
+  # E.g., "/opt/dp/export".
+  serverMountPoint: /tmp
+
+  # shareMountPoint: Client-accessible directory for accessing export output files, if different than serverMountPoint.
+  # Defaults to serverMountPoint if not specified.
+  # E.g., "/share/dp/export".
+  shareMountPoint:
+
+  # urlBase: Optional base URL for accessing export output files.
+  # Requires a web-server providing access to files at the specified location.
+  # E.g., "https://www.facility.gov/dp/export".
+  urlBase: http://localhost:8081
+
+  # tabularExportFileSizeLimitBytes: Specifies size limit in bytes for tabular export output files to avoid potential
+  # out of memory issues in the service.  Limit applies to tabular export formats like csv and xlsx because a large
+  # table data structure is created in memory before writing the file, but does not apply to bucketed export formats
+  # like hdf5, because each bucket is written to file as it is accessed from the database without building
+  # in-memory data strcutures.
+  tabularExportFileSizeLimitBytes: 4096000
+
+# ingestionStreamServer: Settings for the ingestion stream server process.
+IngestionStreamServer:
+
+  # ingestionStreamServer.port: Network port for Ingestion Stream Service gRPC.
+  port: 50054
+
+# ingestionStreamHandler: Settings for the Ingestion Stream Service request handler.
+IngestionStreamHandler:
+
+  # ingestionStreamHandler.numWorkers: Number of worker threads used by the Ingestion Stream Service request handler.
+  # This parameter might take some tuning on deployments to get the best performance.
+  numWorkers: 7
+
+  # IngestionStreamHandler.EventMonitor: Settings for the Ingestion Stream handler's EventMonitor.
+  EventMonitor:
+
+    # IngestionStreamHandler.EventMonitor.maxMessageSizeBytes: Maximum message size in subscribeDataEvent() response stream.
+    maxMessageSizeBytes: 4096000
+
+    # Settings for the EventMonitor's DataBuffers, for buffering PV subscription data.
+    DataBuffer:
+
+      # IngestionStreamHandler.EventMonitor.DataBuffer.flushIntervalMillis: Buffer flush interval in milliseconds.
+      flushIntervalMillis: 500
+
+      # IngestionStreamHandler.EventMonitor.DataBuffer.maxBufferBytes: Max buffer size in bytes, will flush when size is reached.
+      maxBufferBytes: 524288
+
+      # IngestionStreamHandler.EventMonitor.DataBuffer.maxBufferItems: Max buffer size in number of buckets, will flush when size is reached.
+      maxBufferItems: 50
+
+      # IngestionStreamHandler.EventMonitor.DataBuffer.ageLimitNanos: Default max age for buffered data in nanos, will flush when limit is reached.
+      # Used for buffer size when event trigger time offset is non-negative.
+      # 1 billion nanos == 1 second.
+      ageLimitNanos: 2000000000
+
+      # IngestionStreamHandler.EventMonitor.DataBuffer.ageCushionNanos: Extra cushion added to buffer for event trigger with negative time offset.
+      # Buffer age limit will be negative trigger time offset in nanos plus cushion.
+      # 1 billion nanos == 1 second.
+      ageCushionNanos: 1000000000
+
+    # Settings for the EventMonitor's TriggeredEventManager, for managing events after they are triggered.
+    TriggeredEventManager:
+
+      # IngestionStreamHandler.EventMonitor.TriggeredEventManager.eventExpirationNanos: How long after event end time
+      # to remove the event from the TriggeredEventManager. End time is event trigger time offset plus duration.
+      # 1 billion nanos == 1 second.
+      eventExpirationNanos: 5000000000
+
+      # IngestionStreamHandler.EventMonitor.TriggeredEventManager.eventCleanupIntervalMillis: How often to check for
+      # expired events, in milliseconds.
+      # 1000 millis == 1 second.
+      eventCleanupIntervalMillis: 5000

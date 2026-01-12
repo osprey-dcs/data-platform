@@ -1,0 +1,24 @@
+apiVersion: v1
+kind: Service
+metadata:
+  name: annotation-service
+  namespace: dp-ecosystem
+  labels:
+    app: annotation-service
+    component: backend
+spec:
+  type: NodePort  # Use NodePort for snap k8s - LoadBalancer stays pending
+  selector:
+    app: annotation-service
+  ports:
+  - port: 8082        # External port (different from other services)
+    targetPort: 50053  # Internal container port (annotation service)
+    nodePort: 32609    # Fixed external port for HTTP/gRPC-Web
+    protocol: TCP
+    name: grpc-web
+  # For gRPC, you might also want to expose the raw gRPC port
+  - port: 50053
+    targetPort: 50053
+    nodePort: 31408    # Fixed external port for gRPC
+    protocol: TCP
+    name: grpc

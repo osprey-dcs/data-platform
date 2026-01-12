@@ -1,0 +1,8 @@
+#!/bin/sh
+
+docker network create dp-network
+
+docker create -p 27017:27017 --network dp-network --name dp-mongo \
+	-e MONGO_INITDB_ROOT_USERNAME=admin \
+	-e MONGO_INITDB_ROOT_PASSWORD=admin \
+	mongo:8.0.6
