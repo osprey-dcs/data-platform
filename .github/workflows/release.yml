@@ -110,7 +110,7 @@ jobs:
       - name: Create tarball
         run: |
           TAR_FILE=data-platform-${{ env.VERSION }}.tar.gz
-          tar czf $TAR_FILE -C data-platform .
+          tar czf data-platform-${VERSION}.tar.gz data-platform
           echo "Created tarball: $TAR_FILE"
 
       - name: Generate checksum
