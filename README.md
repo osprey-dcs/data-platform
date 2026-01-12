@@ -59,9 +59,10 @@ Using the same features as for tracking data provenance, the MLDP supports the M
 The Data Platform includes the following technical components:
 
 - An API built upon the gRPC communication framework.
-- A suite of services built using the Java programming language.
+- A suite of services built using the Java programming language, implementing the gRPC service APIs.
 - Utilities for deploying and managing the ecosystem.
 - High-level Java client libraries for building applications.
+- A JavaFX desktop GUI application for navigating the data archive.
 - A JavaScript web application for exploring the data archive.
 - Benchmarks for comparing alternative technologies.
 
@@ -77,7 +78,7 @@ The API definition is managed separately from the service implementations so tha
 
 ### Service Implementations
 
-The Data Platform Services are implemented as Java server applications.  There are three independent server applications, providing ingestion, query, and annotation services, respectively.  The [MongoDB document-oriented database management system](https://www.mongodb.com/) is used by the services for persistence.  The [dp-service repo](https://github.com/osprey-dcs/dp-service) provides more detail about the Java service implementations and the frameworks used to build them.
+The Data Platform Services are implemented as Java server applications.  There are four independent server applications, providing ingestion, streaming / subscription, query, and annotation services, respectively.  The [MongoDB document-oriented database management system](https://www.mongodb.com/) is used by the services for persistence.  The [dp-service repo](https://github.com/osprey-dcs/dp-service) provides more detail about the Java service implementations and the frameworks used to build them.
 
 ### Desktop GUI Application
 
@@ -89,7 +90,7 @@ The Data Platform Web Application is under development using the [JavaScript Rea
 
 ### Installation and Deployment Support Tools
 
-A set of utilities is provided to help manage the Data Platform ecosystem.  There are scripts for managing infrastructure services including MongoDB and the Envoy proxy (used for deploying the web application), and a set of simple process-management utilities for managing the Data Platform server and benchmark applications.  The [dp-support repo](https://github.com/osprey-dcs/dp-support) contains the scripts and utilities for managing the components of the Data Platform ecosystem.  It includes documentation for using those tools.
+A set of utilities is provided to help manage the Data Platform ecosystem.  There are scripts for managing infrastructure services including MongoDB and the Envoy proxy (used for deploying the web application), and a set of simple process-management utilities for managing the Data Platform server and benchmark applications.  The scripts and utilities for managing the components of the Data Platform ecosystem previously were managed in a separate "dp-support" repo, but have been moved to the data-platform repo in order to streamline project management.
 
 ### High-Level Client Libraries
 
@@ -164,15 +165,29 @@ Version 1.10 includes the new Ingestion Stream Service providing a mechanism for
 
 Though not a primary project requirement, we decided it was useful to build a Java desktop GUI application to demonstrate the features of the MLDP.  However, instead of making an application that can only be used as a demo, we decided to build a full-featured tool useful for navigating the MLDP data archive.  Version 1.11 includes a new application that provides a user interface for navigating archive metadata and time-series data, viewing and creating annotations, and other tools for visualizing and exporting data.  The application uses the MLDP gRPC API and provides a useful reference for calling those APIs from a Java client.  The application is managed in the [dp-desktop-app repo](https://github.com/osprey-dcs/dp-desktop-app), which contains details for installing and using the GUI application.
 
+### v1.12 (January 2026)
+
+Version 1.12 focused on improved deployment support. The contents of the dp-support repo, including tools for managing the MLDP ecosystem, are moved to the data-platform repo in order to streamline project management. Sample Docker scenarios are provided for running the full MLDP ecosystem via Docker (including MongoDB and a statically configured Envoy load balancer), and for running MongoDB in single- or multi-node replica set configurations. A configuration is provided as a staring place for running the full MLDP ecosystem via Kubernetes with dynamic horizontal scaling of all MLDP services. Each project repo provides Github Actions CI workflows for automatically running regression tests, building artifacts, and publishing releases in response to repo events like pull requests and tags. The MongoDB configuration for MLDP services is simplified to use a single URI parameter for connecting to the database.
+
 
 
 ---
 ## todo and road map
 
-#### APIs
+#### Features planned for v1.13
+  * Python client API library.
+  * APIs for navigating descriptive elements like tags, key/value attributes, and event metadata for ingested data and annotations.
+  * Desktop GUI app support for remote gRPC targets.
+  * New API for managing PV-related metadata.
+  * Investigate options for storing scalar data values in a way that supports query by PV data value (instead of storing opaque serialized data).
+  * Investigate options for live data subscription with multiple ingestion service instances (e.g., REDIS registry).
+  * Investigate options for large atomic data values exceeding the MongoDB BSON object size limit of 16MB (e.g, for images).
   * Annotation mechanism targeting individual data points.
   * Ad hoc export mechanism to trigger export by specifying pv names and time range.
-  * APIs for navigating tags, attributes, and experiment metadata in use within archive.
+  * Mechanism for including user-defined calculations in desktop GUI app plots.
+
+#### Plugins
+  * Mechanism for executing user-defined code in ingestion stream.
 
 #### Archive
   * Add mechanism for sharing and access control.
@@ -180,19 +195,15 @@ Though not a primary project requirement, we decided it was useful to build a Ja
   * Add support for authentication and authorization of query and annotation services.
 
 #### GUI apps
-  * Support for remote gRPC targets in desktop app. 
-  * Viewer for uploaded calculations alongside PV data from archive.
   * Add desktop gui app features to web app.
 
 #### Performance and Scaling
   * Run more extensive load testing benchmarks.
-  * Investigate MongoDB database clustering (replica sets), partitioning (sharding), and connection pooling.
-  * Experiment with horizontal scaling alternatives.
+  * Investigate MongoDB connection pooling.
   * Experiment with streaming architecture (e.g., Apache Kafka).
 
 #### Client Tools
   * Build EPICS aggregator component to stream data via gRPC API to Ingestion Service.
-  * Python client library development.
   * Automation for batch ingestion using directory watcher and file import.
 
 #### Monitoring and Administration
