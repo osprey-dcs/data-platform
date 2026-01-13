@@ -44,7 +44,11 @@ Create a pull request to merge the dev branch on the upstream to the main branch
 
 ## create git tags for release in upstream/main
 
-Need to do this in the upstream for all repos: dp-grpc, dp-service, dp-desktop-app, data-platform. Creating a "rel-" tag in each repo will automatically run the release workflow to create a release with the same name as the tag and publish artifacts appropriate for the repo. The tag should be created manually to avoid a race condition between the repo workflows as they publish their releases.
+Need to do this in the upstream for all repos: dp-grpc, dp-service, dp-desktop-app, data-platform. Creating a "rel-" tag in each repo will automatically run the release workflow to create a release with the same name as the tag and publish artifacts appropriate for the repo. The tag should be created manually to avoid a race condition between the repo workflows as they publish their releases:
+```
+git tag rel-1.12.0
+git push origin rel-1.12.0
+```
 
 
 ## edit github release docs for each repo
