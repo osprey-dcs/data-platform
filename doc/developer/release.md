@@ -5,12 +5,9 @@ This document contains notes to help streamline the process of creating a Data P
 
 ## complete development work
 
-Edit pom.xml for dp-grpc, dp-service to reflect current version number!
+Make sure pom.xml for dp-grpc, dp-service reflect current version number!
 
-### dp-service
-- add comments to application.yml for any new contents
-
-### dp-support
+### data-platform
 - add/modify scripts as needed
 
 
@@ -21,14 +18,14 @@ Edit pom.xml for dp-grpc, dp-service to reflect current version number!
 - dp-service
   - update README.md
   - update developer-notes.md and UML diagrams for any important new features / frameworks
+  - add comments to application.yml for any new config resources
   - update java command line docs for running new applications etc
-  - update config docs
-- dp-support
-  - update README.md with new scripts etc
+  - update running.md with details about running applications and configuration
 - data-platform
   - create release notes
   - update doc/install/quick-start.md, installation.md
   - update README.md
+  - update README.md with new scripts etc
   - update release process (this doc)
 
 Make sure this is all done before adding tags etc because it's a pain removing tags, deleting releases, adding tags, creating releases etc.
@@ -47,23 +44,7 @@ Create a pull request to merge the dev branch on the upstream to the main branch
 
 ## create git tags for release in upstream/main
 
-Need to do this in the upstream for all repos: dp-grpc, dp-service, dp-desktop-app, data-platform. Change to the directory for upstream and use the script to create the tags.  Note that creating a "rel-" tag in the repos will automatically run the release workflow to create a release with the same name as the tag and publish artifacts appropriate for the repo.
-
-The ~/dp/data-platform/scripts/tag-repos script can be used for this.
-
-### tag for current release
-
-These tags should only need to be added once for a release, unless they need to be "moved" (removed and added) to pick up new files.  This should be done in the main branch for the upstream repo.
-
-- cd ~/dp/data-platform/scripts
-- ./tag-repos rel-1.12.0
-
-### steps for removing tags
-
-The tag-repos script can be used to move an existing tag. If tags need to be (re)moved (this is unusual, for the releases anyway):
-
-- git tag -d v1.12
-- git push origin --delete v1.12
+Need to do this in the upstream for all repos: dp-grpc, dp-service, dp-desktop-app, data-platform. Creating a "rel-" tag in each repo will automatically run the release workflow to create a release with the same name as the tag and publish artifacts appropriate for the repo. The tag should be created manually to avoid a race condition between the repo workflows as they publish their releases.
 
 
 ## edit github release docs for each repo
