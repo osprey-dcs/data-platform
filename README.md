@@ -178,15 +178,19 @@ The main focus of v1.13 is a new set of column-oriented data structures in the p
 ---
 ## todo and road map
 
-#### Features planned for v1.13
-  * Python client API library.
-  * APIs for navigating descriptive elements like tags, key/value attributes, and event metadata for ingested data and annotations.
+#### Features planned for v1.14
+  * Python client API library for calling MLDP Query and Annotation Service APIs from Python.
+  * PV Catalog API for configuring and exploring structred and free-form properties of archived PVs.
+  * Machine Mode / Configuration API for asking about the configuration of the machine and beam path at a specific point in time.
+  * Sample Marking API for marking the disposition of individual sample values for automated data cleaning tools (e.g, "suspect value").
+  * Enhancements to Calculations API to use new column-oriented data structures and more robust data provenance mechanisms.
+  * Enhancements to Query API for query-by-value and paging.
+  * APIs for configuring and exploring the use of describe tags and key/value attributes in the archive.
+
+#### Longer Term Plans
   * Desktop GUI app support for remote gRPC targets.
-  * New API for managing PV-related metadata.
-  * Investigate options for storing scalar data values in a way that supports query by PV data value (instead of storing opaque serialized data).
-  * Investigate options for live data subscription with multiple ingestion service instances (e.g., REDIS registry).
-  * Investigate options for large atomic data values exceeding the MongoDB BSON object size limit of 16MB (e.g, for images).
-  * Annotation mechanism targeting individual data points.
+  * Modify data subscription mechanism to support multiple ingestion service instances (e.g., REDIS registry).
+  * Add support for large atomic data values exceeding the MongoDB BSON object size limit of 16MB (e.g., Mongo GridFS).
   * Ad hoc export mechanism to trigger export by specifying pv names and time range.
   * Mechanism for including user-defined calculations in desktop GUI app plots.
 
@@ -203,8 +207,7 @@ The main focus of v1.13 is a new set of column-oriented data structures in the p
 
 #### Performance and Scaling
   * Run more extensive load testing benchmarks.
-  * Investigate MongoDB connection pooling.
-  * Experiment with streaming architecture (e.g., Apache Kafka).
+  * Experiment with streaming architecture (e.g., plugin for publishing ingested data to Apache Kafka).
 
 #### Client Tools
   * Build EPICS aggregator component to stream data via gRPC API to Ingestion Service.
@@ -212,7 +215,7 @@ The main focus of v1.13 is a new set of column-oriented data structures in the p
 
 #### Monitoring and Administration
   * Implement mechanism for ingestion data validation.
-  * Add framework for measuring data statistics.
+  * Add metrics framework for measuring data statistics.
 
 
 
