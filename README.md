@@ -90,7 +90,11 @@ The Data Platform Web Application is under development using the [JavaScript Rea
 
 ### Installation and Deployment Support Tools
 
-A set of utilities is provided to help manage the Data Platform ecosystem.  There are scripts for managing infrastructure services including MongoDB and the Envoy proxy (used for deploying the web application), and a set of simple process-management utilities for managing the Data Platform server and benchmark applications.  The scripts and utilities for managing the components of the Data Platform ecosystem previously were managed in a separate "dp-support" repo, but have been moved to the data-platform repo in order to streamline project management.
+A set of utilities is provided to help manage the Data Platform ecosystem.  There are scripts for managing infrastructure services including MongoDB and the Envoy proxy (used for deploying the web application), and a set of simple process-management utilities for managing the Data Platform server and benchmark applications. 
+
+There are also configuration files for running the Data Platform ecosystem via Docker (with statically configured Envoy Ingestion Service load balancer) and Kubernetes (with dynamic load balancing of all services).
+
+The scripts and utilities for managing the components of the Data Platform ecosystem previously were managed in a separate "dp-support" repo, but have been moved to the data-platform repo in order to streamline project management.
 
 ### High-Level Client Libraries
 
