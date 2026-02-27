@@ -84,6 +84,10 @@ The Data Platform Services are implemented as Java server applications.  There a
 
 Though not a primary project requirement, we decided it was useful to build a Java desktop GUI application to demonstrate the features of the MLDP.  However, instead of making an application that can only be used as a demo, we decided to build a full-featured tool useful for navigating the MLDP data archive.  It provides a user interface for navigating archive metadata and time-series data, viewing and creating annotations, and other tools for visualizing and exporting data.  The application uses the MLDP gRPC API and provides a useful reference for calling those APIs from a Java client.  The application is managed in the [dp-desktop-app repo](https://github.com/osprey-dcs/dp-desktop-app), which contains details for installing and using the GUI application.
 
+### Python Client API Library
+
+A [Python client API library](https://github.com/osprey-dcs/dp-python-lib) for the MLDP is under development.
+
 ### Web Application
 
 The Data Platform Web Application is under development using the [JavaScript React framework](https://react.dev/).  It will provide similar features to the desktop GUI application.  The [dp-web-app repo](https://github.com/osprey-dcs/dp-web-app) contains the JavaScript code for the Data Platform Web Application, with documentation about the project.
