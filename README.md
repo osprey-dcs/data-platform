@@ -84,13 +84,21 @@ The Data Platform Services are implemented as Java server applications.  There a
 
 Though not a primary project requirement, we decided it was useful to build a Java desktop GUI application to demonstrate the features of the MLDP.  However, instead of making an application that can only be used as a demo, we decided to build a full-featured tool useful for navigating the MLDP data archive.  It provides a user interface for navigating archive metadata and time-series data, viewing and creating annotations, and other tools for visualizing and exporting data.  The application uses the MLDP gRPC API and provides a useful reference for calling those APIs from a Java client.  The application is managed in the [dp-desktop-app repo](https://github.com/osprey-dcs/dp-desktop-app), which contains details for installing and using the GUI application.
 
+### Python Client API Library
+
+A [Python client API library](https://github.com/osprey-dcs/dp-python-lib) for the MLDP is under development.
+
 ### Web Application
 
 The Data Platform Web Application is under development using the [JavaScript React framework](https://react.dev/).  It will provide similar features to the desktop GUI application.  The [dp-web-app repo](https://github.com/osprey-dcs/dp-web-app) contains the JavaScript code for the Data Platform Web Application, with documentation about the project.
 
 ### Installation and Deployment Support Tools
 
-A set of utilities is provided to help manage the Data Platform ecosystem.  There are scripts for managing infrastructure services including MongoDB and the Envoy proxy (used for deploying the web application), and a set of simple process-management utilities for managing the Data Platform server and benchmark applications.  The scripts and utilities for managing the components of the Data Platform ecosystem previously were managed in a separate "dp-support" repo, but have been moved to the data-platform repo in order to streamline project management.
+A set of utilities is provided to help manage the Data Platform ecosystem.  There are scripts for managing infrastructure services including MongoDB and the Envoy proxy (used for deploying the web application), and a set of simple process-management utilities for managing the Data Platform server and benchmark applications. 
+
+There are also configuration files for running the Data Platform ecosystem via Docker (with statically configured Envoy Ingestion Service load balancer) and Kubernetes (with dynamic load balancing of all services).
+
+The scripts and utilities for managing the components of the Data Platform ecosystem previously were managed in a separate "dp-support" repo, but have been moved to the data-platform repo in order to streamline project management.
 
 ### High-Level Client Libraries
 
@@ -169,20 +177,28 @@ Though not a primary project requirement, we decided it was useful to build a Ja
 
 Version 1.12 focused on improved deployment support. The contents of the dp-support repo, including tools for managing the MLDP ecosystem, are moved to the data-platform repo in order to streamline project management. Sample Docker scenarios are provided for running the full MLDP ecosystem via Docker (including MongoDB and a statically configured Envoy load balancer), and for running MongoDB in single- or multi-node replica set configurations. A configuration is provided as a staring place for running the full MLDP ecosystem via Kubernetes with dynamic horizontal scaling of all MLDP services. Each project repo provides Github Actions CI workflows for automatically running regression tests, building artifacts, and publishing releases in response to repo events like pull requests and tags. The MongoDB configuration for MLDP services is simplified to use a single URI parameter for connecting to the database.
 
+### v1.13 (February 2026)
+
+The main focus of v1.13 is a new set of column-oriented data structures in the protobuf API for data ingestion, with the primary objective of reducing per-request memory allocation and garbage collection in the JVM.  The original API definition included the DataColumn and DataValue messages, and was a simple mechanism for supporting heterogeneous data types in a single API data structure including scalars, arrays, structures, and images.  The downside of this approach is that it leads to per-sample memory allocation in the Ingestion Service, so that handling an incoming ingestion request containing a bucket of 1000 samples creates a Java DataValue object for each sample, in addition to the other overhead of the request.  In v1.13, we've added new column-oriented data structures like DoubleColumn and DoubleArrayColumn that are read in the Ingestion Service as a single primitve array of values, avoiding the per-sample JVM allocation.  For a facility continuously ingesting data for 4000 PVs at a rate of 1 kHz, this avoids almost 20 TB of JVM memory allocation / garbage collection in a 24 hour period.  An added benefit of the approach is that individual scalar data values are now visible in MongoDB BucketDocuments, where previosly the data values were stored as a binary blob.
+
 
 
 ---
 ## todo and road map
 
-#### Features planned for v1.13
-  * Python client API library.
-  * APIs for navigating descriptive elements like tags, key/value attributes, and event metadata for ingested data and annotations.
+#### Features planned for v1.14
+  * Python client API library for calling MLDP Query and Annotation Service APIs from Python.
+  * PV Catalog API for configuring and exploring structred and free-form properties of archived PVs.
+  * Machine Mode / Configuration API for asking about the configuration of the machine and beam path at a specific point in time.
+  * Sample Marking API for marking the disposition of individual sample values for automated data cleaning tools (e.g, "suspect value").
+  * Enhancements to Calculations API to use new column-oriented data structures and more robust data provenance mechanisms.
+  * Enhancements to Query API for query-by-value and paging.
+  * APIs for configuring and exploring the use of describe tags and key/value attributes in the archive.
+
+#### Longer Term Plans
   * Desktop GUI app support for remote gRPC targets.
-  * New API for managing PV-related metadata.
-  * Investigate options for storing scalar data values in a way that supports query by PV data value (instead of storing opaque serialized data).
-  * Investigate options for live data subscription with multiple ingestion service instances (e.g., REDIS registry).
-  * Investigate options for large atomic data values exceeding the MongoDB BSON object size limit of 16MB (e.g, for images).
-  * Annotation mechanism targeting individual data points.
+  * Modify data subscription mechanism to support multiple ingestion service instances (e.g., REDIS registry).
+  * Add support for large atomic data values exceeding the MongoDB BSON object size limit of 16MB (e.g., Mongo GridFS).
   * Ad hoc export mechanism to trigger export by specifying pv names and time range.
   * Mechanism for including user-defined calculations in desktop GUI app plots.
 
@@ -199,8 +215,7 @@ Version 1.12 focused on improved deployment support. The contents of the dp-supp
 
 #### Performance and Scaling
   * Run more extensive load testing benchmarks.
-  * Investigate MongoDB connection pooling.
-  * Experiment with streaming architecture (e.g., Apache Kafka).
+  * Experiment with streaming architecture (e.g., plugin for publishing ingested data to Apache Kafka).
 
 #### Client Tools
   * Build EPICS aggregator component to stream data via gRPC API to Ingestion Service.
@@ -208,7 +223,7 @@ Version 1.12 focused on improved deployment support. The contents of the dp-supp
 
 #### Monitoring and Administration
   * Implement mechanism for ingestion data validation.
-  * Add framework for measuring data statistics.
+  * Add metrics framework for measuring data statistics.
 
 
 
