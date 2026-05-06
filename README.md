@@ -181,22 +181,24 @@ Version 1.12 focused on improved deployment support. The contents of the dp-supp
 
 The main focus of v1.13 is a new set of column-oriented data structures in the protobuf API for data ingestion, with the primary objective of reducing per-request memory allocation and garbage collection in the JVM.  The original API definition included the DataColumn and DataValue messages, and was a simple mechanism for supporting heterogeneous data types in a single API data structure including scalars, arrays, structures, and images.  The downside of this approach is that it leads to per-sample memory allocation in the Ingestion Service, so that handling an incoming ingestion request containing a bucket of 1000 samples creates a Java DataValue object for each sample, in addition to the other overhead of the request.  In v1.13, we've added new column-oriented data structures like DoubleColumn and DoubleArrayColumn that are read in the Ingestion Service as a single primitive array of values, avoiding the per-sample JVM allocation.  For a facility continuously ingesting data for 4000 PVs at a rate of 1 kHz, this avoids almost 20 TB of JVM memory allocation / garbage collection in a 24 hour period.  An added benefit of the approach is that individual scalar data values are now visible in MongoDB BucketDocuments, where previously the data values were stored as a binary blob.
 
+### v1.14 (May 2026)
+
+Version 1.14 includes three main new features.  First, support for column-level metadata in the Ingestion Service: an optional `ColumnMetadata` field (carrying provenance, tags, and key/value attributes) has been added to all 16 column types in the gRPC API.  When present, the metadata is persisted in MongoDB alongside the column data and is restored on query, so the retrieved column equals the original ingested column.  A validation layer enforces limits on field lengths and collection sizes.  Second, a new PV Metadata API is added to the Annotation Service for creating, querying, retrieving, and deleting `PvMetadata` records that describe the properties of archived PVs.  As part of this work, the Query Service methods `queryPvMetadata()` and `queryProviderMetadata()` are renamed to `queryPvStats()` and `queryProviderStats()` to better reflect that they return archive ingestion statistics rather than user-defined metadata.  Third, a new Machine Configuration API is added to the Annotation Service for managing named machine configuration records and time-bounded configuration activations.  The API supports full CRUD operations for both `Configuration` and `ConfigurationActivation` records, enforces non-overlapping activation intervals per configuration and category, and provides a `getActiveConfigurations()` method for retrieving all configurations active at a given point in time.
+
 
 
 ---
 ## todo and road map
 
-#### Features planned for v1.14
+#### Features planned for the next release
   * Python client API library for calling MLDP Query and Annotation Service APIs from Python.
-  * PV Catalog API for configuring and exploring structred and free-form properties of archived PVs.
-  * Machine Mode / Configuration API for asking about the configuration of the machine and beam path at a specific point in time.
-  * Sample Marking API for marking the disposition of individual sample values for automated data cleaning tools (e.g, "suspect value").
-  * Enhancements to Calculations API to use new column-oriented data structures and more robust data provenance mechanisms.
-  * Enhancements to Query API for query-by-value and paging.
-  * APIs for configuring and exploring the use of describe tags and key/value attributes in the archive.
+  * Sample Status API for marking the disposition of individual sample values for automated data cleaning tools (e.g, "suspect value").
 
 #### Longer Term Plans
   * Desktop GUI app support for remote gRPC targets.
+  * Enhancements to Query API for query-by-value and paging.
+  * Enhancements to Calculations API to use new column-oriented data structures and more robust data provenance mechanisms.
+  * APIs for configuring and exploring tags and key/value attributes used in the archive.
   * Modify data subscription mechanism to support multiple ingestion service instances (e.g., REDIS registry).
   * Add support for large atomic data values exceeding the MongoDB BSON object size limit of 16MB (e.g., Mongo GridFS).
   * Ad hoc export mechanism to trigger export by specifying pv names and time range.
