@@ -1,7 +1,10 @@
-# data-platform repo
+# Machine Learning Data Platform
 
-This is the primary repo for the Machine Learning Data Platform (MLDP), providing project background and including links to the various project elements.  This document includes the following details:
+This is the primary repo for the Machine Learning Data Platform (MLDP), providing project background and including links to the various project elements.  
 
+This document includes the following details:
+
+- [Brief MLDP overview](#brief-mldp-overview)
 - [Project motivation](#motivation)
 - [Requirements and objectives](#requirements-and-objectives)
 - [MLDP Project elements](#data-platform-project-elements)
@@ -10,7 +13,106 @@ This is the primary repo for the Machine Learning Data Platform (MLDP), providin
 - [Additional documentation](#additional-documentation)
 - [Installation and getting started](#installation-and-getting-started)
 
+## Brief MLDP overview
 
+The MLDP provides tools for:
+1. building an annotated archive of PV time-series data, and
+2. using the archive to build and operate data science applications.
+
+The MLDP features are organized in 4 service-oriented gRPC APIs, including:
+
+- PV time-series data ingestion
+- metadata and annotation
+- data retrieval
+- data / event subscription
+
+The APIs are handled by scalable Java services using MongoDB to manage the archive.
+
+The MLDP ecosystem includes the following elements:
+
+- Python and Java API clients for building data science applications
+- desktop and web GUI applications
+- administrative tools and configuration examples
+
+Below is a brief overview of each of the MLDP APIs.
+
+### PV time-series data ingestion API
+
+- Provides optimized structures for ingesting a variety of data types including scalars, multi-dimensional arrays, structures, images, and serialized data.
+- Utilizes streaming API methods and supports static and dynamic load balancer configurations for maximum performance. 
+- Includes mechanisms for specifying data provenance and ingestion metadata.
+- Supports both continuous and batch ingestion.
+
+### Metadata and annotation APIs
+
+It is useful to think of the MLDP archive as a spreadsheet whose a column for each PV and a row for each timestamp, with a PV sample value in each cell.  The metadata and annotation APIs provide a mechanism for attaching metadata at four different dimensions of that spreadsheet.  Each is discussed in more detail below.
+
+#### PV metadata API 
+
+The PV metadata API describes the properties of the columns in the conceptual archive spreadsheet.  It can be used to answer questions like “what are the properties for PV name BPMS:GUNB:314:X?", which might return details like:
+
+```
+DEVICE=BPMS:GUNB:314 
+ELEMENT=BPM1B          
+TYPE=MONI
+Z= -9.555017                     
+S= 0.489650 
+AREA=GUNB 
+BEAMPATHS={SC_HXR, SC_DIAG0}
+```
+#### Temporal Machine Configuration API
+
+The machine configuration API is a temporal annotation tool, describing the rows in the conceptual archive spreadsheet, intended to answer questions like “what was the machine configuration at 2-Feb-2026 18:04:01?", which might return details like:
+
+```
+PATH=CU_HXR                 
+E=14.6 (GeV); 
+RATE=10000 (Hz)             
+MODE=09; 
+DEST=CXI                           
+EXP=CXI_3443
+```
+#### Annotation / Calculations API
+
+The annotation API is used to describe one or more blocks of data (e.g., a set of PVs over a range of time) in the conceptual archive spreadsheet, and allows linking user-supplied calculations to archive data.  This is useful for documenting details for a particular experiment or situation, and showing the provenance of derived data.
+
+#### Sample Status API
+  
+The sample status API is primarily a data cleaning tool for indicating the quality or disposition of individual PV sample values (the cells in the conceptual archive), such as in the example shown below. 
+
+```
+Time=141412342134.13412342 secs.nanos
+PV=BPMS:GUNB:314:X
+Value=2.4
+Tag=SUSPECT
+Domain=RMS fit
+```
+### Data Retrieval and Export API
+
+The MLDP provides a query interface that leverages archive metadata for filtering queries by time, PV metadata, temporal machine configuration, and sample status.  It isn't natural language or SQL-like, but the following SQL analogy is helpful:
+
+```
+SELECT <PV time-series data>
+FROM <the MLDP archive>
+WHERE  
+  <Time Range Criteria> AND
+  <PV Selection Criteria> AND
+  <Machine Configuration Criteria> AND
+  <Sample Status Criteria>
+```
+
+This supports queries like the following:
+```
+"Get me all *good* BPM data from area L3 between time1 and time2 when we were running beam and the experiment was cxi-Q4r4234.”
+```
+
+The query service API incorporates paging, streaming, and multiple query result formats to support a wide range of use cases, and Includes utilities for exporting data to common file formats.
+
+The MLDP Python and Java clients provide high level tools for building ML applications using the query API.
+
+### Data / Event Subscription API
+
+The data and event subscription API enables clients to subscribe to live PV data from the ingestion stream, and Provides a mechanism for receiving notification of live data events from the ingestion stream with a configurable window of data around the trigger time.  We are investigating approaches for running user code as a plugin, and mechanisms for publishing data using frameworks like Kafka.
 
 ---
 ## Motivation
@@ -25,7 +127,7 @@ This is a common question.  The Data Platform is optimized for recalling thousan
 
 ### Data Provenance
 
-The Data Platform is for managing data sets - annotating them, deleting them, and using them in the life cycle of the data. One of our use cases is managing experimental data.
+The Data Platform is for managing data sets - annotating them, deleting them, and using them in the life cycle of the data. One of our use cases is managing experimental data, supporting scenarios like the one described below.
 
 A scientist takes XRay data from some number of detectors, along with some scalar and vector data. The XRay data must be processed as these XRays are taken from different angles at different distances into some normalized coordinate data. The original data must be preserved for verification of published results especially in proton studies. The raw data set is stored in the archive noting important details about the data. 
 
@@ -61,7 +163,7 @@ The Data Platform includes the following technical components:
 - An API built upon the gRPC communication framework.
 - A suite of services built using the Java programming language, implementing the gRPC service APIs.
 - Utilities for deploying and managing the ecosystem.
-- High-level Java client libraries for building applications.
+- High-level Python and Java client libraries for building applications.
 - A JavaFX desktop GUI application for navigating the data archive.
 - A JavaScript web application for exploring the data archive.
 - Benchmarks for comparing alternative technologies.
@@ -80,17 +182,25 @@ The API definition is managed separately from the service implementations so tha
 
 The Data Platform Services are implemented as Java server applications.  There are four independent server applications, providing ingestion, streaming / subscription, query, and annotation services, respectively.  The [MongoDB document-oriented database management system](https://www.mongodb.com/) is used by the services for persistence.  The [dp-service repo](https://github.com/osprey-dcs/dp-service) provides more detail about the Java service implementations and the frameworks used to build them.
 
+### Python and Java Client API Library
+
+A [Python client API library](https://github.com/osprey-dcs/dp-python-lib) for the MLDP is under development. It currently provides low-level wrappers around the API methods.  It is a development priority to add additional high-level features and conveniences for building data science applications.
+
+An initial Java client API library was created that provides interfaces to both the MLDP ingestion and query service APIs.  The library requires additional development work to reflect newly added ingestion and query API methods, but this is not a current development priority.
+
 ### Desktop GUI Application
 
 Though not a primary project requirement, we decided it was useful to build a Java desktop GUI application to demonstrate the features of the MLDP.  However, instead of making an application that can only be used as a demo, we decided to build a full-featured tool useful for navigating the MLDP data archive.  It provides a user interface for navigating archive metadata and time-series data, viewing and creating annotations, and other tools for visualizing and exporting data.  The application uses the MLDP gRPC API and provides a useful reference for calling those APIs from a Java client.  The application is managed in the [dp-desktop-app repo](https://github.com/osprey-dcs/dp-desktop-app), which contains details for installing and using the GUI application.
 
-### Python Client API Library
-
-A [Python client API library](https://github.com/osprey-dcs/dp-python-lib) for the MLDP is under development.
+Please note that the desktop GUI application requires development work to support APIs that have been added since it was created, but this is not a current development priority.
 
 ### Web Application
 
-The Data Platform Web Application is under development using the [JavaScript React framework](https://react.dev/).  It will provide similar features to the desktop GUI application.  The [dp-web-app repo](https://github.com/osprey-dcs/dp-web-app) contains the JavaScript code for the Data Platform Web Application, with documentation about the project.
+The Data Platform Web Application is under development using the [JavaScript React framework](https://react.dev/).  It will provide similar features to the desktop GUI application.  The [dp-web-app repo](https://github.com/osprey-dcs/dp-web-app) contains the JavaScript code for the Data Platform Web Application, with documentation about the project.  
+
+The initial proof-of-concept project was completed, but, as with the desktop GUI application, the web application requires development work to support APIs that have been added since it was created, but this is not a current development priority.
+
+The desktop GUI application offers a more complete set of functionality than the web application, so one option under consideration is to re-build the web application so that it more closely mirrors the features in the desktop app.
 
 ### Installation and Deployment Support Tools
 
@@ -99,10 +209,6 @@ A set of utilities is provided to help manage the Data Platform ecosystem.  Ther
 There are also configuration files for running the Data Platform ecosystem via Docker (with statically configured Envoy Ingestion Service load balancer) and Kubernetes (with dynamic load balancing of all services).
 
 The scripts and utilities for managing the components of the Data Platform ecosystem previously were managed in a separate "dp-support" repo, but have been moved to the data-platform repo in order to streamline project management.
-
-### High-Level Client Libraries
-
-A suite of high-level client libraries is being developed that hide the details of the service APIs and provide a more convenient interface for building client applications.  The libraries are written in Java and are intended to be used by Java applications that need to interact with the Data Platform services.
 
 ### Technology Benchmarks
 
@@ -185,48 +291,40 @@ The main focus of v1.13 is a new set of column-oriented data structures in the p
 
 Version 1.14 includes three main new features.  First, support for column-level metadata in the Ingestion Service: an optional `ColumnMetadata` field (carrying provenance, tags, and key/value attributes) has been added to all 16 column types in the gRPC API.  When present, the metadata is persisted in MongoDB alongside the column data and is restored on query, so the retrieved column equals the original ingested column.  A validation layer enforces limits on field lengths and collection sizes.  Second, a new PV Metadata API is added to the Annotation Service for creating, querying, retrieving, and deleting `PvMetadata` records that describe the properties of archived PVs.  As part of this work, the Query Service methods `queryPvMetadata()` and `queryProviderMetadata()` are renamed to `queryPvStats()` and `queryProviderStats()` to better reflect that they return archive ingestion statistics rather than user-defined metadata.  Third, a new Machine Configuration API is added to the Annotation Service for managing named machine configuration records and time-bounded configuration activations.  The API supports full CRUD operations for both `Configuration` and `ConfigurationActivation` records, enforces non-overlapping activation intervals per configuration and category, and provides a `getActiveConfigurations()` method for retrieving all configurations active at a given point in time.
 
+### v1.15 (Auguest 2026)
+
+The two primary features included in version 1.15 are 1) a new "v2 query API", and 2) the initial release of the Python client API library.  The v2 query API provides an interface that leverages archive metadata for filtering queries by time, PV metadata, temporal machine configuration, and sample status, a major update to the initial query API that supported only a list of PV names and a time range as search criteria.  The initial implementation of the Python client library includes low-level wrappers for calling the MLDP PV metadata, machine configuration, and v2 query APIs, and provides a foundation for building higher-level features and conveniences to support data science applications.  The v1.15 release also includes a number of performance improvements and bug fixes.
 
 
 ---
-## todo and road map
+## MLDP TODO and Road Map
 
-#### Features planned for the next release
-  * Python client API library for calling MLDP Query and Annotation Service APIs from Python.
+#### v1.16 Development Plans
   * Sample Status API for marking the disposition of individual sample values for automated data cleaning tools (e.g, "suspect value").
+  * v2 modernization of the original Annotation API to follow conventions established for the new PV metadata and machine configuration APIs
+  * Python client library 
+    * sample status API interface
+    * v2 annotation API interface
+    * ingestion API interface
+    * bucket-oriented query interface
+  * improved metrics capture and observability
+
+#### FY27 Development Priorities
+  * ingestion API and database schema improvements for handling timestamps with jitter (using shared timestamps between data buckets)
+  * configurable strategies for improved distribution of data in Mongo shards by ingestion service
+  * age-based archival of data to external storage while maintaining Mongo indexes
+  * enhance query API to support query by PV data value
+  * Python client library enhancements for building ML applications
+  * Modify data subscription mechanism to support multiple ingestion service instances (e.g., REDIS registry).
+  * support for large atomic data values that exceed the 16MB Mongo object limit
+  * tools for ingesting data from EPICS environment
 
 #### Longer Term Plans
-  * Desktop GUI app support for remote gRPC targets.
-  * Enhancements to Query API for query-by-value and paging.
-  * Enhancements to Calculations API to use new column-oriented data structures and more robust data provenance mechanisms.
-  * APIs for configuring and exploring tags and key/value attributes used in the archive.
-  * Modify data subscription mechanism to support multiple ingestion service instances (e.g., REDIS registry).
-  * Add support for large atomic data values exceeding the MongoDB BSON object size limit of 16MB (e.g., Mongo GridFS).
-  * Ad hoc export mechanism to trigger export by specifying pv names and time range.
-  * Mechanism for including user-defined calculations in desktop GUI app plots.
-
-#### Plugins
+  * JWT authentication / role-based authorization / LDAP integration
+  * data ownership and sharing mechanisms
+  * enhancements to desktop and web GUI applications
+  * Java client library catch up to v2 API enhancements
   * Mechanism for executing user-defined code in ingestion stream.
-
-#### Archive
-  * Add mechanism for sharing and access control.
-  * Add tools for data curation and aging.
-  * Add support for authentication and authorization of query and annotation services.
-
-#### GUI apps
-  * Add desktop gui app features to web app.
-
-#### Performance and Scaling
-  * Run more extensive load testing benchmarks.
-  * Experiment with streaming architecture (e.g., plugin for publishing ingested data to Apache Kafka).
-
-#### Client Tools
-  * Build EPICS aggregator component to stream data via gRPC API to Ingestion Service.
-  * Automation for batch ingestion using directory watcher and file import.
-
-#### Monitoring and Administration
-  * Implement mechanism for ingestion data validation.
-  * Add metrics framework for measuring data statistics.
-
 
 
 ---
@@ -243,7 +341,6 @@ Use the links below to learn more about the Data Platform project, or the links 
 
 ## project documents
 * [project overview slide deck - pdf](doc/documents/presentations/mldp-overview.pdf)
-* [mldp by example pdf](doc/documents/presentations/mldp-by-example.pdf)
 
 ## developer notes
 * [data platform release process](doc/developer/release.md)
