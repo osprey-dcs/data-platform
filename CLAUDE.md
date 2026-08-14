@@ -261,3 +261,109 @@ Each docker-compose scenario provides consistent wrapper scripts for easy testin
 - Implement idempotent request handling to gracefully handle duplicate data
 - Configure HPA based on data ingestion rate metrics, not just CPU/memory
 - Use dedicated MongoDB replica set with sufficient resources for write-heavy workloads
+## GitHub Actions: pin every `uses:` to a commit SHA
+
+This convention applies to **all repos in the `osprey-dcs` org**: `data-platform`, `dp-grpc`,
+`dp-service`, `dp-desktop-app`, and `dp-python-lib`. It lives here rather than being copied into
+each child repo, because five copies drift.
+
+`uses: actions/checkout@v4` resolves a tag at run time, and a tag is mutable. Whoever controls
+the action's repo — or anyone who compromises it — can repoint that tag at different code, and
+every workflow in the org picks it up on its next run with no diff, no review, and no
+notification. A commit SHA is immutable: the workflow runs the code that was reviewed.
+
+Pin every `uses:` to a full 40-character commit SHA with a trailing comment naming the version:
+
+```yaml
+uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+```
+
+### Rules
+
+1. **All workflows, CI included.** A compromised action in CI reaches the same secrets and can
+   poison the same build as one in release.
+2. **Full 40-character SHA.** Short SHAs are not accepted by all tooling and are
+   collision-prone.
+3. **Trailing `# vX.Y.Z` comment, always.** This is what Dependabot keys on and what makes the
+   diff reviewable. Never change a SHA without updating the comment.
+4. **Comment the exact version, not the floating major.** `# v7.0.1`, not `# v7`.
+5. **Resolve the SHA yourself from the tag ref; never copy it from a README or changelog.**
+6. **No carve-outs.** Trusted publishing (PyPI OIDC) and Sigstore keyless signing both key on
+   workflow identity rather than action version, so both pin normally. If a future action
+   genuinely requires tag tracking, pin it to an exact semver tag and add an inline comment
+   saying why.
+7. **Pinning is not upgrading.** Pin to the SHA the tag resolves to *today*, so the change is
+   behavior-neutral and any later breakage is attributable. Major-version upgrades go in
+   separate issues and separate PRs.
+
+### Resolving a SHA
+
+Most action tags are annotated, so the tag object must be dereferenced to reach the commit.
+Two calls:
+
+```bash
+gh api repos/OWNER/REPO/git/ref/tags/TAG --jq '.object.sha'   # may be a tag object
+gh api repos/OWNER/REPO/git/tags/SHA     --jq '.object.sha'   # -> commit SHA
+```
+
+Confirm the result before committing. This lists every tag pointing at that SHA:
+
+```bash
+gh api "repos/OWNER/REPO/tags?per_page=100" \
+  --jq "[.[] | select(.commit.sha==\"SHA\") | .name]"
+```
+
+A correct pin returns both the exact semver tag and the floating major it replaces — which is
+also what proves the change is behavior-neutral.
+
+### Verifying a workflow
+
+This returns nothing when every reference in a repo is correctly pinned:
+
+```bash
+grep -rnE 'uses: *[^ ]+@' .github/workflows/ | grep -vE '@[0-9a-f]{40} # v'
+```
+
+Worth running as a pre-commit or CI gate.
+
+### Dependabot is required
+
+Pinning trades supply-chain risk for staleness risk: security patches stop arriving silently.
+Every repo therefore needs `.github/dependabot.yml` with the `github-actions` ecosystem —
+monthly, `ci` commit prefix, wildcard group so routine bumps arrive as one PR rather than one
+per action. See this repo's config for the template.
+
+This is not optional bookkeeping. `dp-service` accumulated seven actions between one and three
+majors behind before anyone noticed, and this repo's own `actions/checkout` was four majors
+behind. The distinction that matters: a stale *library* dependency is inert — old code doing
+what it always did — but a stale *unpinned action* is live, refetching whatever upstream
+publishes on every run. Pinning converts an invisible problem into a visible one; Dependabot is
+what then works the visible one.
+
+Dependabot does not close the loop by itself. Major bumps still need human review, and a grouped
+PR can hide a breaking major among patches. There is no CVE feed for actions the way there is
+for libraries.
+
+### Verifying pins actually work
+
+Prefer a rehearsal over finding out at the next release. Where a workflow is gated on a tag
+push, add a `workflow_dispatch` trigger with a `dry_run` input defaulting to `true`, and gate
+the write-side steps on it:
+
+```yaml
+env:
+  DRY_RUN: ${{ github.event_name == 'workflow_dispatch' && inputs.dry_run }}
+```
+
+Define it once at job level rather than repeating step-level conditions, which eventually
+drift; the failure mode of a drifted one is an unintended publish. `dp-grpc`, `dp-service`, and
+`dp-desktop-app` all have this.
+
+Two things worth knowing when reading a dry-run log:
+
+- **Actions are downloaded before step conditions are evaluated**, so a skipped step's pin still
+  appears in the log as resolved. That confirms the SHA exists and is fetchable, but not that
+  the action ran.
+- Prefer gating the *effect* over the whole step where the action is cheap to exercise —
+  `dp-service` keeps `docker/build-push-action` running and sets `push: false`, so a dry run
+  still proves the image builds.

@@ -344,3 +344,22 @@ Use the links below to learn more about the Data Platform project, or the links 
 
 ## developer notes
 * [data platform release process](doc/developer/release.md)
+* [GitHub Actions SHA-pinning convention](CLAUDE.md#github-actions-pin-every-uses-to-a-commit-sha)
+
+### GitHub Actions are pinned to commit SHAs
+
+Every `uses:` in every workflow, in every repo in this org, is pinned to a full 40-character
+commit SHA with a trailing `# vX.Y.Z` comment:
+
+```yaml
+uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+```
+
+A tag is mutable — whoever controls an action's repo can repoint it at different code, and every
+workflow picks that up on its next run with no diff and no review. A commit SHA cannot be
+repointed. Each repo also carries a `.github/dependabot.yml` that keeps the pinned versions
+current, since pinning otherwise trades supply-chain risk for silent staleness.
+
+If you are adding or editing a workflow, the full convention — how to resolve a SHA correctly,
+how to verify one, and why pinning is deliberately kept separate from upgrading — is in
+[CLAUDE.md](CLAUDE.md#github-actions-pin-every-uses-to-a-commit-sha).
