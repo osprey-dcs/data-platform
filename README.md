@@ -344,7 +344,6 @@ Use the links below to learn more about the Data Platform project, or the links 
 
 ## developer notes
 * [data platform release process](doc/developer/release.md)
-* [GitHub Actions SHA-pinning convention](CLAUDE.md#github-actions-pin-every-uses-to-a-commit-sha)
 
 ### GitHub Actions are pinned to commit SHAs
 
