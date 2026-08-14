@@ -1,0 +1,16 @@
+version: 2
+updates:
+  # Keeps the pinned action versions current.  Without this they drift silently until an
+  # old major stops working -- the dp-service repo accumulated seven actions between one
+  # and three majors behind before anyone noticed, and this repo's own checkout pin was
+  # four majors behind.  See the SHA-pinning convention in CLAUDE.md.
+  - package-ecosystem: github-actions
+    directory: "/"
+    schedule:
+      interval: monthly
+    commit-message:
+      prefix: "ci"
+    groups:
+      # One PR per month for routine bumps rather than one per action.
+      actions:
+        patterns: ["*"]

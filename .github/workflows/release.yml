@@ -17,7 +17,11 @@ jobs:
 
       # Checkout data-platform repo
       - name: Checkout
-        uses: actions/checkout@v3
+        # Actions are pinned to commit SHAs rather than floating major tags: this job
+        # downloads the release JARs of three sibling repos and publishes the tarball users
+        # install from, so a compromised upstream tag here could alter what ships.  See the
+        # convention in CLAUDE.md.  Dependabot (.github/dependabot.yml) keeps the pins current.
+        uses: actions/checkout@a37ce9120846195fa4ece8f58b268e6043cb2f26 # v3.7.0
 
       # Extract version from tag
       - name: Set VERSION env
@@ -55,7 +59,7 @@ jobs:
           test -d kubernetes && cp -r kubernetes data-platform/ || true
 
       - name: Download dp-grpc release JAR
-        uses: robinraju/release-downloader@v1
+        uses: robinraju/release-downloader@28fc21f50d76778e7023361aa1f863e717d3d56f # v1.13
         with:
           repository: ${{ env.DP_GRPC_REPO }}
           tag: rel-${{ env.VERSION }}
@@ -69,7 +73,7 @@ jobs:
              data-platform/lib/dp-grpc.jar
 
       - name: Download dp-service release JAR
-        uses: robinraju/release-downloader@v1
+        uses: robinraju/release-downloader@28fc21f50d76778e7023361aa1f863e717d3d56f # v1.13
         with:
           repository: ${{ env.DP_SERVICE_REPO }}
           tag: rel-${{ env.VERSION }}
@@ -83,7 +87,7 @@ jobs:
              data-platform/lib/dp-service.jar
 
       - name: Download dp-desktop-app release JAR
-        uses: robinraju/release-downloader@v1
+        uses: robinraju/release-downloader@28fc21f50d76778e7023361aa1f863e717d3d56f # v1.13
         with:
           repository: ${{ env.DP_DESKTOP_APP_REPO }}
           tag: rel-${{ env.VERSION }}
@@ -119,7 +123,7 @@ jobs:
             > data-platform-${{ env.VERSION }}.tar.gz.sha256
 
       - name: Publish GitHub Release
-        uses: softprops/action-gh-release@v2
+        uses: softprops/action-gh-release@3bb12739c298aeb8a4eeaf626c5b8d85266b0e65 # v2.6.2
         with:
           files: |
             data-platform-${{ env.VERSION }}.tar.gz
