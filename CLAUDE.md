@@ -261,6 +261,7 @@ Each docker-compose scenario provides consistent wrapper scripts for easy testin
 - Implement idempotent request handling to gracefully handle duplicate data
 - Configure HPA based on data ingestion rate metrics, not just CPU/memory
 - Use dedicated MongoDB replica set with sufficient resources for write-heavy workloads
+
 ## GitHub Actions: pin every `uses:` to a commit SHA
 
 This convention applies to **all repos in the `osprey-dcs` org**: `data-platform`, `dp-grpc`,
