@@ -21,7 +21,7 @@ jobs:
         # downloads the release JARs of three sibling repos and publishes the tarball users
         # install from, so a compromised upstream tag here could alter what ships.  See the
         # convention in CLAUDE.md.  Dependabot (.github/dependabot.yml) keeps the pins current.
-        uses: actions/checkout@a37ce9120846195fa4ece8f58b268e6043cb2f26 # v3.7.0
+        uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
 
       # Extract version from tag
       - name: Set VERSION env
@@ -123,7 +123,7 @@ jobs:
             > data-platform-${{ env.VERSION }}.tar.gz.sha256
 
       - name: Publish GitHub Release
-        uses: softprops/action-gh-release@3bb12739c298aeb8a4eeaf626c5b8d85266b0e65 # v2.6.2
+        uses: softprops/action-gh-release@3d0d9888cb7fd7b750713d6e236d1fcb99157228 # v3.0.2
         with:
           files: |
             data-platform-${{ env.VERSION }}.tar.gz
