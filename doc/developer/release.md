@@ -21,8 +21,8 @@ from the tag and fails the job with a clear error if the file is missing, so a f
 fails within seconds of the tag push rather than after the sibling-repo JARs have been downloaded
 and the tarball published.
 
-`dp-grpc` follows the same pattern with its own per-repo notes.  The other repos'
-releases should point back to the master notes here.
+Each of `dp-grpc`, `dp-service`, `dp-desktop-app`, and `dp-python-lib` follows the same pattern
+with its own per-repo notes, and their releases point back to the master notes here.
 
 Organize the notes by issue ticket rather than by PR, since a ticket often spans several PRs.  A
 breaking release leads with an "Upgrading from <previous>" checklist that calls out silent
@@ -47,6 +47,22 @@ git push -f origin rel-1.16.0
   * git tag rel-1.16.0 && git push origin rel-1.16.0
 * check the actions for the repo to make sure all workflows triggered by the new tag complete successfully
 * check the published release, check the links within the release notes resolve
+
+### tag order matters: data-platform goes last
+
+Create the tags manually, one repo at a time, rather than scripting them together.  Two ordering
+constraints:
+
+* **`data-platform` must be tagged last, and only after the `dp-grpc`, `dp-service`, and
+  `dp-desktop-app` releases are actually published.**  Its release job downloads
+  `dp-grpc-<version>.jar`, `dp-service-<version>.jar`, and `dp-desktop-app-<version>.jar` from
+  those repos' releases at the matching `rel-` tag.  Tagging it while a sibling's CI is still
+  running fails the download step.
+* Tagging by hand also avoids a race between the sibling workflows as they publish their own
+  releases.
+
+The master release notes in this repo link to the child repos at `blob/rel-<version>/...`, so
+those links resolve only once each child tag exists — another reason this repo goes last.
 
 The artifacts created for the published release vary by repo:
 
