@@ -31,45 +31,63 @@ Read [Upgrading from 1.15.0](#upgrading-from-1150) before installing anything.
 
 ## Upgrading from 1.15.0
 
-This upgrade is not a drop-in binary replacement.  Three things are new this release: the database
-is migrated in place, each service binds a second port, and two query changes alter results without
-raising an error.
+This upgrade is not a drop-in binary replacement.  The database is migrated in place, each service
+binds a second port, two query changes alter results without raising an error, and Python clients
+that pin `grpcio` need a new floor.
 
 **Before you start:**
 
 1. **Free ports 9464–9467 on every service host**, or set the metrics-port variables.  Each
    service now binds a Prometheus endpoint and **refuses to start if it cannot**.  On Kubernetes a
-   collision is `CrashLoopBackOff`, not a pod running without metrics.
+   collision is `CrashLoopBackOff`, not a pod running without metrics.  The bind interface is
+   `DP_TELEMETRY_PROMETHEUS_HOST` (default `0.0.0.0`; set `127.0.0.1` to expose metrics only to a
+   local scraper).  If you cannot free a port and cannot move one, `DP_TELEMETRY_ENABLED=false`
+   binds no port at all.
 2. **Take a restorable backup.**  There are no downgrade migrations, and a 1.15.0 binary against a
-   migrated database *misreads* it rather than refusing.  Restoring the backup is the only way
-   back.
-3. **Stop every service** — all of them, on every host.  The migration claim coordinates the
-   processes that are *starting*; it does nothing about a 1.15.0 process already running, which
-   keeps serving wrong answers against the migrated schema.
+   migrated database *misreads* it rather than refusing: it sees every annotation's comment as
+   empty (v1 renamed the field) and repeats its hours-long startup bucket scan (v5 dropped the
+   marker that skipped it).  Restoring the backup is the only way back.
+3. **Stop every service** — all of them, on every host.  A 1.15.0 *ingestion* process writing after
+   migration v5 has seeded `pvStats` produces buckets that queries can silently miss; a 1.15.0
+   *query* or *annotation* process keeps serving wrong answers against the migrated schema.  The
+   migration claim coordinates the processes that are *starting*; it does nothing about one already
+   running.  **If a full stop is impossible**, upgrade ingestion first and let it migrate, but stop
+   or upgrade query and annotation *before* it does — leaving them up is a live wrong answer, not
+   just a risk window.
 
 **The upgrade itself:**
 
 4. **Start one service and let it migrate.**  Five migrations run in the first upgraded process,
    two of them full scans of the `buckets` collection — minutes to a couple of hours on archives in
-   the tens of millions of buckets.  Other services started meanwhile wait five minutes on the
-   claim and then exit; restart them once the migration finishes.
+   the tens of millions of buckets.  **Budget the window from a read-only measurement of your own
+   archive rather than from that range**; the [SLAC runbook](https://github.com/osprey-dcs/dp-service/blob/rel-1.16.0/doc/runbooks/upgrade-1.16-slac.md)
+   has the query.  Other services started meanwhile wait five minutes on the claim and then exit;
+   restart them once the migration finishes.
 5. **Verify** the schema marker (`version: 5`), the `pvStats` count, and the index set before
    starting the rest.
 
 **Then, in client code:**
 
 6. **Rebuild against the 1.16.0 stubs and fix the compile errors.**  `SaveDataSetRequest` is flat,
-   `Annotation` moved to the top level, `Annotation.comment` is now `description`, and
-   `DataValue.ValueStatus` is gone.  In Python these surface at runtime rather than at build time —
-   grep for `valueStatus`.
-7. **Audit every query that passes more than one criterion.**  Criteria now combine with **AND**;
+   `Annotation` moved to the top level, `Annotation.comment` is now `description`,
+   `CalculationsDataFrame` carries its frame under a `frame` submessage of type
+   `common.DataFrame`, and `DataValue.ValueStatus` is gone.  In Python these surface at runtime
+   rather than at build time — grep for `valueStatus`.
+7. **Python only: raise your `grpcio` floor if you pin it.**  The regenerated stubs raise a
+   `RuntimeError` **at import** on grpcio older than 1.84.0 — not at call time, and not as a
+   warning.  A fresh install resolves to the newest release and never sees this, which is why it
+   tends to surface first in a pinned environment.  `protobuf` moves to `>=7.35.1`.
+8. **Audit every query that passes more than one criterion.**  Criteria now combine with **AND**;
    values within one criterion with **OR**.  Two tag criteria used to match *either* tag and now
    match *both*.  **This is silent** — no error, a different result set.
-8. **Add paging loops wherever a result was assumed complete.**  An unset `limit` now means a
+9. **Add paging loops wherever a result was assumed complete.**  An unset `limit` now means a
    server default page size, not an unbounded result.  `queryPvMetadata` in particular was
    previously unbounded.
-9. **Check anywhere an empty criteria list was relied on to fail.**  It now matches all records and
-   returns the first page of the collection.
+10. **Check anywhere an empty criteria list was relied on to fail.**  It now matches all records
+    and returns the first page of the collection.  **`ConfigurationSelector` is the exception and
+    goes the other way**: an empty criteria list there is *rejected*, not treated as match-all.  To
+    query the full `TimeRange` unconditionally, omit the selector entirely, and guard any code that
+    builds one conditionally so that dropping the last criterion drops the whole selector.
 
 Runbooks for the migration, including a rehearsal procedure against a restored copy and the SLAC
 sequence with measured numbers:
@@ -162,9 +180,11 @@ references it; deleting an Annotation is not blocked by incoming references, whi
 associations and may dangle.  `patchDataSet` / `patchAnnotation` are reserved placeholders that
 return "not yet implemented".
 
-**Typed calculations and column provenance.**  `CalculationsDataFrame` now carries a
-`common.DataFrame`, so calculation output gets the full set of typed scalar, array, image, struct,
-and serialized column types plus per-column metadata.  Alongside it, `ColumnProvenance` gains a
+**Typed calculations and column provenance.**  `CalculationsDataFrame` is now `name` plus a
+`frame` submessage of type `common.DataFrame`, replacing the previous `DataTimestamps` +
+`repeated DataColumn` pair, so calculation output gets the full set of typed scalar, array, image,
+struct, and serialized column types plus per-column metadata.  Frame names must be distinct within
+a `Calculations` object, since they are an addressing key.  Alongside it, `ColumnProvenance` gains a
 structured `derivedFrom` list naming the columns a derived column was computed from — either an
 archived PV or a Calculations column, with an optional source interval, which matters for
 aggregations whose input window is not implied by the output's own timestamps.  Links are stored as
@@ -184,9 +204,9 @@ Worked examples: [datasets and annotations cookbook](https://github.com/osprey-d
 ## Query performance
 
 *dp-service [#232](https://github.com/osprey-dcs/dp-service/issues/232),
-[#257](https://github.com/osprey-dcs/dp-service/issues/257),
 [#271](https://github.com/osprey-dcs/dp-service/issues/271),
-[#274](https://github.com/osprey-dcs/dp-service/issues/274) — primarily dp-service*
+[#274](https://github.com/osprey-dcs/dp-service/issues/274),
+[#275](https://github.com/osprey-dcs/dp-service/issues/275) — primarily dp-service*
 
 A sustained effort against bucket query cost, prompted by query-performance reports from the SLAC
 deployment.  Four changes, each independently significant on a large archive.
@@ -209,14 +229,20 @@ to accommodate outliers can lower it back after upgrading.
 **Every bucket query is pinned to the compound index and bounded on both sides (#271).**  All
 bucket retrieval now hints the shipped compound index.  Previously the planner chose among every
 index on the collection, and a long-lived archive still carries `pvName`-led indexes retired in
-earlier releases — startup never drops an index — each of which is a planner candidate.  On
+beta-1.6.0 and 1.15.0 — startup never drops an index — alongside anything added by hand, each of
+which is a planner candidate.  On
 recent-window queries the planner was measured choosing a `lastTime`-led index whose plan needs a
 blocking in-memory sort.  Separately, the index scan now carries an upper bound as well as a lower
 one; before, the scan ran to the end of each PV's history and discarded everything past the window
 by filter, which on a historical query against a still-active PV is most of that PV's archive.
 **Behavior change:** if the compound index is missing, bucket queries now fail with an error naming
 the hint rather than silently degrading to a collection scan.  Operators are encouraged to drop the
-leftover `pvName`-led indexes, which still cost a write per ingested bucket.
+leftover `pvName`-led indexes, which no longer affect plan choice but still cost a write per
+ingested bucket and their share of disk; the
+[SLAC runbook](https://github.com/osprey-dcs/dp-service/blob/rel-1.16.0/doc/runbooks/upgrade-1.16-slac.md)
+lists them by name.  Any operational procedure that pre-seeded the `bucketSpanVerification` marker
+to skip the startup scan (the "option 0" runbook on dp-service #257) is obsolete and should be
+retired.
 
 **Bucket retrieval is partitioned by span class (#274).**  The per-PV bound was initially applied
 as one maximum over all PVs in a request, so one long-span PV made every other PV's retrieval fetch
@@ -231,7 +257,7 @@ Details: [dp-service](https://github.com/osprey-dcs/dp-service/blob/rel-1.16.0/d
 
 ## Service metrics and observability
 
-*data-platform [#212](https://github.com/osprey-dcs/dp-service/issues/212) — primarily dp-service*
+*dp-service [#212](https://github.com/osprey-dcs/dp-service/issues/212) — dp-service*
 
 Every service now collects and exports metrics: request rates, error rates, latency histograms, a
 per-stage breakdown of query handling, MongoDB command durations, handler queue and worker
@@ -283,8 +309,13 @@ description, an unmatchable tag, an invisible bucket — and a mechanism that lo
 would compound one silent failure with another.
 
 Concurrent startup is the normal case: one process wins an atomic claim and migrates, the others
-wait and then proceed.  A database with no marker is classified by content, so **restore backups
-before the first start**, never underneath a marker.
+wait and then proceed.  A database with no marker is classified by content — empty means a fresh
+install stamped at the current version, while any document in any managed collection means a legacy
+database migrated from version 0.  That classification is why you should **restore backups before
+the first start**, never underneath a marker.
+
+Migrations can be disabled with `DP_MONGO_RUN_SCHEMA_MIGRATIONS_ON_STARTUP=false`, which skips
+*applying* them but **not the version check** — a mismatched database still refuses to start.
 
 Five migrations ship in 1.16.0: three on the annotations collection (the `comment` → `description`
 rename and its text index, tag normalization, and id canonicalization) and two on buckets, both
@@ -306,7 +337,7 @@ answerable from the UI.  An absent or unrecognized mode resolves to demo — del
 misspelling cannot become a connection attempt against production.
 
 Deployment mode writes no PV time-series data and authors no curated metadata in this release:
-ingestion, metadata authoring, and demo-data deletion are disabled.  It is **not** a read-only
+ingestion, metadata authoring, `Explore → Data Events`, and demo-data deletion are disabled.  It is **not** a read-only
 mode — dataset save, annotation save, and export remain available, since those are the analysis
 workflow.
 
@@ -372,11 +403,14 @@ incomplete in ways nothing reported.
   ordered by PV, a budget that tripped partway through the first PV emitted every later PV as
   all-unset values with no error, and the page token resumed at the same position — those PVs were
   never returned.  With default settings this affected any request whose first PV in name order had
-  more than roughly 455,000 samples in the window: about 7.5 minutes at 1 kHz, or 5 days at 1 Hz.
+  more than roughly 455,000 samples in the window: about 7.5 minutes at 1 kHz, 12 hours at 10 Hz,
+  or 5 days at 1 Hz.
   Pages are now retrieved in time slices, each covering every selected PV.
 - **Annotation edits silently destroyed stored Calculations** (dp-desktop-app #42).  Loading an
   annotation from a query result populated the editor with no calculations, and saving any
-  unrelated edit then destroyed the stored object — no error, no warning, nothing in the UI.
+  unrelated edit then destroyed the stored object — no error, no warning, nothing in the UI.  The
+  Annotation Builder's tags and attributes had the same shape of bug from the opposite direction,
+  and are fixed in the same release.
 - **`querySamplesStream` is now bounded in memory**, emitting as slices are retrieved rather than
   assembling the whole window first, and the streaming methods now apply outbound flow control so a
   slow client no longer causes the server to buffer an entire result.
