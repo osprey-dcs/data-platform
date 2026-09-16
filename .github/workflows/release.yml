@@ -28,6 +28,20 @@ jobs:
         run: |
           echo "VERSION=${GITHUB_REF_NAME#rel-}" >> $GITHUB_ENV
 
+      # Checked up front rather than left to action-gh-release, which fails the job on a
+      # missing body_path only after the sibling-repo JARs have been downloaded and the
+      # tarball uploaded.  Every release from 1.16.0 on ships notes; see
+      # doc/developer/release.md.
+      - name: Verify release notes exist
+        run: |
+          NOTES="doc/release-notes/${GITHUB_REF_NAME}.md"
+          if [ ! -f "$NOTES" ]; then
+            echo "::error::Release notes not found at $NOTES."
+            echo "::error::Add the notes for ${VERSION} and re-run, or retag once they are on the tagged commit."
+            exit 1
+          fi
+          echo "NOTES_PATH=$NOTES" >> $GITHUB_ENV
+
       # Create directory structure
       - name: Create installer directories
         run: |
@@ -128,6 +142,7 @@ jobs:
           files: |
             data-platform-${{ env.VERSION }}.tar.gz
             data-platform-${{ env.VERSION }}.tar.gz.sha256
+          body_path: ${{ env.NOTES_PATH }}
           overwrite_files: true
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}

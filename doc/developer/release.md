@@ -2,55 +2,62 @@
 
 This document contains notes to help streamline the process of creating a Data Platform release.
 
+Previously, we used scripts to add tags to reach repo and build the release artifacts.
 
-## complete development work
-
-Make sure pom.xml for dp-grpc, dp-service reflect current version number!
-
-### data-platform
-- add/modify scripts as needed
+Now, this is largely accomplished by GHA workflows that are triggered when new release tags are added.  So in a nutshell, assuming the development work and documentation is complete for each repo and merged to the main branch using pull requests, take the following general steps in each repo:
 
 
-## update documentation
-- dp-grpc
-  - update README.md API docs
-  - in-line comments in proto files
-- dp-service
-  - update README.md
-  - update developer-notes.md and UML diagrams for any important new features / frameworks
-  - add comments to application.yml for any new config resources
-  - update java command line docs for running new applications etc
-  - update running.md with details about running applications and configuration
-- data-platform
-  - create release notes
-  - update doc/install/quick-start.md, installation.md
-  - update README.md
-  - update README.md with new scripts etc
-  - update release process (this doc)
+## write the release notes first
 
-Make sure this is all done before adding tags etc because it's a pain removing tags, deleting releases, adding tags, creating releases etc.
+Starting with 1.16.0, every release ships notes, and they must be **merged to `main` before the
+`rel-*` tag is pushed**.  The tag is what the release workflow builds from, so notes that land
+after the tag are not on the tagged commit and the workflow will not see them.
 
+The master notes for the whole ecosystem live in this repo at
+`doc/release-notes/rel-<version>.md` — for example `doc/release-notes/rel-1.16.0.md`.  The
+`release.yml` workflow reads that file and publishes it as the body of the GitHub release, via
+`body_path`.  A `Verify release notes exist` step runs immediately after the version is extracted
+from the tag and fails the job with a clear error if the file is missing, so a forgotten document
+fails within seconds of the tag push rather than after the sibling-repo JARs have been downloaded
+and the tarball published.
 
-## merge changes from fork's development branch to upstream's main branch
+`dp-grpc` follows the same pattern with its own per-repo notes.  The other repos'
+releases should point back to the master notes here.
 
-### create pull requests to merge dev branch in fork to upstream
+Organize the notes by issue ticket rather than by PR, since a ticket often spans several PRs.  A
+breaking release leads with an "Upgrading from <previous>" checklist that calls out silent
+behavior changes separately from compile errors.  Add each new document to the table in the
+[release notes](../../README.md#release-notes) section of `README.md`.
 
-If working in a fork, create a github pull request to merge the development branch in the fork to the development branch in the upstream repo.
+If the workflow does fail on a missing document, add the notes, then move the tag onto the new
+commit and force-push it — the release job re-runs from the retagged commit:
 
-### create pull requests to merge dev branch in upstream to main branch in upstream
-
-Create a pull request to merge the dev branch on the upstream to the main branch on the upstream.
-
-
-## create git tags for release in upstream/main
-
-Need to do this in the upstream for all repos: dp-grpc, dp-service, dp-desktop-app, data-platform. Creating a "rel-" tag in each repo will automatically run the release workflow to create a release with the same name as the tag and publish artifacts appropriate for the repo. The tag should be created manually to avoid a race condition between the repo workflows as they publish their releases:
 ```
-git tag rel-1.13.0
-git push origin rel-1.13.0
+git tag -f rel-1.16.0
+git push -f origin rel-1.16.0
 ```
 
+## release process steps
 
-## edit github release docs for each repo
+* update the release notes as described above, in e.g., doc/release-notes/rel-1.16.0, making sure to cover all the PRs / issues / features since the previous release
+  * the release.yml workflow in each repo assumes this file exists, and uses it for the body of the published release
+  * release notes must be merged to main before the release workflow runs
+* make sure the README and other repo documents cover all the key issues / features since the previous release
+* create the release tag and push, e.g.,
+  * git tag rel-1.16.0 && git push origin rel-1.16.0
+* check the actions for the repo to make sure all workflows triggered by the new tag complete successfully
+* check the published release, check the links within the release notes resolve
 
-Need to do this in all repos: dp-grpc, dp-service, dp-desktop-app, data-platform.  The master release notes should be added to the data-platform repo release.  Minimally, edit the release notes for each of the other repos to point to the data-platform release notes.  The release for each repo should already contain the artifacts appropriate for that repo (as generated by the release workflow).
+The artifacts created for the published release vary by repo:
+
+* dp-grpc
+  * CI creates regular and sha256 jar and tarball files
+* dp-service
+  * CI creates regular and sha256 jar files
+* dp-desktop-app
+  * CI creates regular and sha256 jar files
+* dp-python-lib
+  * CI uses sigstore so creates wheel and tarball unsigned and signed with sigstore
+* data-platform
+  * creates tarball with sha256
+
