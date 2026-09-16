@@ -4,6 +4,21 @@ on:
   push:
     tags:
       - 'rel-*'
+  # Manual dispatch is a rehearsal by default: it assembles the tarball end to end, including
+  # downloading the three sibling JARs, but stops before publishing.  Publishing is gated on
+  # dry_run, and the tag push path is unaffected.  Without this the workflow -- and in
+  # particular the release-notes wiring below -- could only be exercised by cutting a real
+  # release.  Follows the pattern in dp-desktop-app.
+  workflow_dispatch:
+    inputs:
+      version:
+        description: "Version to build, without the rel- prefix (e.g. 1.16.0).  Must exist as rel-<version> in dp-grpc, dp-service, and dp-desktop-app."
+        required: true
+      dry_run:
+        description: "Build only; do not publish a GitHub Release"
+        required: false
+        type: boolean
+        default: true
 
 env:
   DP_SERVICE_REPO: osprey-dcs/dp-service
@@ -13,6 +28,12 @@ env:
 jobs:
   build-release:
     runs-on: ubuntu-latest
+
+    env:
+      # A dry run assembles and verifies the tarball but never publishes a release.  A rel-*
+      # tag push always publishes; a manual dispatch defaults to a dry run and must opt in.
+      DRY_RUN: ${{ github.event_name == 'workflow_dispatch' && inputs.dry_run }}
+
     steps:
 
       # Checkout data-platform repo
@@ -23,10 +44,54 @@ jobs:
         # convention in CLAUDE.md.  Dependabot (.github/dependabot.yml) keeps the pins current.
         uses: actions/checkout@a37ce9120846195fa4ece8f58b268e6043cb2f26 # v3.7.0
 
-      # Extract version from tag
+      # On a tag push the version comes from the tag.  On a manual dispatch GITHUB_REF_NAME is
+      # the branch, not a tag, so the version has to be supplied as an input -- it selects
+      # which rel-<version> of the sibling repos to download JARs from.
       - name: Set VERSION env
+        shell: bash
         run: |
-          echo "VERSION=${GITHUB_REF_NAME#rel-}" >> $GITHUB_ENV
+          set -euo pipefail
+          if [[ "${GITHUB_EVENT_NAME}" == "workflow_dispatch" ]]; then
+            VERSION="${{ inputs.version }}"
+            VERSION="${VERSION#rel-}"
+          else
+            TAG="${GITHUB_REF_NAME}"
+            if [[ "$TAG" != rel-* ]]; then
+              echo "::error::Tag does not start with 'rel-': $TAG"
+              exit 1
+            fi
+            VERSION="${TAG#rel-}"
+          fi
+          echo "VERSION=${VERSION}" >> $GITHUB_ENV
+          echo "Building version ${VERSION}"
+
+      # Checked up front rather than left to action-gh-release, which fails the job on a
+      # missing body_path only after the sibling-repo JARs have been downloaded and the
+      # tarball uploaded.  Every release from 1.16.0 on ships notes; see
+      # doc/developer/release.md.
+      #
+      # The path is derived from VERSION rather than GITHUB_REF_NAME because on a manual
+      # dispatch GITHUB_REF_NAME is the branch, so it would look for doc/release-notes/main.md.
+      # On a tag push the two are identical.
+      - name: Verify release notes exist
+        shell: bash
+        run: |
+          set -euo pipefail
+          NOTES="doc/release-notes/rel-${VERSION}.md"
+          if [ ! -f "$NOTES" ]; then
+            # A dry run rehearses the build before the notes are written, so it warns rather
+            # than failing; the publishing path always fails.  DRY_RUN is a job-level env and
+            # so always exported -- as the empty string on a tag push, which set -u would
+            # otherwise trip on.
+            if [[ "${DRY_RUN:-}" == "true" ]]; then
+              echo "::warning::Release notes not found at $NOTES -- a real run would fail here."
+              exit 0
+            fi
+            echo "::error::Release notes not found at $NOTES."
+            echo "::error::Add the notes for ${VERSION} and re-run, or retag once they are on the tagged commit."
+            exit 1
+          fi
+          echo "NOTES_PATH=$NOTES" >> $GITHUB_ENV
 
       # Create directory structure
       - name: Create installer directories
@@ -122,12 +187,17 @@ jobs:
           sha256sum data-platform-${{ env.VERSION }}.tar.gz \
             > data-platform-${{ env.VERSION }}.tar.gz.sha256
 
+      # Everything above this point -- downloading the sibling JARs, assembling the tarball,
+      # checksumming it, and verifying the notes -- runs in a dry run too, so a rehearsal
+      # exercises the whole job except the one step that writes.
       - name: Publish GitHub Release
+        if: env.DRY_RUN != 'true'
         uses: softprops/action-gh-release@3bb12739c298aeb8a4eeaf626c5b8d85266b0e65 # v2.6.2
         with:
           files: |
             data-platform-${{ env.VERSION }}.tar.gz
             data-platform-${{ env.VERSION }}.tar.gz.sha256
+          body_path: ${{ env.NOTES_PATH }}
           overwrite_files: true
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}

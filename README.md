@@ -9,7 +9,7 @@ This document includes the following details:
 - [Requirements and objectives](#requirements-and-objectives)
 - [MLDP Project elements](#data-platform-project-elements)
 - [Status and milestones](#status-and-milestones)
-- [Todo and road map](#todo-and-road-map)
+- [Todo and road map](#mldp-todo-and-road-map)
 - [Additional documentation](#additional-documentation)
 - [Installation and getting started](#installation-and-getting-started)
 
@@ -233,11 +233,11 @@ Performance benchmark applications were developed and utilized to evaluate candi
 
 ### Data Platform v1.0 (November 2023)
 
-Version 1.0 of the Data Platform includes an initial Java implementation of the Ingestion Service providing a gRPC API and using MongoDB for storing time-series data. The initial ingestion service implementation focuses only on scalar data and with timestamps specified using the "sampling clock" mechanism with start time and sample period.  It is accompanied by a performance benchmark application that is used at each stage of development to measure ingestion performance relative to the project goal. The initial implementation exceeds our goal by a comfortable margin, but this will continue to be a focus as the project evolves.  [section "Data Platform API"](#data-platform-api) provides more information about the ingestion API.
+Version 1.0 of the Data Platform includes an initial Java implementation of the Ingestion Service providing a gRPC API and using MongoDB for storing time-series data. The initial ingestion service implementation focuses only on scalar data and with timestamps specified using the "sampling clock" mechanism with start time and sample period.  It is accompanied by a performance benchmark application that is used at each stage of development to measure ingestion performance relative to the project goal. The initial implementation exceeds our goal by a comfortable margin, but this will continue to be a focus as the project evolves.  [section "gRPC API"](#grpc-api) provides more information about the ingestion API.
 
 ### v1.1 (January 2024)
 
-Version 1.1 includes a Java implementation of the Query Service gRPC API, using the MongoDB database managed by the ingestion service to fulfill client query requests.  A variety of API RPC methods for querying time-series data are provided to support the development of clients with varying performance requirements, ranging from streaming methods that return bucketed result data down to simple single response methods that return tabular data.  See [section "Data Platform API"](#data-platform-api) for a detailed description of the query API.
+Version 1.1 includes a Java implementation of the Query Service gRPC API, using the MongoDB database managed by the ingestion service to fulfill client query requests.  A variety of API RPC methods for querying time-series data are provided to support the development of clients with varying performance requirements, ranging from streaming methods that return bucketed result data down to simple single response methods that return tabular data.  See [section "gRPC API"](#grpc-api) for a detailed description of the query API.
 
 ### v1.2 (February 2024)
 
@@ -245,7 +245,7 @@ Version 1.2 saw changes to the "proto" files defining the gRPC API for the Data 
 
 ### v1.3 (April 2024)
 
-Version 1.3 provides an initial implementation of the annotation service for adding annotations to archived data and performing queries against those annotations.  The primary focus for the initial annotation service implementation was on the data model for associating annotations with data in the archive.  The only type of annotation currently supported is a simple user comment, but we will be adding many other types of annotations using the same underlying data model.  See [section "Data Platform API"](#data-platform-api) for more details about the annotation data model.
+Version 1.3 provides an initial implementation of the annotation service for adding annotations to archived data and performing queries against those annotations.  The primary focus for the initial annotation service implementation was on the data model for associating annotations with data in the archive.  The only type of annotation currently supported is a simple user comment, but we will be adding many other types of annotations using the same underlying data model.  See [section "gRPC API"](#grpc-api) for more details about the annotation data model.
 
 ### v1.4 (July 2024)
 
@@ -291,23 +291,24 @@ The main focus of v1.13 is a new set of column-oriented data structures in the p
 
 Version 1.14 includes three main new features.  First, support for column-level metadata in the Ingestion Service: an optional `ColumnMetadata` field (carrying provenance, tags, and key/value attributes) has been added to all 16 column types in the gRPC API.  When present, the metadata is persisted in MongoDB alongside the column data and is restored on query, so the retrieved column equals the original ingested column.  A validation layer enforces limits on field lengths and collection sizes.  Second, a new PV Metadata API is added to the Annotation Service for creating, querying, retrieving, and deleting `PvMetadata` records that describe the properties of archived PVs.  As part of this work, the Query Service methods `queryPvMetadata()` and `queryProviderMetadata()` are renamed to `queryPvStats()` and `queryProviderStats()` to better reflect that they return archive ingestion statistics rather than user-defined metadata.  Third, a new Machine Configuration API is added to the Annotation Service for managing named machine configuration records and time-bounded configuration activations.  The API supports full CRUD operations for both `Configuration` and `ConfigurationActivation` records, enforces non-overlapping activation intervals per configuration and category, and provides a `getActiveConfigurations()` method for retrieving all configurations active at a given point in time.
 
-### v1.15 (Auguest 2026)
+### v1.15 (August 2026)
 
 The two primary features included in version 1.15 are 1) a new "v2 query API", and 2) the initial release of the Python client API library.  The v2 query API provides an interface that leverages archive metadata for filtering queries by time, PV metadata, temporal machine configuration, and sample status, a major update to the initial query API that supported only a list of PV names and a time range as search criteria.  The initial implementation of the Python client library includes low-level wrappers for calling the MLDP PV metadata, machine configuration, and v2 query APIs, and provides a foundation for building higher-level features and conveniences to support data science applications.  The v1.15 release also includes a number of performance improvements and bug fixes.
 
 
+### v1.16 (September 2026)
+
+Version 1.16 centers on two new API capabilities that span every repository in the ecosystem.  First, a new Sample Status API assigns status codes to individual PV samples at specific timestamps, keyed by (PV name, timestamp, domain, layer), supporting automated data cleaning, quality assessment, and MLOps workflows; query methods can filter samples by status, and the API replaces the `DataValue.ValueStatus` field removed in this release, which was never queryable.  Second, the DataSet and Annotation APIs — the oldest generation of the Annotation Service — are modernized to the CRUD conventions established by the PV metadata, machine configuration, and sample status APIs, gaining single-record get and delete methods, paging, audit fields, typed calculations columns, and column-level provenance.  The release also includes substantial query performance work driven by SLAC deployment reports: the hours-long startup bucket scan is removed, query index bounds are now maintained per PV rather than sized to the longest bucket in the archive, and every bucket query is pinned to the compound index and bounded on both sides.  A new metrics framework exports request rates, latency histograms, and per-stage query breakdowns from every service over a Prometheus endpoint, with a slow query log for diagnosing individual queries.  The desktop application gains a deployment mode for running against remote services rather than only in-process demonstration services, along with new views for authoring and exploring curated metadata.  This release is delivered through a new schema migration mechanism that migrates the database at first startup — see the [release notes](doc/release-notes/rel-1.16.0.md) for the upgrade procedure.
+
 ---
 ## MLDP TODO and Road Map
 
-#### v1.16 Development Plans
-  * Sample Status API for marking the disposition of individual sample values for automated data cleaning tools (e.g, "suspect value").
-  * v2 modernization of the original Annotation API to follow conventions established for the new PV metadata and machine configuration APIs
-  * Python client library 
-    * sample status API interface
-    * v2 annotation API interface
+#### v1.17 Development Plans
+  * Python client library
     * ingestion API interface
     * bucket-oriented query interface
-  * improved metrics capture and observability
+  * tags / attribute usage API: new API and annotation service handling
+  * data subscription enhancements to support multiple ingestion servers
 
 #### FY27 Development Priorities
   * ingestion API and database schema improvements for handling timestamps with jitter (using shared timestamps between data buckets)
@@ -315,7 +316,6 @@ The two primary features included in version 1.15 are 1) a new "v2 query API", a
   * age-based archival of data to external storage while maintaining Mongo indexes
   * enhance query API to support query by PV data value
   * Python client library enhancements for building ML applications
-  * Modify data subscription mechanism to support multiple ingestion service instances (e.g., REDIS registry).
   * support for large atomic data values that exceed the 16MB Mongo object limit
   * tools for ingesting data from EPICS environment
 
@@ -362,3 +362,19 @@ current, since pinning otherwise trades supply-chain risk for silent staleness.
 If you are adding or editing a workflow, the full convention — how to resolve a SHA correctly,
 how to verify one, and why pinning is deliberately kept separate from upgrading — is in
 [CLAUDE.md](CLAUDE.md#github-actions-pin-every-uses-to-a-commit-sha).
+
+## release notes
+
+Per-release notes live under [`doc/release-notes/`](doc/release-notes/), one document per
+release, covering what changed across the whole ecosystem since the previous release and what
+upgrading requires.  These are the master notes: the releases in the `dp-grpc`, `dp-service`,
+`dp-desktop-app`, and `dp-python-lib` repos point back here.
+
+| Release | Notes |
+|---|---|
+| 1.16.0 | [rel-1.16.0](doc/release-notes/rel-1.16.0.md) |
+
+Releases before 1.16.0 were documented on the
+[GitHub release](https://github.com/osprey-dcs/data-platform/releases) itself, and summarized in
+[status and milestones](#status-and-milestones) above.  The `rel-*` tags remain the authority on
+what any past release contained.
