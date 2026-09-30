@@ -42,7 +42,7 @@ jobs:
         # downloads the release JARs of three sibling repos and publishes the tarball users
         # install from, so a compromised upstream tag here could alter what ships.  See the
         # convention in CLAUDE.md.  Dependabot (.github/dependabot.yml) keeps the pins current.
-        uses: actions/checkout@a37ce9120846195fa4ece8f58b268e6043cb2f26 # v3.7.0
+        uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
 
       # On a tag push the version comes from the tag.  On a manual dispatch GITHUB_REF_NAME is
       # the branch, not a tag, so the version has to be supplied as an input -- it selects
