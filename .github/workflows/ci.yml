@@ -1,0 +1,37 @@
+name: CI
+
+# The only PR-time check in this repo: the release-notes checker (#107, rules in #98).  No paths
+# filter, on purpose: the newest notes' links into this repo are checked against the working tree,
+# so a PR that renames a heading or moves a file they point at must fail here, wherever it is.
+on:
+  pull_request:
+    branches: [main]
+  push:
+    branches: [main]
+
+# Supersede a PR's older run when it is pushed again.  Push runs key on the SHA so each merge to
+# main keeps its own run: a group holds one pending run, and a newer one would replace it.
+concurrency:
+  group: ci-${{ github.event_name == 'pull_request' && github.ref || github.sha }}
+  cancel-in-progress: ${{ github.event_name == 'pull_request' }}
+
+permissions:
+  contents: read
+
+jobs:
+  release-notes:
+    runs-on: ubuntu-latest
+    steps:
+      # Pinned to commit SHAs per the convention in CLAUDE.md; Dependabot keeps them current.
+      - name: Checkout
+        uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+
+      - name: Set up Python
+        uses: actions/setup-python@5fda3b95a4ea91299a34e894583c3862153e4b97 # v7.0.0
+        with:
+          python-version: "3.12"
+
+      # Self-tests its rules first, then checks every doc/release-notes/rel-*.md (and NEXT.md,
+      # if one is ever added).  Stdlib only, so nothing to install.
+      - name: Check release notes
+        run: python .dev/tools/check-release-notes.py
