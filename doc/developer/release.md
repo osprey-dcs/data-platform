@@ -32,7 +32,7 @@ Run the checker before opening the notes PR; it lists every link that is relativ
 exist and any leftover `rel-<version>` placeholder:
 
 ```
-python3 .dev/tools/check-release-notes.py
+python3 .github/scripts/check-release-notes.py
 ```
 
 CI runs it on every PR, and the `Verify release notes exist` step runs it again on the tagged
@@ -60,7 +60,7 @@ git push -f origin rel-1.16.0
 * update the release notes as described above, in e.g., doc/release-notes/rel-1.16.0, making sure to cover all the PRs / issues / features since the previous release
   * the release.yml workflow in each repo assumes this file exists, and uses it for the body of the published release
   * release notes must be merged to main before the release workflow runs
-  * `python3 .dev/tools/check-release-notes.py` must pass (CI enforces it on the notes PR)
+  * `python3 .github/scripts/check-release-notes.py` must pass (CI enforces it on the notes PR)
 * make sure the README and other repo documents cover all the key issues / features since the previous release
 * create the release tag and push, e.g.,
   * git tag rel-1.16.0 && git push origin rel-1.16.0

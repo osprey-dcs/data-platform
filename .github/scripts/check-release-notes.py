@@ -7,11 +7,10 @@ dp-python-lib, data-platform).  The copies differ ONLY in the "REPO-SPECIFIC CON
 are osprey-dcs/data-platform#98.  The self-test exercises every rule, including identity rules a given copy does
 not enable, so a copy whose rules have stopped matching fails on its first run.
 
-A notes file is published verbatim as its GitHub release body (here via release.yml's `body_path`;
-plan/tickets/56/plan.md), so whatever the file says is what readers of the release page get.  GitHub does not
-resolve relative links in a release body, a link pinned to `main` drifts as the repo moves on, and a link copied
-from the previous release's notes resolves to real but stale content.  None of that looks wrong in a diff or a
-local preview, which is why it is checked rather than left to review.
+A notes file is published verbatim as its GitHub release body, so whatever the file says is what readers of the
+release page get.  GitHub does not resolve relative links in a release body, a link pinned to `main` drifts as the
+repo moves on, and a link copied from the previous release's notes resolves to real but stale content.  None of
+that looks wrong in a diff or a local preview, which is why it is checked rather than left to review.
 
 LINK RULES.  Code spans and fenced code blocks are blanked out first, so text that *quotes* a bad link does not
 fail; R5 runs on the raw text, because the placeholders it catches live in code blocks.  A link is an inline
@@ -23,7 +22,7 @@ fail; R5 runs on the raw text, because the placeholders it catches live in code 
     R2  Every github.com/osprey-dcs/<repo>/(blob|tree)/<ref>/... and raw.githubusercontent.com/osprey-dcs/<repo>/
         <ref>/... link, into any of the five repos, has <ref> equal to this file's tag (they release in lockstep).
         Exception: a full 40-character commit SHA, for a target that did not exist at the tag -- a section added
-        to the notes after the release, such as rel-1.16.0's README.env link.  A SHA cannot drift; `main`, a short
+        to the notes after the release, linking a file added after the tag.  A SHA cannot drift; `main`, a short
         SHA, or any other tag still fails.
     R3  For tag-pinned links into this repo, the path exists in the working tree, spelled exactly (GitHub is
         case-sensitive; macOS is not), as a file for blob/raw and a directory for tree.
@@ -31,7 +30,8 @@ fail; R5 runs on the raw text, because the placeholders it catches live in code 
         the anchor is a heading slug (or an `<a name>`/`id`) in the target, and that heading is not duplicated
         there.  A duplicated heading is what silently moves an anchor to `-1`.  A duplicate no link points at is
         left alone, since there is nothing for it to move.
-    R5  No template placeholder left: `rel-<version>`, `<version>`, `<previous>`.
+    R5  No template placeholder left: `rel-<version>` or `<previous>`.  A bare `<version>` is allowed: it is
+        used deliberately in prose that survives the cut, such as a `<name>-<version>.jar.sha256` file pattern.
 
   NEXT.md (the version-less draft, renamed to rel-<version>.md at the cut)
     N1  As R1.
@@ -43,8 +43,11 @@ fail; R5 runs on the raw text, because the placeholders it catches live in code 
 
 R3, R4 and N3 run against the working tree, which is the tree being tagged both in CI on the cut PR and in
 release.yml at the tag: no git, no tag peeling, no network.  Cross-repo paths and anchors get R2 only, since that
-tree is not checked out, and so do SHA-pinned links.  Whether URLs resolve over the network is deliberately not
-checked: before the tag is pushed, every correctly pinned link 404s.
+tree is not checked out, and so do SHA-pinned links.
+
+Deliberately not checked: whether URLs resolve over the network (before the tag is pushed, every correctly pinned
+link 404s); and `releases/tag/...` and `compare/...` links, which R2 leaves alone because linking an earlier
+release, or comparing against one, is legitimate.
 
 WHICH NOTES ARE ALREADY RELEASED.  The rel-*.md with the highest X.Y.Z in its directory is the release being cut
 (or, between cuts, the latest one) and gets every rule.  Every other rel-*.md is already released and gets the
@@ -83,9 +86,11 @@ with a self-test that feeds every rule known-bad input it must reject and known-
 rule that has quietly stopped matching fails loudly instead of passing everything.
 
 Usage:
-    python .dev/tools/check-release-notes.py [FILE ...]
+    python <this script> [FILE ...]
 
-With no arguments, checks every <notes dir>/rel-*.md, and NEXT.md if present.  Stdlib only.  Exits 0 if all pass,
+The script finds the repository root by walking up from its own location to the first directory containing `.git`
+(a directory, or a file in a worktree), so it does not depend on where in the repository it lives.  With no
+arguments, checks every <notes dir>/rel-*.md, and NEXT.md if present.  Stdlib only.  Exits 0 if all pass,
 1 otherwise.
 """
 
@@ -124,7 +129,29 @@ COSIGN_IDENTITY_REGEXP: str | None = None
 # END OF REPO-SPECIFIC CONFIGURATION.  Everything below is identical in every copy.
 # ==================================================================================================================
 
-REPO_ROOT = Path(__file__).resolve().parents[2]
+
+class RepoRootNotFound(RuntimeError):
+    pass
+
+
+def find_repo_root(start: Path, stop: Path | None = None) -> Path:
+    """The first directory at or above `start` containing `.git` -- a directory, or a file in a git worktree.
+    `stop`, if given, is the last directory examined."""
+    here = start.resolve()
+    if here.is_file():
+        here = here.parent
+    for candidate in (here, *here.parents):
+        if (candidate / ".git").exists():
+            return candidate
+        if stop is not None and candidate == stop.resolve():
+            break
+    raise RepoRootNotFound(f"no directory containing .git at or above {start}")
+
+
+try:
+    REPO_ROOT = find_repo_root(Path(__file__))
+except RepoRootNotFound as error:
+    sys.exit(f"FAIL: cannot find the repository root: {error}; run this script from inside a git checkout")
 NOTES_DIR = REPO_ROOT / NOTES_DIR_IN_REPO
 NEXT_NAME = "NEXT.md"
 OWNER = "osprey-dcs"
@@ -328,7 +355,8 @@ def exists_exactly(root: Path, rel: str, kind: str) -> bool:
 # Link rules R1-R4 (rel-X.Y.Z.md) and N1-N3 (NEXT.md); placeholder rule R5
 # ------------------------------------------------------------------------------------------------------------------
 
-PLACEHOLDER_RE = re.compile(r"rel-<version>|<version>|<previous>")
+# A bare `<version>` is deliberately absent: it appears in prose that is meant to survive the cut.
+PLACEHOLDER_RE = re.compile(r"rel-<version>|<previous>")
 
 
 def check_links(name: str, text: str, *, tag: str | None, full: bool, root: Path, cfg: Config) -> list[str]:
@@ -412,7 +440,8 @@ SIGSTORE_VERIFY_COMMAND_RE = re.compile(r"^[ \t]*sigstore\s+verify\s+identity\b"
 CHANGELOG_RE = re.compile(r"^\*\*Full Changelog\*\*:\s*(\S+)\s*$", re.MULTILINE)
 
 # What each `sigstore verify identity` must name, as (description, predicate over its file operands).  Every
-# release signs all three, and verifying only the wheel was exactly the shape rel-1.16.0's page first shipped with.
+# release signs all three, and verifying only the wheel is the mistake this catches: easy to copy, and it leaves the
+# sdist and SHA256SUMS unverified.
 REQUIRED_OPERANDS = [
     ("the wheel", lambda arg: arg.endswith(".whl")),
     ("the sdist", lambda arg: arg.endswith(".tar.gz")),
@@ -633,8 +662,10 @@ def _make_tree(root: Path) -> None:
         '<a name="pinned"></a>\n\n```\n## Not a heading\n```\n',
         encoding="utf-8",
     )
-    (root / "doc" / "guide.md").write_text("# Guide\n\n## Internal: the `_dispatch` refactor (Issue #14)\n")
-    (root / "README.env").write_text("verification reference\n")
+    (root / "doc" / "guide.md").write_text(
+        "# Guide\n\n## Internal: the `_dispatch` refactor (Issue #14)\n", encoding="utf-8"
+    )
+    (root / "README.env").write_text("verification reference\n", encoding="utf-8")
 
 
 # Links that must pass in the newest notes (rel-2.1.0), against the tree from _make_tree.
@@ -650,6 +681,8 @@ _GOOD_LINKS = f"""# Notes
 - [added later]({_PY}/blob/0123456789abcdef0123456789abcdef01234567/not/in/this/tree.md)
 - [issue]({_PY}/issues/7), [mail](mailto:x@example.org), [up](#installing), <{_PY}/pull/9>
 - quoted, not linked: `[x](../../README.md)` and `{_PY}/blob/main/README.md`
+- a bare version placeholder is prose, not a leftover: `dp-service-<version>.jar.sha256`
+- earlier releases may be linked: {_PY}/releases/tag/rel-1.0.0 and {_PY}/compare/rel-1.0.0...rel-2.0.0
 
 ```markdown
 See [the README](../../README.md#x) or [on main]({_PY}/blob/main/README.md).
@@ -716,6 +749,7 @@ def _self_test_links(root: Path) -> list[str]:
         "R2 a short SHA": f"[s]({_PY}/blob/0123456/README.md)",
         "R5 a leftover rel-<version>": "```\n--certificate-identity '...@refs/tags/rel-<version>'\n```",
         "R5 a leftover <previous>": f"`{_PY}/compare/<previous>...rel-2.1.0`",
+        "R5 a leftover rel-<version> in prose": "Install rel-<version> from the release page.",
     }
     tree_rules = {
         "R3 a missing path": f"[p]({_PY}/blob/{_TAG}/doc/missing.md)",
@@ -756,6 +790,35 @@ def _self_test_links(root: Path) -> list[str]:
         failures.append("R4 a same-document anchor to a duplicated heading was accepted")
     if release("# N\n\n## Methods\n\n### Methods\n\n[n](#n)\n"):
         failures.append("a duplicate heading that no link points at was rejected")
+    return failures
+
+
+def _self_test_repo_root(tmp: Path) -> list[str]:
+    """The root is the nearest ancestor holding `.git`, as a directory (a clone) or a file (a worktree)."""
+    failures: list[str] = []
+    for kind in ("dir", "file"):
+        top = tmp / f"root-{kind}"
+        script = top / "a" / "b" / "c" / "check.py"
+        script.parent.mkdir(parents=True)
+        script.write_text("", encoding="utf-8")
+        if kind == "dir":
+            (top / ".git").mkdir()
+        else:
+            (top / ".git").write_text("gitdir: /elsewhere\n", encoding="utf-8")
+        try:
+            found = find_repo_root(script, stop=tmp)
+        except RepoRootNotFound as error:
+            failures.append(f"a .git {kind} was not found: {error}")
+            continue
+        if found != top.resolve():
+            failures.append(f"a .git {kind} at {top} was found at {found}")
+    bare = tmp / "no-git" / "x"
+    bare.mkdir(parents=True)
+    try:
+        found = find_repo_root(bare, stop=tmp)
+        failures.append(f"a tree with no .git produced a repository root, {found}")
+    except RepoRootNotFound:
+        pass
     return failures
 
 
@@ -900,8 +963,10 @@ def self_test() -> list[str]:
     failures = _self_test_released_rule() + _self_test_sigstore_python() + _self_test_cosign()
     with tempfile.TemporaryDirectory() as tmp:
         root = Path(tmp)
-        _make_tree(root)
-        failures += _self_test_links(root)
+        (root / "tree").mkdir()
+        _make_tree(root / "tree")
+        failures += _self_test_links(root / "tree")
+        failures += _self_test_repo_root(root)
     return failures
 
 

@@ -34,4 +34,4 @@ jobs:
       # Self-tests its rules first, then checks every doc/release-notes/rel-*.md (and NEXT.md,
       # if one is ever added).  Stdlib only, so nothing to install.
       - name: Check release notes
-        run: python .dev/tools/check-release-notes.py
+        run: python .github/scripts/check-release-notes.py

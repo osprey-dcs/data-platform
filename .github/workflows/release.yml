@@ -97,7 +97,7 @@ jobs:
             exit 1
           fi
           # Same dry-run rule as above: a rehearsal warns, the publishing path fails.
-          if ! python3 .dev/tools/check-release-notes.py "$NOTES"; then
+          if ! python3 .github/scripts/check-release-notes.py "$NOTES"; then
             if [[ "${DRY_RUN:-}" == "true" ]]; then
               echo "::warning::Release notes check failed for $NOTES -- a real run would fail here."
             else
