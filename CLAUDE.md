@@ -382,46 +382,41 @@ Two things worth knowing when reading a dry-run log:
 
 ## Release notes: links are absolute, tag-pinned, and checked
 
-This convention applies to **all five `osprey-dcs` repos**, and is recorded only here for the
-same reason as the pinning section. The rules and their rationale are #98.
+This applies to **all five `osprey-dcs` repos** and is recorded only here, for the same reason as
+the pinning section. The rules and their rationale are in #98.
 
 A `doc/release-notes/rel-X.Y.Z.md` is published verbatim as the GitHub release body. GitHub does
-not resolve relative links there, a link on `main` drifts as the repo moves on, and a link copied
-from the previous release's notes resolves to real but stale content. None of these look wrong
-in a diff or a preview, so a script checks them instead of review.
+not resolve relative links there, a link on `main` drifts, and a link copied from the previous
+release's notes resolves to real but stale content. None of these look wrong in a diff or a
+preview, so a script checks them.
 
 ### Rules
 
-- **`rel-X.Y.Z.md`**: no relative links (R1). Every `github.com/osprey-dcs/<repo>/blob|tree/<ref>`
-  or `raw.githubusercontent.com` link, into any of the five repos, has `<ref>` equal to this
-  file's tag (R2), since they release in lockstep. Paths and `#anchors` into this repo exist in
-  the working tree, and no anchor points at a duplicated heading (R3, R4). No `rel-<version>` or
-  `<previous>` placeholder is left (R5). A bare `<version>` is allowed: it is a deliberate
-  generic in prose that survives the cut, such as a `<name>-<version>.jar.sha256` pattern.
-- **R2's one exception is a full 40-character commit SHA**, for a target that did not exist at
-  the tag. dp-python-lib's rel-1.16.0 links `README.env`, which was added after the tag along with
-  the verification section that links it, so `blob/rel-1.16.0/README.env` is a 404. A SHA cannot
-  drift; `main`, a short SHA, or any other tag still fails.
-- **`NEXT.md`** (the draft, where a repo has one): no relative links, links stay on `main`, and
+- **`rel-X.Y.Z.md`**: no relative links (R1). Every `blob`/`tree`/raw link into any of the five
+  repos uses this file's tag, since they release in lockstep (R2). Paths and `#anchors` into this
+  repo exist in the working tree, and no linked anchor lands on a duplicated heading (R3, R4). No
+  `rel-<version>` or `<previous>` placeholder is left (R5); a bare `<version>` is allowed.
+- **R2 also accepts a full 40-character commit SHA**, for a target added after the tag. A SHA
+  cannot drift; `main`, a short SHA, or any other tag still fails.
+- **Signing-identity rules** (dp-python-lib, dp-service, dp-desktop-app, dp-grpc): the notes'
+  verification commands match the repo's signing identity, at this file's tag where the
+  identity carries one.
+- **`NEXT.md`** (a draft, where a repo has one): no relative links, links stay on `main`, and
   their paths and anchors are checked, so renaming a heading it links to fails that PR.
-- **Already released notes** are every `rel-*.md` except the highest version. They get only the
-  form rules (R1, R2, R5): they are immutable, and checking them against today's tree would fail
-  an old file the first time a heading is renamed.
-- Code spans and fenced blocks are ignored by the link rules, so quoting a bad link is fine.
+- **Already released notes**, every `rel-*.md` but the highest version, get only the form rules
+  (R1, R2, R5, identity), since checking an immutable file against today's tree would fail it.
+- Code spans and fenced blocks are exempt from the link rules, so quoting a bad link is fine.
 
 ### The checker
 
-One script, stdlib Python, at the same path in every repo: `.github/scripts/check-release-notes.py`.
-It is copied **verbatim**; the copies differ only in the marked configuration block at the top
-(repository name, and which signing-identity rules apply), whose comment lists every repo's
-values. Fix it in one repo and copy the file to the other four. It finds the repo root by walking
-up to `.git`, so it works from any checkout or worktree. It runs on every PR in CI and again in
-`release.yml`'s release-notes step, where a rehearsal warns and a release fails. The exception
-is dp-python-lib, whose step has a push-only guard and so skips the check on a dispatch.
+`.github/scripts/check-release-notes.py`, stdlib Python, copied **verbatim** into every repo. The
+copies differ only in the marked configuration block at the top, whose comment lists every
+repo's values; change the file in one repo and copy it to the other four. Each run starts with a
+self-test of every rule, including identity rules the local copy does not enable, so a drifted
+copy fails its first run.
 
-Each run starts with a self-test that feeds every rule, including identity rules the local copy
-does not enable, known-bad and known-good input. A copy whose rules have drifted from the others,
-or a rule that quietly stopped matching, fails its first run rather than passing everything.
+It runs on every PR in `ci.yml`, and again in `release.yml`'s release-notes step, where a
+rehearsal warns and a release fails. dp-python-lib's step instead runs on a tag push only.
 
 ```bash
 python3 .github/scripts/check-release-notes.py    # every notes file
