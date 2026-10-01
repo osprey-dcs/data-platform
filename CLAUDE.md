@@ -307,12 +307,16 @@ gh api repos/OWNER/REPO/git/ref/tags/TAG --jq '.object.sha'   # may be a tag obj
 gh api repos/OWNER/REPO/git/tags/SHA     --jq '.object.sha'   # -> commit SHA
 ```
 
-Confirm the result before committing. This lists every tag pointing at that SHA:
+Confirm the result before committing. This lists every tag pointing at that SHA, one per line:
 
 ```bash
-gh api "repos/OWNER/REPO/tags?per_page=100" \
-  --jq "[.[] | select(.commit.sha==\"SHA\") | .name]"
+gh api --paginate "repos/OWNER/REPO/tags?per_page=100" \
+  --jq ".[] | select(.commit.sha==\"SHA\") | .name"
 ```
+
+Keep `--paginate`: without it only the first 100 tags are searched, and a repo with more prints
+nothing for a correct SHA. (`--jq` runs once per page, hence one name per line rather than an
+array.)
 
 A correct pin returns both the exact semver tag and the floating major it replaces — which is
 also what proves the change is behavior-neutral.
@@ -356,9 +360,16 @@ env:
   DRY_RUN: ${{ github.event_name == 'workflow_dispatch' && inputs.dry_run }}
 ```
 
-Define it once at job level rather than repeating step-level conditions, which eventually
-drift; the failure mode of a drifted one is an unintended publish. `dp-grpc`, `dp-service`, and
-`dp-desktop-app` all have this.
+Define it once (job or workflow level) rather than repeating step-level conditions, which
+eventually drift; the failure mode of a drifted one is an unintended publish. This repo's
+`release.yml`, `dp-service`'s `release-image.yml`, and `dp-grpc`'s `generate-python-stubs.yml`
+have this.
+
+The Java repos' `release.yml` files use a stronger variant with no input at all: a single
+`IS_RELEASE: ${{ github.event_name == 'push' && startsWith(github.ref, 'refs/tags/rel-') }}`,
+with publishing in a separate job gated on a `rel-*` tag push, so any `workflow_dispatch` is a
+rehearsal that cannot publish. `dp-grpc`, `dp-service`, and `dp-desktop-app` (since
+osprey-dcs/dp-desktop-app#24) all use it.
 
 Two things worth knowing when reading a dry-run log:
 
@@ -368,3 +379,46 @@ Two things worth knowing when reading a dry-run log:
 - Prefer gating the *effect* over the whole step where the action is cheap to exercise —
   `dp-service` keeps `docker/build-push-action` running and sets `push: false`, so a dry run
   still proves the image builds.
+
+## Release notes: links are absolute, tag-pinned, and checked
+
+This applies to **all five `osprey-dcs` repos** and is recorded only here, for the same reason as
+the pinning section. The rules and their rationale are in #98.
+
+A `doc/release-notes/rel-X.Y.Z.md` is published verbatim as the GitHub release body. GitHub does
+not resolve relative links there, a link on `main` drifts, and a link copied from the previous
+release's notes resolves to real but stale content. None of these look wrong in a diff or a
+preview, so a script checks them.
+
+### Rules
+
+- **`rel-X.Y.Z.md`**: no relative links (R1). Every `blob`/`tree`/raw link into any of the five
+  repos uses this file's tag, since they release in lockstep (R2). Paths and `#anchors` into this
+  repo exist in the working tree, and no linked anchor lands on a duplicated heading (R3, R4). No
+  `rel-<version>` or `<previous>` placeholder is left (R5); a bare `<version>` is allowed.
+- **R2 also accepts a full 40-character commit SHA**, for a target added after the tag. A SHA
+  cannot drift; `main`, a short SHA, or any other tag still fails.
+- **Signing-identity rules** (dp-python-lib, dp-service, dp-desktop-app, dp-grpc): the notes'
+  verification commands match the repo's signing identity, at this file's tag where the
+  identity carries one.
+- **`NEXT.md`** (a draft, where a repo has one): no relative links, links stay on `main`, and
+  their paths and anchors are checked, so renaming a heading it links to fails that PR.
+- **Already released notes**, every `rel-*.md` but the highest version, get only the form rules
+  (R1, R2, R5, identity), since checking an immutable file against today's tree would fail it.
+- Code spans and fenced blocks are exempt from the link rules, so quoting a bad link is fine.
+
+### The checker
+
+`.github/scripts/check-release-notes.py`, stdlib Python, copied **verbatim** into every repo. The
+copies differ only in the marked configuration block at the top, whose comment lists every
+repo's values; change the file in one repo and copy it to the other four. Each run starts with a
+self-test of every rule, including identity rules the local copy does not enable, so a drifted
+copy fails its first run.
+
+It runs on every PR in `ci.yml`, and again in `release.yml`'s release-notes step, where a
+rehearsal warns and a release fails. dp-python-lib's step instead runs on a tag push only.
+
+```bash
+python3 .github/scripts/check-release-notes.py    # every notes file
+python3 .github/scripts/check-release-notes.py doc/release-notes/rel-1.17.0.md
+```

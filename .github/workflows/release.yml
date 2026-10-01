@@ -73,6 +73,11 @@ jobs:
       # The path is derived from VERSION rather than GITHUB_REF_NAME because on a manual
       # dispatch GITHUB_REF_NAME is the branch, so it would look for doc/release-notes/main.md.
       # On a tag push the two are identical.
+      #
+      # The notes are then run through the release-notes checker (#107; the rules are #98 and
+      # CLAUDE.md), the same script CI runs on every PR, as a backstop: it catches a link left on
+      # `main` or copied from the previous release's notes before the body is published.  It is
+      # stdlib-only, so the runner's python3 is enough and no setup action joins this job.
       - name: Verify release notes exist
         shell: bash
         run: |
@@ -90,6 +95,16 @@ jobs:
             echo "::error::Release notes not found at $NOTES."
             echo "::error::Add the notes for ${VERSION} and re-run, or retag once they are on the tagged commit."
             exit 1
+          fi
+          # Same dry-run rule as above: a rehearsal warns, the publishing path fails.
+          if ! python3 .github/scripts/check-release-notes.py "$NOTES"; then
+            if [[ "${DRY_RUN:-}" == "true" ]]; then
+              echo "::warning::Release notes check failed for $NOTES -- a real run would fail here."
+            else
+              echo "::error::Release notes check failed for $NOTES; the problems are listed above."
+              echo "::error::Fix the notes on main and retag, as for missing notes."
+              exit 1
+            fi
           fi
           echo "NOTES_PATH=$NOTES" >> $GITHUB_ENV
 

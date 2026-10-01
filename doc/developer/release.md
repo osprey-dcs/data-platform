@@ -21,6 +21,24 @@ from the tag and fails the job with a clear error if the file is missing, so a f
 fails within seconds of the tag push rather than after the sibling-repo JARs have been downloaded
 and the tarball published.
 
+### links in the notes
+
+Because the notes are the release body, every cross-file link must be absolute and pinned to the
+release tag, `https://github.com/osprey-dcs/<repo>/blob/rel-<version>/...`, including links into
+the four child repos; relative links 404 on the release page and `main` links drift.  Starting
+the new notes from the previous release's file is fine, as long as every old tag is repointed.
+Run the checker before opening the notes PR; it lists every link that is relative, left on
+`main`, or pinned to another release, plus any path or `#anchor` into this repo that does not
+exist and any leftover `rel-<version>` placeholder:
+
+```
+python3 .github/scripts/check-release-notes.py
+```
+
+CI runs it on every PR, and the `Verify release notes exist` step runs it again on the tagged
+notes (a dry run warns, a tag push fails).  The rules are in the release-notes section of
+[`CLAUDE.md`](../../CLAUDE.md).
+
 Each of `dp-grpc`, `dp-service`, `dp-desktop-app`, and `dp-python-lib` follows the same pattern
 with its own per-repo notes, and their releases point back to the master notes here.
 
@@ -42,6 +60,7 @@ git push -f origin rel-1.16.0
 * update the release notes as described above, in e.g., doc/release-notes/rel-1.16.0, making sure to cover all the PRs / issues / features since the previous release
   * the release.yml workflow in each repo assumes this file exists, and uses it for the body of the published release
   * release notes must be merged to main before the release workflow runs
+  * `python3 .github/scripts/check-release-notes.py` must pass (CI enforces it on the notes PR)
 * make sure the README and other repo documents cover all the key issues / features since the previous release
 * create the release tag and push, e.g.,
   * git tag rel-1.16.0 && git push origin rel-1.16.0
