@@ -396,10 +396,10 @@ Do not add `distributionManagement`, `maven-deploy-plugin`, or `maven-gpg-plugin
 or reopen this question, without the trigger below.
 
 **Trigger for revisiting: the first real external Java consumer that needs a coordinate.** The
-plan at that point is #102's option D, publishing `dp-grpc` alone to Maven Central. `dp-grpc` is the only one of
-the three that is a library; the other two are deliverables. Central requires PGP signing (in
-addition to the Sigstore signatures on the release page) and makes every published version
-immutable, so a re-cut tag becomes a patch release. GitHub Packages was rejected because it
+plan at that point is #102's option D, publishing `dp-grpc` alone to Maven Central. `dp-grpc` is
+the only one of the three that is a library; the other two are deliverables. Central requires
+PGP signing (in addition to the Sigstore signatures on the release page) and makes every
+published version immutable, so a re-cut tag becomes a patch release. GitHub Packages was rejected because it
 requires authentication even to read public packages, which makes things harder for exactly
 the consumers it would serve.
 
