@@ -368,3 +368,40 @@ Two things worth knowing when reading a dry-run log:
 - Prefer gating the *effect* over the whole step where the action is cheap to exercise —
   `dp-service` keeps `docker/build-push-action` running and sets `push: false`, so a dry run
   still proves the image builds.
+
+## Java artifacts are distributed as release-page jars and consumed by building from source
+
+Decided in #102 (2026-10-01). Applies to `dp-grpc`, `dp-service`, and `dp-desktop-app`.
+
+Nothing is published to a Maven repository. Each release puts its jar on the GitHub release
+page, and a downstream repo checks out its upstream at the matching `rel-<version>` tag and
+`mvn install`s it: `dp-service` builds `dp-grpc`, and `dp-desktop-app` builds both. The poms
+already declare ordinary coordinates (`com.ospreydcs:dp-grpc:<version>`), and the source build
+is just how those coordinates get into the local repository.
+
+**This is intentional, not a gap.** Nothing binary is trusted that was not built from a visible
+source tree, and it needs no registry credentials, no GPG key, and no immutable published
+versions. The known costs are accepted:
+
+- All three repos must carry the same `rel-<version>` tag; the tags do the job a version range
+  would.
+- A missing or mistagged upstream fails the downstream release partway through, in the wrong
+  repo.
+- Downstream builds compile upstream with `-DskipTests`, so the linked jar is a fresh build of
+  the released source, not the released jar itself.
+- An external Java consumer has no coordinate to resolve; they download the jar or build from
+  source.
+
+Do not add `distributionManagement`, `maven-deploy-plugin`, or `maven-gpg-plugin` to these poms,
+or reopen this question, without the trigger below.
+
+**Trigger for revisiting: the first real external Java consumer that needs a coordinate.** The
+plan at that point is #102's option D, publishing `dp-grpc` alone to Maven Central. `dp-grpc` is
+the only one of the three that is a library; the other two are deliverables. Central requires
+PGP signing (in addition to the Sigstore signatures on the release page) and makes every
+published version immutable, so a re-cut tag becomes a patch release. GitHub Packages was rejected because it
+requires authentication even to read public packages, which makes things harder for exactly
+the consumers it would serve.
+
+Lockstep and late failures are not reasons to publish to a registry. Option D does not fix them
+either, so if they start to hurt, they need their own ticket.
