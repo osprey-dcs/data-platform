@@ -368,3 +368,48 @@ Two things worth knowing when reading a dry-run log:
 - Prefer gating the *effect* over the whole step where the action is cheap to exercise —
   `dp-service` keeps `docker/build-push-action` running and sets `push: false`, so a dry run
   still proves the image builds.
+
+## Release notes: links are absolute, tag-pinned, and checked
+
+This convention applies to **all five `osprey-dcs` repos**, and is recorded only here for the
+same reason as the pinning section. The rules and their rationale are #98.
+
+A `doc/release-notes/rel-X.Y.Z.md` is published verbatim as the GitHub release body. GitHub does
+not resolve relative links there, a link on `main` drifts as the repo moves on, and a link copied
+from the previous release's notes resolves to real but stale content. None of these look wrong
+in a diff or a preview, so a script checks them instead of review.
+
+### Rules
+
+- **`rel-X.Y.Z.md`**: no relative links (R1). Every `github.com/osprey-dcs/<repo>/blob|tree/<ref>`
+  or `raw.githubusercontent.com` link, into any of the five repos, has `<ref>` equal to this
+  file's tag (R2), since they release in lockstep. Paths and `#anchors` into this repo exist in
+  the working tree, and no anchor points at a duplicated heading (R3, R4). No `rel-<version>`,
+  `<version>` or `<previous>` placeholder is left (R5).
+- **R2's one exception is a full 40-character commit SHA**, for a target that did not exist at
+  the tag. dp-python-lib's rel-1.16.0 links `README.env`, which was added after the tag along with
+  the verification section that links it, so `blob/rel-1.16.0/README.env` is a 404. A SHA cannot
+  drift; `main`, a short SHA, or any other tag still fails.
+- **`NEXT.md`** (the draft, where a repo has one): no relative links, links stay on `main`, and
+  their paths and anchors are checked, so renaming a heading it links to fails that PR.
+- **Already released notes** are every `rel-*.md` except the highest version. They get only the
+  form rules (R1, R2, R5): they are immutable, and checking them against today's tree would fail
+  an old file the first time a heading is renamed.
+- Code spans and fenced blocks are ignored by the link rules, so quoting a bad link is fine.
+
+### The checker
+
+One script, `.dev/tools/check-release-notes.py`, stdlib Python, copied **verbatim** into each repo.
+The copies differ only in the marked configuration block at the top (repository name, and which
+signing-identity rules apply); the block's comment lists every repo's values. Fix it in one repo
+and copy the file to the other four. It runs on every PR in CI and again in `release.yml`'s
+`Verify release notes exist` step, where a dry run warns and a publish fails.
+
+Each run starts with a self-test that feeds every rule, including identity rules the local copy
+does not enable, known-bad and known-good input. A copy whose rules have drifted from the others,
+or a rule that quietly stopped matching, fails its first run rather than passing everything.
+
+```bash
+python3 .dev/tools/check-release-notes.py                     # every notes file
+python3 .dev/tools/check-release-notes.py doc/release-notes/rel-1.17.0.md
+```
