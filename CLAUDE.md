@@ -307,12 +307,16 @@ gh api repos/OWNER/REPO/git/ref/tags/TAG --jq '.object.sha'   # may be a tag obj
 gh api repos/OWNER/REPO/git/tags/SHA     --jq '.object.sha'   # -> commit SHA
 ```
 
-Confirm the result before committing. This lists every tag pointing at that SHA:
+Confirm the result before committing. This lists every tag pointing at that SHA, one per line:
 
 ```bash
-gh api "repos/OWNER/REPO/tags?per_page=100" \
-  --jq "[.[] | select(.commit.sha==\"SHA\") | .name]"
+gh api --paginate "repos/OWNER/REPO/tags?per_page=100" \
+  --jq ".[] | select(.commit.sha==\"SHA\") | .name"
 ```
+
+Keep `--paginate`: without it only the first 100 tags are searched, and a repo with more prints
+nothing for a correct SHA. (`--jq` runs once per page, hence one name per line rather than an
+array.)
 
 A correct pin returns both the exact semver tag and the floating major it replaces — which is
 also what proves the change is behavior-neutral.
@@ -356,9 +360,16 @@ env:
   DRY_RUN: ${{ github.event_name == 'workflow_dispatch' && inputs.dry_run }}
 ```
 
-Define it once at job level rather than repeating step-level conditions, which eventually
-drift; the failure mode of a drifted one is an unintended publish. `dp-grpc`, `dp-service`, and
-`dp-desktop-app` all have this.
+Define it once (job or workflow level) rather than repeating step-level conditions, which
+eventually drift; the failure mode of a drifted one is an unintended publish. This repo's
+`release.yml`, `dp-service`'s `release-image.yml`, and `dp-grpc`'s `generate-python-stubs.yml`
+have this.
+
+The Java repos' `release.yml` files use a stronger variant with no input at all: a single
+`IS_RELEASE: ${{ github.event_name == 'push' && startsWith(github.ref, 'refs/tags/rel-') }}`,
+with publishing in a separate job gated on a `rel-*` tag push, so any `workflow_dispatch` is a
+rehearsal that cannot publish. `dp-grpc`, `dp-service`, and `dp-desktop-app` (since
+osprey-dcs/dp-desktop-app#24) all use it.
 
 Two things worth knowing when reading a dry-run log:
 
