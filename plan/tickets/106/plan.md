@@ -43,10 +43,11 @@ model, both dropped on purpose.
 
 ## Decisions
 
-**D1 — Remove outright in a breaking release; no deprecation release first.** There are no
-consumers that need a deprecation period (see [Current V1 usage](#current-v1-usage)). The two
-consumers in question, the SLAC deployment and dp-jal, were consulted and both stakeholders
-agreed to the removal (2026-10-29).
+**D1 — Remove outright in a breaking release; no deprecation release first.** The only known
+consumers outside the Data Platform's own repos are dp-jal, which calls V1, and the SLAC
+deployment, which was not surveyed directly (see [Current V1 usage](#current-v1-usage)). Both
+stakeholders were consulted and agreed to the removal without a deprecation period
+(2026-10-29).
 
 **D2 — Removed RPCs fail with `UNIMPLEMENTED`.** A client built against older stubs that calls a
 removed method gets gRPC status `UNIMPLEMENTED` from the server. No shim or redirect to V2. The
@@ -77,8 +78,8 @@ Surveyed 2026-10-28.
 |---|---|---|
 | dp-desktop-app | none (V2 only) | none |
 | dp-python-lib | none in code (V2 only); README lists `queryData()` / `queryTable()` under low-level API coverage | README fix; stub regeneration on the dp-grpc bump |
-| dp-service | handlers, dispatchers, jobs, `QueryDataBidiStreamRequestObserver`, four V1 benchmark clients, `QueryClient.queryTable` wrappers, V1 telemetry, V1 integration tests, and V1 calls in ~20 non-V1 test classes | the bulk of the work |
-| data-platform | `bin/app-run-query-benchmark` runs `BenchmarkQueryDataStream`; `bin/app-run-query-bytes-benchmark` runs `BenchmarkQueryDataStreamBytes`, a class that no longer exists in dp-service (already broken); README-dp-support.md describes both | script and doc updates |
+| dp-service | handlers, dispatchers, jobs, `QueryDataBidiStreamRequestObserver`, four V1 benchmark clients plus V1 request/response plumbing in the shared `QueryBenchmarkBase`, `QueryClient.queryTable` wrappers, V1 telemetry, V1 integration tests, V1 calls in ~20 non-V1 integration test classes, and V1 types in several unit tests | the bulk of the work |
+| data-platform | `bin/app-run-query-benchmark` runs `BenchmarkQueryDataStream`; `bin/app-run-query-bytes-benchmark` runs `BenchmarkQueryDataStreamBytes`, a class that no longer exists in dp-service (already broken); README-dp-support.md, `doc/user/quick-start.md`, and `CLAUDE.md` reference them | script and doc updates |
 | dp-grpc | protos, README, cookbook `query.md` (which includes a V1→V2 migration section) | proto removal and doc updates |
 | dp-jal | `queryDataStream`, `queryDataBidiStream`; pinned to dp-grpc 1.9.0, last pushed 2026-03-20 | owner agreed to the removal 2026-10-29; whether dp-jal moves to V2 is the owner's call, outside this epic |
 | SLAC deployment | not surveyed directly | stakeholders agreed to the removal 2026-10-29 |
@@ -95,6 +96,13 @@ The V1 dependency in the tests is concentrated in `GrpcIntegrationQueryServiceWr
   `QueryMetricsIT`, `QueryDataStreamStaggeredTimestampIT`, `BenchmarkIntegrationIT`,
   `QueryGrpcTest`) call `queryData()` / `queryDataStream()` / `sendAndVerifyQueryData*()` /
   `sendAndVerifyQueryTable*()`.
+- Several unit tests also use V1 types, and two of them cover shared behavior that has to be
+  re-pointed at the V2 path rather than deleted: `BucketDocumentDeserializationTest` exercises
+  `requireDeserializableBucket` through the V1 `BucketDocument.dataBucketFromDocument()` (V2
+  uses `dataBucketFromDocumentV2()`), and `MongoSyncQueryClientMissingIndexTest` covers
+  missing-index behavior through `executeQueryData()`. The others (`MongoQueryHandlerTestBase`,
+  `QueryServiceImplTest`, `QueryHandlerUtilityTest`, `ApiResponseObserverBaseTest`,
+  `ResponseObserverErrorTest`, `QueryClientIT`, `QueryTestBase`) need the same audit.
 
 Because `queryBuckets` and `queryBucketsStream` return `DataBucket`s with the same filter and
 sort as V1, the wrapper's `queryData()` and `queryDataStream()` helpers should be
@@ -110,27 +118,39 @@ Each item becomes a child ticket in the named repo, created as the epic progress
 1. **dp-service: record a V1 vs V2 query benchmark comparison (D3).** Run the paired benchmarks
    on the same fixture and record the results somewhere durable: `BenchmarkQueryDataStream` vs
    `BenchmarkQueryBucketsStream` (the direct comparison), `BenchmarkQueryDataUnary` vs
-   `BenchmarkQueryBuckets`, `BenchmarkQueryTable` vs `BenchmarkQuerySamples`. The unary V1
-   clients need small fixtures to stay under the message size limit, so their pairings use the
-   same small fixture for both sides. Include a deep-history run using the loader options.
-2. **dp-service: migrate the integration test framework to V2 (D4).** Re-implement the wrapper's
-   V1 helpers over V2, migrate the call sites, and audit the V1 query ITs for scenarios lacking
-   V2 coverage, adding V2 tests where needed. Non-breaking; no dependency on the dp-grpc change.
+   `BenchmarkQueryBuckets`, `BenchmarkQueryTable` vs `BenchmarkQuerySamples`, and
+   `BenchmarkQueryDataBidiStream` vs `BenchmarkQueryBuckets` (which pages each query to
+   completion). The bidi pairing matters most, since it is the one replaced by a different model
+   (server-held cursor vs stateless paging); it is not message-size bound, so it uses the large
+   fixture. The unary V1 clients need small fixtures to stay under the message size limit, so
+   their pairings use the same small fixture for both sides. Include a deep-history run using
+   the loader options.
+2. **dp-service: migrate the test framework to V2 (D4).** Re-implement the wrapper's V1 helpers
+   over V2, migrate the call sites, and audit the V1 query ITs and the unit tests that use V1
+   types (see [dp-service test framework](#dp-service-test-framework)) for scenarios lacking V2
+   coverage, adding V2 tests where needed. Non-breaking; no dependency on the dp-grpc change.
 3. **dp-grpc: remove the V1 methods and messages.** Remove the four RPCs and the V1
    request/response messages (D5). Update the V2 comments that refer to V1 ("V1 methods above
    remain available", the `ColumnTable` row-format note, the `QueryData` serialized-column
    note), the README query sections, and the cookbook. Decide whether the cookbook's V1→V2
    migration section stays, or moves into the breaking release notes. Add a `NEXT.md` section.
 4. **dp-service: remove the V1 implementation.** Handlers, dispatchers, jobs, the bidi request
-   observer, the V1 benchmark clients, `QueryClient`'s `queryTable` wrappers and
-   `QueryTableApiResult`, V1 telemetry and metrics, the V1 ITs, and the docs (README,
-   `doc/benchmark-overview.md`, `doc/metrics.md`, developer notes). Keep code shared with export
-   and V2 (`TabularDataUtility`, the bucket filter builder, `executeDataBlockQuery`). Depends on
-   1, 2, and 3.
+   observer, the V1 benchmark clients and `QueryDataResponseObserver`, `QueryClient`'s
+   `queryTable` wrappers and `QueryTableApiResult`, V1 telemetry and metrics, the V1 ITs, and the
+   docs (README, `doc/benchmark-overview.md`, `doc/metrics.md`, developer notes). This is not
+   pure deletion: `QueryBenchmarkBase`, the base class and fixture loader shared with the V2
+   benchmarks, carries V1 plumbing (`QueryDataRequestTask`, `QueryDataResponseTask`,
+   `buildQueryDataRequest`, `buildNextQueryDataRequest`) that has to be cut out of it, and
+   `BucketDocument.dataBucketFromDocument()` in `common/` and `executeQueryData()` /
+   `executeQueryTable()` on `MongoQueryClientInterface` go too. Keep code shared with export and
+   V2 (`TabularDataUtility`, the bucket filter builder, `executeDataBlockQuery`,
+   `dataBucketFromDocumentV2`). Depends on 1, 2, and 3.
 5. **data-platform: update the benchmark scripts and docs.** Point `app-run-query-benchmark` at
    a V2 benchmark (or add a script per V2 benchmark), fix or remove the already-broken
-   `app-run-query-bytes-benchmark`, and update README-dp-support.md. Can land with 4, or earlier
-   for the broken script.
+   `app-run-query-bytes-benchmark`, and update README-dp-support.md, `doc/user/quick-start.md`,
+   and `CLAUDE.md`. `server-benchmark-query-start` runs `BenchmarkQueryGrpcServer`, which has no
+   V1 dependency, and stays. The script repointing lands with 4; the broken bytes script can be
+   fixed at any time.
 6. **dp-python-lib: README and stubs.** Remove `queryData()` / `queryTable()` from the
    low-level API coverage list; regenerate stubs on the dp-grpc bump.
 7. **Release notes.** Each repo's breaking-release notes lead their "Upgrading from" checklist
@@ -142,13 +162,17 @@ Each item becomes a child ticket in the named repo, created as the epic progress
 ```
 1 benchmark comparison ──┐
 2 test framework → V2 ───┼──> 4 dp-service removal ──> 5 data-platform scripts
-3 dp-grpc removal ───────┘                         └──> 6 dp-python-lib
-                                                         7 release notes (with each)
+3 dp-grpc removal ───────┤
+                         └──> 6 dp-python-lib
+
+5 (broken bytes script only): any time
+7 release notes: with each repo's item
 ```
 
 Items 1, 2, and 3 are independent and can proceed in parallel; 1 and 2 are non-breaking and can
 ship before the breaking release. 3 and 4 must ship in the same breaking release. dp-service
-builds against a dp-grpc artifact, so 3 merges first and 4 picks it up.
+builds against a dp-grpc artifact, so 3 merges first and 4 picks it up. Item 6 depends only on
+3, since its stubs are regenerated from the dp-grpc bump.
 
 ## Open questions
 
