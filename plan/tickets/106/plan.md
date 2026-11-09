@@ -174,6 +174,19 @@ ship before the breaking release. 3 and 4 must ship in the same breaking release
 builds against a dp-grpc artifact, so 3 merges first and 4 picks it up. Item 6 depends only on
 3, since its stubs are regenerated from the dp-grpc bump.
 
+Recommended order for 1–3 (osprey-dcs/dp-service#312, osprey-dcs/dp-service#313,
+osprey-dcs/dp-grpc#175), added 2026-11-09:
+
+- **1 first.** It is the cheapest, and the only item whose result could change the plan: a
+  material V2 regression, particularly the bidi pairing, would call for V2 performance work
+  before removal.
+- **2 next, alongside 1 if convenient.** It is the largest item and non-breaking, so it ships in
+  an ordinary release. Its audit of the V1 query ITs is the other place a V2 coverage gap could
+  surface, and that is better found while the V1 protos still exist.
+- **3 is worked any time but merged last, immediately before 4.** Once 3 is on dp-grpc `main`,
+  every dp-grpc release from `main` is breaking, and dp-service cannot build against it until 4
+  lands. Keep 3 as an open PR until 4 is ready to follow, so that window stays short.
+
 ## Open questions
 
 1. **Where benchmark results live.** A dp-service doc, the child ticket, or a new results
