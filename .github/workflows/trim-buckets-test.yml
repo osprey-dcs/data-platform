@@ -1,0 +1,53 @@
+name: Trim buckets test
+
+# Runs the test of bin/mongodb-trim-buckets against a throwaway sharded MongoDB cluster.  Its
+# own workflow, with a paths filter, because ci.yml deliberately has none and this job starts
+# eight containers: it runs only when the script, its test, or this file changes.
+on:
+  pull_request:
+    branches: [main]
+    paths:
+      - bin/mongodb-trim-buckets
+      - bin/mongodb-trim-buckets.js
+      - test/mongodb-trim-buckets/**
+      - .github/workflows/trim-buckets-test.yml
+  push:
+    branches: [main]
+    paths:
+      - bin/mongodb-trim-buckets
+      - bin/mongodb-trim-buckets.js
+      - test/mongodb-trim-buckets/**
+      - .github/workflows/trim-buckets-test.yml
+
+concurrency:
+  group: trim-buckets-test-${{ github.event_name == 'pull_request' && github.ref || github.sha }}
+  cancel-in-progress: ${{ github.event_name == 'pull_request' }}
+
+permissions:
+  contents: read
+
+jobs:
+  trim-buckets-test:
+    # ubuntu-22.04, not ubuntu-latest: MongoDB 8.0 refuses to start on the kernels the newer
+    # runner images report (SERVER-121912, SERVER-136848).  dp-service's CI has the same pin
+    # and the same deadline: the image is retired on 2027-04-17.
+    runs-on: ubuntu-22.04
+    timeout-minutes: 20
+    steps:
+      # Pinned to a commit SHA per the convention in CLAUDE.md; Dependabot keeps it current.
+      - name: Checkout
+        uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+
+      # The runner's own Node.js is enough; the version is pinned so a mongosh release cannot
+      # change the test's behaviour unreviewed.  The script is also run by hand under the
+      # mongosh inside the server image (2.6.0), which is what a Kubernetes job would use.
+      - name: Install mongosh
+        run: npm install --global mongosh@2.8.2
+
+      - name: Run the test
+        run: test/mongodb-trim-buckets/run-test.sh
+
+      - name: Cluster logs
+        if: failure()
+        working-directory: test/mongodb-trim-buckets
+        run: docker compose logs --tail 200 || true

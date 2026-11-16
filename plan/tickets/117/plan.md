@@ -1,8 +1,9 @@
 # Plan: Data trimming and migration (epic #117)
 
 - **Ticket**: [osprey-dcs/data-platform#117](https://github.com/osprey-dcs/data-platform/issues/117)
-- **Status**: epic plan, 2026-11-16. Phase 1a is in progress; phase 2 is direction only and
-  will be refined in later PRs while the epic is open.
+- **Status**: epic plan, 2026-11-16. Phase 1a is implemented and waiting on SLAC (see
+  [Open questions](#open-questions)); phase 2 is direction only and will be refined in later
+  PRs while the epic is open.
 - **Child tickets**:
   [#118](https://github.com/osprey-dcs/data-platform/issues/118) phase 1a trim script
   ([plan](../118/plan.md));
@@ -83,6 +84,10 @@ Checked against dp-service `main` (`fd806c9`) on 2026-11-12 and SLAC's replies o
   entry, so write cost is per bucket per index.
 - A property filter is evaluated on fetched documents. Counting what a filter matches therefore
   costs the same read as deleting it. Counting by age alone runs on the index.
+- On a sharded cluster a query on the bucket index is not index-only by default: each shard
+  fetches the document to check it owns it, because the shard key is not in the index. Read
+  concern `available` skips that check. Found while building the script (see the #118 plan);
+  it applies equally to any phase 2 work that expects to count or scan buckets from the index.
 
 **The SLAC deployment** (figures from `getShardDistribution()`, 2026-11-16)
 
@@ -162,7 +167,8 @@ missing the attribute is then kept instead of deleted. SLAC's own examples use
 a marker the rest lacks, the runbook says so and relies on the dry run.
 
 **D6 — Dry run is the default; deleting needs an explicit flag.** The dry run reports, per PV
-and in total, the buckets matched by age alone (an index count) and the time range that would
+and in total, the buckets matched by age alone (an index count, read with read concern
+`available`) and the time range that would
 be deleted, and prints the newest data time in the archive beside the cutoff. With a filter it
 tests the filter on a sample per PV, the oldest and newest candidate bucket, and labels the
 result as a sample; an option requests the exact count at the cost of reading every candidate.
