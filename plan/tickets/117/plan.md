@@ -319,12 +319,15 @@ document by document, and building one on the existing collection is itself a la
 1. **How the Archiver data is identified**, so the runbook can give SLAC a tested filter.
    Blocks the first real run at SLAC. If it is identifiable by PV name, protecting it needs no
    document reads. (Asked 2026-11-16.)
-2. **How many PVs** the archive holds (`db.pvStats.estimatedDocumentCount()`). It sets the
-   per-PV overhead of a run and how evenly slices divide.
-3. **Is a rehearsal in SLAC's test environment practical?** (Asked.)
-4. **Per-PV or per-provider retention** — wanted for the script, or only in phase 2? (Asked.)
+2. **Is a rehearsal in SLAC's test environment practical?** (Asked.)
+3. **Per-PV or per-provider retention** — wanted for the script, or only in phase 2? (Asked.)
 
 Answered since the first draft: the shard key and data distribution (confirmed, see
 Background); the archive's size (1.34 billion buckets, not 35 million); phase 1b (folded into
 phase 2); a target duration for the first trim (none; staged, see D13); replica set membership
-(two data-bearing members and an arbiter per shard, see D4).
+(two data-bearing members and an arbiter per shard, see D4); the PV count (3,008 by
+`db.pvStats.estimatedDocumentCount()`, 2026-11-17). That is about 445,000 buckets and 18 GiB per
+PV on average and about 500 PVs per shard. It changes no decision: listing the PVs and the
+per-PV overhead of a run are negligible at that count, a PV's trim is a few hundred batches, and
+hash slices divide the PV names evenly (about 500 per slice at six). Whether slices are even in
+*data* depends on how bucket counts vary between PVs, which the dry run's per-PV counts show.
