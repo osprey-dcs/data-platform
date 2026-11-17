@@ -196,6 +196,24 @@ function dryRunThenExecute(t) {
     check(dry.out.includes(`buckets matched by age: ${toDelete}`),
         `dry run reports ${toDelete} matched by age`);
     check(dry.out.includes("nothing was deleted"), "dry run says nothing was deleted");
+    // The report is by when buckets start, which is what the index holds.  The newest-data
+    // line is the end of each PV's latest-starting bucket: a lower bound, and labelled as one
+    // (PV:LONG has a bucket that starts first and ends last).
+    const iso = s => new Date(s * 1000).toISOString().replace(".000Z", "Z");
+    const first = d => Number(d.dataTimestamps.firstTime.seconds);
+    const last = d => Number(d.dataTimestamps.lastTime.seconds);
+    const trimmed = docs.filter(d => last(d) < CUTOFF);
+    const starts = trimmed.map(first);
+    check(dry.out.includes(`start between ${iso(Math.min(...starts))} and ${iso(Math.max(...starts))}`),
+        `dry run reports when the trimmed buckets start: ${dry.out.slice(-600)}`);
+    const latestStarting = {};
+    for (const d of docs) {
+        if (!latestStarting[d.pvName] || first(d) > first(latestStarting[d.pvName])) latestStarting[d.pvName] = d;
+    }
+    const bound = Math.max(...Object.values(latestStarting).map(last));
+    check(dry.out.includes(`newest data in these PVs is at least ${iso(bound)}`),
+        "dry run reports the newest data as a lower bound");
+    check(dry.out.includes("PV:LONG: 1 by age, starting"), "per-PV lines say when buckets start");
     let record = t.lastLog();
     check(record.dryRun === true && record.status === "completed", "dry run record is completed");
     check(Number(record.bucketsMatchedByAge) === toDelete, "dry run record has the matched count");
@@ -216,6 +234,36 @@ function dryRunThenExecute(t) {
     const again = trim(t.uri, ["--before", CUTOFF_ISO, "--execute"]);
     check(again.status === 0 && again.out.includes("buckets deleted: 0"), "a repeat run deletes nothing");
     sameList(t.ids(), expected, "a repeat run changes nothing");
+}
+
+// The wrapper's flags alone decide what a run does: a DP_TRIM_ variable left exported in the
+// shell must not turn a dry run into a delete, or change what is selected.
+function ambientVariablesAreIgnored(t) {
+    const docs = t.seed();
+    const stale = {
+        DP_TRIM_EXECUTE: "true", DP_TRIM_OLDER_THAN_DAYS: "1", DP_TRIM_FILTER: BSAS_FILTER,
+        DP_TRIM_SLICE: "0/2", DP_TRIM_BATCH_SIZE: "0", DP_TRIM_PAUSE_MS: "x",
+        DP_TRIM_EXACT_FILTER_COUNT: "true", DP_TRIM_PER_PV: "false",
+    };
+    const dry = trim(t.uri, ["--before", CUTOFF_ISO], {env: stale});
+    check(dry.status === 0, `exits 0 (got ${dry.status}): ${dry.out.slice(-300)}`);
+    check(dry.out.includes(": dry run") && dry.out.includes("DRY RUN completed") && !dry.out.includes(": EXECUTE"),
+        "an exported DP_TRIM_EXECUTE=true does not make the wrapper delete");
+    check(t.ids().length === docs.length, "nothing deleted");
+    const record = t.lastLog();
+    check(record.dryRun === true && record.filter === null && record.slice === null
+        && record.cutoffSource === `before:${CUTOFF_ISO}`,
+        `the record shows only what the flags asked for (${EJSON.stringify(record)})`);
+    check(dry.out.includes("PV:OLD: 20 by age"), "the per-PV default is not overridden");
+
+    // The database is a flag too: a stale DP_TRIM_DATABASE must not redirect a run.  The
+    // wrapper is run here without --database, so it must fall back to the default, "dp".
+    const environment = Object.assign({}, process.env,
+        {DP_TRIM_MONGODB_URI: t.uri, DP_TRIM_DATABASE: DB, DP_TRIM_EXECUTE: "true"});
+    const other = spawnSync("bash", [WRAPPER, "--before", CUTOFF_ISO], {env: environment, encoding: "utf8"});
+    check(other.status === 2 && /collection dp\.buckets does not exist/.test(other.stdout + other.stderr),
+        `a stale DP_TRIM_DATABASE is ignored (exit ${other.status}: ${(other.stdout + other.stderr).trim().slice(-200)})`);
+    check(t.ids().length === docs.length, "still nothing deleted");
 }
 
 function cutoffIsTruncatedToSeconds(t) {
@@ -414,6 +462,13 @@ function stopsWhenMajorityIsUnavailable(t) {
         check(run.status === 1, `exits 1 when a majority cannot confirm (got ${run.status}): ${run.out.slice(-400)}`);
         check(run.out.includes("retry 2 of 2"), "the batch was retried");
         check(run.out.includes("majority needs both"), "the message points at the shard's members");
+        // The delete goes to every shard, so the PV named need not be on the shard that
+        // timed out; the message must say so and carry the server's name for that shard.
+        check(run.out.includes("can be any shard") && !run.out.includes("the shard holding"),
+            "the message does not blame the shard holding the PV");
+        check(/ at s0\b/.test(run.out), "the message carries the name of the shard that timed out");
+        check(/buckets deleted: \d+ in [1-9]\d* batches/.test(run.out),
+            `the summary counts the batch that failed: ${run.out.slice(-500)}`);
         const record = t.lastLog();
         check(record.status === "failed" && /attempts/.test(record.error || ""),
             `the record is marked failed with the error (${record.status})`);
@@ -440,6 +495,7 @@ function stopsWhenMajorityIsUnavailable(t) {
 
 const common = [
     ["dry run, then execute, then repeat", dryRunThenExecute],
+    ["variables left in the environment are ignored", ambientVariablesAreIgnored],
     ["cutoff is truncated to whole seconds", cutoffIsTruncatedToSeconds],
     ["small batches", smallBatches],
     ["filter narrows what is trimmed", filterNarrows],

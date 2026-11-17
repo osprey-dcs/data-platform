@@ -27,7 +27,7 @@ During a cycle the notes are drafted in [`doc/release-notes/NEXT.md`](../release
 A PR that lands a user-visible change in this repo adds its own ticket-organized section there,
 so the content is written while it is fresh and reviewed in the PR that causes it.  At release
 time `NEXT.md` is renamed to `rel-<version>.md` and finished: the summary, the repository table,
-the sections for the four child repos, and the "Upgrading from <previous>" checklist are written
+the sections for the four child repos, and the "Upgrading from &lt;previous&gt;" checklist are written
 then, because only then is it known what the release contains.  `NEXT.md` carries its own
 "Cutting the release" checklist.
 

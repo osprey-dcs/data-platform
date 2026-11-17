@@ -17,6 +17,10 @@ spec:
   completionMode: Indexed         # each pod gets JOB_COMPLETION_INDEX = 0..5
   completions: 6
   parallelism: 6
+  # No retries.  Note what this means for an Indexed Job: when one slice fails, Kubernetes
+  # fails the whole Job and stops the other slices too, leaving their trimLog records marked
+  # "running".  That is safe (fix the cause, then apply the stage again under a new name),
+  # and a write concern timeout stops every slice anyway, since it is cluster-wide.
   backoffLimit: 0
   template:
     spec:

@@ -34,7 +34,7 @@ From the epic plan, the facts the mechanism rests on:
 | File | Role |
 |---|---|
 | `bin/mongodb-trim-buckets.js` | The script. Reads its configuration from environment variables. |
-| `bin/mongodb-trim-buckets` | Bash wrapper: parses flags, exports the variables, runs `mongosh --quiet --file`. |
+| `bin/mongodb-trim-buckets` | Bash wrapper: parses flags, exports the variables, clears the variables the flags stand for, runs `mongosh --nodb --quiet --file`. |
 
 | Flag | Variable | Default |
 |---|---|---|
@@ -93,9 +93,9 @@ For each PV in the slice, repeat until a batch comes back short:
    at the old end of a PV are not read again for every batch.
 2. `deleteMany({_id: {$in: ids}}, {writeConcern: {w: "majority", wtimeout: ...}})`.
    The write concern is fixed. When a secondary is down or too far behind, the batch times
-   out, the retries are used up, and the run stops; the error message says to check the
-   secondary of the shard holding that PV.
-3. On error, retry the batch after 5, 15, 45 and 120 seconds, then mark the run failed in
+   out, the retries are used up, and the run stops; the error message says that any shard
+   can be the one at fault and that the server's message names it.
+3. On error in the read or the delete, retry it after 5, 15, 45 and 120 seconds, then mark the run failed in
    `trimLog` and exit 1. A write concern error carries the number of buckets the primary
    removed (`result.n`); that is added to the run's count, because the retry then matches
    nothing.
@@ -110,9 +110,11 @@ through `mongos` is sent to every shard; the ones that do not hold the PV answer
 ### Dry run
 
 - Per PV: the `count` command on the age predicate, hinted to the compound index, with read
-  concern `available`, and the oldest and newest candidate's times from covered finds with
-  the same read concern. See the first finding below for why `available`.
-- The newest `lastTime` over the PVs visited, printed beside the cutoff.
+  concern `available`, and the start times of the oldest and the latest-starting candidate
+  from covered finds with the same read concern. See the first finding below for why
+  `available`.
+- The end of the latest-starting bucket over the PVs visited, printed beside the cutoff as a
+  lower bound on the newest data.
 - With a filter: evaluate it on the server against the oldest and newest candidate of each PV
   (two bucket reads per PV) and report `both / one / neither` match; totals count PVs in each
   class. With `--exact-filter-count`, `countDocuments({$and: [age, F]})` instead.
@@ -153,7 +155,9 @@ Cases, run on both the replica set and the sharded cluster unless noted:
 - the dry run flags a filter that excludes nothing;
 - two slices together delete exactly what an unsliced run would, and share no PV;
 - `--older-than-days`, and an archive left with no buckets;
-- rejected with exit 2, no record and nothing deleted: both cutoffs, neither, zero or
+- `DP_TRIM_` variables left in the environment, `DP_TRIM_EXECUTE=true` among them, do not
+  change what the wrapper does;
+- rejected with exit 2, no record and nothing deleted: a database with no `buckets`, both cutoffs, neither, zero or
   fractional days, a cutoff without a zone, in the future, or unparseable, a filter that is
   not JSON or not an object, a bad slice, a zero batch size, an unknown flag, a flag missing
   its value, no connection string, a missing compound index;
@@ -164,7 +168,7 @@ Cases, run on both the replica set and the sharded cluster unless noted:
   a shard's secondary stopped the run retries, exits 1 with a `failed` record whose count
   matches what is gone, and the repeat run finishes once the secondary is back.
 
-167 checks pass. Each of five deliberate breaks of the script (filter merged instead of
+190 checks pass. Each of five deliberate breaks of the script (filter merged instead of
 ANDed, `lastTime <= cutoff`, no `lastTime` test, a wrong resume bound, a horizon on a filtered
 run) fails the test. The script was also run by hand under mongosh 2.6.0, the version inside
 the server image, which is what the Kubernetes examples use. CI is
@@ -188,6 +192,22 @@ effect on replication lag), authentication, and the Kubernetes manifests against
   matter to the script, which always states its own.
 - **A write concern timeout is an exception in mongosh, and the delete has already happened
   on the primary.** The count is in `result.n`, not `result.deletedCount`.
+- **A down secondary on any shard stops every trim (found in review).** The delete by `_id`
+  carries no shard key, so `mongos` sends it to every shard, and a shard that deletes nothing
+  still waits for a majority to reach its latest operation. With a secondary of one shard
+  stopped, a trim of a PV held by the other shard timed out, with the error naming the first
+  shard. The message and the runbook say so.
+- **The index gives when the latest-starting bucket ends, not the latest end (found in
+  review).** The dry run reports bucket start times, and the newest data as a lower bound.
+- **`Long(n)` in mongosh keeps only the low 32 bits of `n`** (`Long(4294967296)` is 0). The
+  script uses `Long.fromNumber`.
+- **The wrapper passed through any `DP_TRIM_` variable already exported (found in review)**,
+  so `DP_TRIM_EXECUTE=true` left in a shell made a run without `--execute` delete. The wrapper
+  now clears the variables its flags stand for.
+- **In mongosh, `return f()` inside `try` does not catch a failure of `f` when `f` makes a
+  database call (found in review).** mongosh hands the pending call back to the caller. The
+  retry loop assigns the result first and then returns it; the write concern test fails
+  without that.
 - **With a shard's secondary stopped, more than deletes block.** Dropping or creating a
   collection through `mongos` hung until the secondary returned. On SLAC's layout a down
   secondary stops schema changes and migrations as well as trims.

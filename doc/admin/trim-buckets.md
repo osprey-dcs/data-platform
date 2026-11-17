@@ -105,6 +105,12 @@ did not start (bad options, wrong server, missing index) and changed nothing.
 Without the wrapper, set the variables listed at the top of `mongodb-trim-buckets.js` and run
 `mongosh --nodb --quiet --file mongodb-trim-buckets.js`. The Kubernetes examples do this.
 
+The wrapper goes by its flags alone. It clears the `DP_TRIM_` variables that the flags stand
+for before it reads them, so one left exported in your shell, `DP_TRIM_EXECUTE=true` for
+instance, does not turn a dry run into a delete. It keeps `DP_TRIM_MONGODB_URI` and
+`DP_TRIM_WTIMEOUT_MS`. Run directly under `mongosh`, the script has only the variables to go
+by: check what is exported first (`env | grep DP_TRIM_`).
+
 ## The dry run
 
 Always do a dry run with the same options first. It prints what it would delete:
@@ -114,13 +120,13 @@ mongodb-trim-buckets 1.0.0: dry run
   database dp on sharded cluster, through mongos
   cutoff 2026-08-01T00:00:00Z (before:2026-08-01T00:00:00Z): buckets whose last sample is before this are trimmed
   1234 PVs have buckets
-  BPMS:BSYH:445:XCUHBR: 51840 by age, 2026-03-01T00:02:23Z to 2026-07-31T23:59:59Z
+  BPMS:BSYH:445:XCUHBR: 51840 by age, starting 2026-03-01T00:02:23Z to 2026-07-31T23:59:50Z
   ...
 DRY RUN completed in 95s; trimLog record 6afb6e9623ffbcdeddc31084
   PVs visited: 1234 (1200 with buckets to trim, 34 with none)
   buckets matched by age: 61200000
-  data that would be trimmed spans 2026-03-01T00:02:23Z to 2026-07-31T23:59:59Z
-  newest data in these PVs: 2026-11-10T08:15:02Z; the cutoff is 2026-08-01T00:00:00Z, so about 101.3 days of data would remain
+  buckets that would be trimmed start between 2026-03-01T00:02:23Z and 2026-07-31T23:59:50Z
+  newest data in these PVs is at least 2026-11-10T08:15:02Z (the end of the latest-starting bucket); the cutoff is 2026-08-01T00:00:00Z, so at least 101.3 days of data would remain
   nothing was deleted; set DP_TRIM_EXECUTE=true (--execute) to delete
 ```
 
@@ -128,10 +134,14 @@ DRY RUN completed in 95s; trimLog record 6afb6e9623ffbcdeddc31084
 
 What to check:
 
-- **The count and the time span** are what you mean to delete.
+- **The count and the time span** are what you mean to delete. The times are when buckets
+  **start**, because that is what the index is ordered by. Every bucket counted ends before
+  the cutoff.
 - **The "newest data" line.** `--older-than-days` counts back from today, not from the newest
   data you have loaded. If the newest data is three weeks old, `--older-than-days 60` leaves 39
-  days of data, not 60.
+  days of data, not 60. The time printed is the end of the latest-starting bucket of any PV.
+  When a PV's buckets follow one another that is its newest sample. When they overlap, or one
+  spans a long time, the newest sample can be later, so the line says "at least".
 - **With a filter**, the sample lines described in the next section.
 
 The counts by age are read from the index and are cheap, even on the full archive. They use
@@ -292,15 +302,22 @@ The script does not use `trimLog` to resume. It is a record, not a checkpoint.
 **It is always safe to run the same command again.** A repeat run finds what is left and
 deletes it. It does not repeat or undo anything.
 
-- **"A majority did not confirm the write".** Each delete waits until a majority of the
-  shard's members have it. On a shard of two data-bearing members and an arbiter that means
-  both data members. If the secondary is down, or too far behind to catch up within the
-  timeout, the script retries four times over several minutes and then stops with exit
-  status 1. This is deliberate: deleting at volume while a secondary is behind can leave it so
-  far behind that it has to be rebuilt from scratch. Bring the secondary back, let it catch
-  up, and run the command again. The message names the PV; the shard is the one holding it.
-- **A primary changes during a run.** The affected delete fails and is retried; the run
-  normally carries on.
+- **"A majority did not confirm the write".** Each delete waits until a majority of a shard's
+  members have it. On a shard of two data-bearing members and an arbiter that means both data
+  members. If a secondary is down, or too far behind to catch up within the timeout, the
+  script retries four times over several minutes and then stops with exit status 1. This is
+  deliberate: deleting at volume while a secondary is behind can leave it so far behind that
+  it has to be rebuilt from scratch. Bring the secondary back, let it catch up, and run the
+  command again.
+
+  **The shard at fault can be any shard, not only the one holding the PV in the message.** A
+  delete is sent to every shard, and each waits for its own majority even when it holds none
+  of the buckets. So one secondary down anywhere in the cluster stops every trim, every slice
+  included. MongoDB's own message, which the script quotes, ends with the name of the shard
+  that timed out (`... at shard-3`); that is the one to look at.
+- **A primary changes during an `--execute` run.** The read or delete in progress fails and is
+  retried, on the same schedule; the run normally carries on. A dry run is not retried. It
+  changes nothing, so run it again.
 - **The process is killed.** Nothing is left half-done. The `trimLog` record stays `running`.
 - **Other errors** are printed with the PV being handled, and recorded in `trimLog`.
 

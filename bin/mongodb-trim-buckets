@@ -34,6 +34,10 @@ usage: mongodb-trim-buckets (--older-than-days N | --before TIMESTAMP) [options]
 environment:
   DP_TRIM_MONGODB_URI     required: the MongoDB connection string (a mongos, on a sharded
                           cluster)
+  DP_TRIM_WTIMEOUT_MS     optional: write concern timeout per delete (default 60000)
+
+Every other DP_TRIM_* variable is ignored: what a run does is decided by its flags alone, so
+a variable left exported in the shell cannot turn a dry run into a delete.
 
 exit status: 0 completed, 1 failed part-way (safe to run again), 2 not started
 USAGE
@@ -45,6 +49,14 @@ need_value() {
         exit 2
     fi
 }
+
+# Only the flags decide what this run does.  The variables the flags stand for are cleared
+# first, so that one left exported in the shell (DP_TRIM_EXECUTE=true from running the .js
+# file directly, say) cannot turn a dry run into a delete or change what is selected.  The
+# connection string and the two tuning variables that have no flag are left alone.
+unset DP_TRIM_OLDER_THAN_DAYS DP_TRIM_BEFORE DP_TRIM_FILTER DP_TRIM_EXECUTE \
+      DP_TRIM_BATCH_SIZE DP_TRIM_PAUSE_MS DP_TRIM_SLICE DP_TRIM_EXACT_FILTER_COUNT \
+      DP_TRIM_PER_PV DP_TRIM_DATABASE
 
 while [ $# -gt 0 ]; do
     case "$1" in

@@ -82,7 +82,7 @@ When the version is known and the release is being cut:
 1. **`git mv doc/release-notes/NEXT.md doc/release-notes/rel-<version>.md`.** The filename must
    match the tag exactly.
 2. **Retitle** the H1 to `# Data Platform <version> Release Notes` and replace this file's
-   preamble with the "Changes since rel-<previous>" summary and the repository table, as in the
+   preamble with the "Changes since rel-&lt;previous&gt;" summary and the repository table, as in the
    previous release's notes.
 3. **Add the sections for the child repositories**, organized by feature, each linking to the
    repository notes that carry the detail.

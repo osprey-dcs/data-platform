@@ -28,7 +28,11 @@ This is dp-support, a utilities repository for managing the Data Platform ecosys
   deletes buckets whose last sample is before a cutoff; a dry run unless `--execute` is given.
   The connection string comes from `DP_TRIM_MONGODB_URI`, and it does not need `DP_HOME`.
 - The work is done by `bin/mongodb-trim-buckets.js` (mongosh), configured by `DP_TRIM_*`
-  environment variables; the bash wrapper only translates flags.
+  environment variables; the bash wrapper only translates flags. It first unsets every
+  variable a flag stands for, so a stale `DP_TRIM_EXECUTE=true` in the shell cannot make a
+  run without `--execute` delete; keep that list in step when adding a flag.
+- In mongosh, write `const r = f(); return r;` inside a `try`, never `return f();`, when `f`
+  makes a database call: the failure otherwise bypasses the `catch`.
 - Runbook: `doc/admin/trim-buckets.md`. Design: `plan/tickets/118/plan.md`.
 - Test: `test/mongodb-trim-buckets/run-test.sh` (Docker and mongosh; `--keep` leaves the
   cluster up). Run it after any change to the script.

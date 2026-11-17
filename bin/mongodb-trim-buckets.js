@@ -40,8 +40,9 @@ const BUCKET_INDEX_KEYS = {
     pvName: 1, [FIRST_SECONDS]: 1, [FIRST_NANOS]: 1, [LAST_SECONDS]: 1, [LAST_NANOS]: 1,
 };
 
-// A batch that fails (a step-down, a write concern timeout) is retried after each of these
-// delays, then the run stops.  Re-running is always safe: a delete names bucket ids.
+// In an --execute run a batch whose read or delete fails (a step-down, a write concern
+// timeout) is retried after each of these delays, then the run stops.  A dry run is not
+// retried: it changes nothing, so it is simply run again.  Re-running is always safe: a delete names bucket ids.
 // DP_TRIM_RETRY_DELAYS_MS (comma-separated) replaces the delays; it exists for the test.
 const RETRY_DELAYS_MS = (process.env.DP_TRIM_RETRY_DELAYS_MS || "5000,15000,45000,120000")
     .split(",").map(Number);
@@ -54,6 +55,9 @@ const PROGRESS_INTERVAL_MS = 60000;
 // behind by an interrupted chunk migration would be counted; they are never deleted on that
 // basis, since deletes go through the normal routing.
 const INDEX_ONLY = {level: "available"};
+
+// Long(n) keeps only the low 32 bits of a number, so every Long here is made with
+// Long.fromNumber, which is exact for any count or time this script can meet.
 
 class ConfigError extends Error {}
 
@@ -178,9 +182,9 @@ function isoSeconds(seconds) {
 // cutoff.  firstTime < cutoff is implied by that and is stated so the index scan is bounded;
 // fromSeconds, when given, moves the lower bound past buckets an earlier batch already handled.
 function ageSelection(pvName, cutoffSeconds, fromSeconds) {
-    const first = {$lt: Long(cutoffSeconds)};
-    if (fromSeconds !== null && fromSeconds !== undefined) first.$gte = Long(fromSeconds);
-    return {pvName: pvName, [FIRST_SECONDS]: first, [LAST_SECONDS]: {$lt: Long(cutoffSeconds)}};
+    const first = {$lt: Long.fromNumber(cutoffSeconds)};
+    if (fromSeconds !== null && fromSeconds !== undefined) first.$gte = Long.fromNumber(fromSeconds);
+    return {pvName: pvName, [FIRST_SECONDS]: first, [LAST_SECONDS]: {$lt: Long.fromNumber(cutoffSeconds)}};
 }
 
 // The filter is ANDed as its own clause, never merged into the age document: a filter that
@@ -216,7 +220,15 @@ function checkDeployment(conn, database) {
 
 function checkBucketIndex(buckets) {
     const wanted = JSON.stringify(BUCKET_INDEX_KEYS);
-    const found = buckets.getIndexes().some(index => JSON.stringify(index.key) === wanted);
+    let indexes;
+    try {
+        indexes = buckets.getIndexes();
+    } catch (e) {
+        if (e.codeName !== "NamespaceNotFound") throw e;
+        throw new ConfigError(
+            `collection ${buckets.getFullName()} does not exist; is the database name right?`);
+    }
+    const found = indexes.some(index => JSON.stringify(index.key) === wanted);
     if (!found) {
         throw new ConfigError(
             `collection ${buckets.getFullName()} lacks the bucket query index ${wanted}; `
@@ -256,6 +268,11 @@ function indexCount(database, query) {
 }
 
 // One end of a PV's index range under a query: its firstTime and lastTime seconds, or null.
+// The index is ordered by firstTime, so the far end is the bucket that STARTS last.  That is
+// not always the bucket that ends last (buckets can overlap, or span a long time), and the
+// latest end is not available from the index without walking it.  The dry run therefore
+// reports when buckets start, and treats the end of the latest-starting bucket as a lower
+// bound on the newest data.
 function indexEnd(database, query, direction) {
     const sort = {};
     for (const key of Object.keys(BUCKET_INDEX_KEYS)) sort[key] = direction;
@@ -301,8 +318,8 @@ function dryRunPv(database, buckets, config, pvName, totals) {
     if (oldest.firstSeconds < totals.oldestCandidateSeconds) {
         totals.oldestCandidateSeconds = oldest.firstSeconds;
     }
-    if (last.lastSeconds > totals.newestCandidateSeconds) {
-        totals.newestCandidateSeconds = last.lastSeconds;
+    if (last.firstSeconds > totals.newestCandidateSeconds) {
+        totals.newestCandidateSeconds = last.firstSeconds;
     }
     let filterNote = "";
     if (config.filter !== null) {
@@ -320,35 +337,41 @@ function dryRunPv(database, buckets, config, pvName, totals) {
         }
     }
     if (config.perPv) {
-        log(`  ${pvName}: ${byAge} by age, ${isoSeconds(oldest.firstSeconds)} to `
-            + `${isoSeconds(last.lastSeconds)}${filterNote}`);
+        log(`  ${pvName}: ${byAge} by age, starting ${isoSeconds(oldest.firstSeconds)} to `
+            + `${isoSeconds(last.firstSeconds)}${filterNote}`);
     }
 }
 
-function deleteBatch(buckets, config, ids, pvName, totals) {
-    const options = {writeConcern: {w: "majority", wtimeout: config.wtimeoutMillis}};
+// Runs one step of an --execute run (reading a batch, or deleting it), retrying it after each
+// of RETRY_DELAYS_MS when it fails: a primary changing, a write concern timeout.  onFailure,
+// when given, sees every error first.
+function withRetries(what, pvName, totals, step, onFailure) {
     for (let attempt = 0; ; attempt++) {
         try {
-            return buckets.deleteMany({_id: {$in: ids}}, options).deletedCount;
+            // Not "return step()": mongosh would hand the pending call straight back to the
+            // caller, and its failure would then bypass this catch.
+            const result = step();
+            return result;
         } catch (e) {
-            // A write concern failure means the delete was applied on the primary and not yet
-            // confirmed by a majority.  The retry then matches nothing and waits again, so the
-            // buckets it removed are counted here.
-            // The driver's write concern error carries the server's count as "n".
-            const applied = e.result && typeof e.result.n === "number" ? e.result.n
-                : typeof e.n === "number" ? e.n : 0;
-            totals.bucketsDeleted += applied;
+            if (onFailure) onFailure(e);
             if (attempt >= RETRY_DELAYS_MS.length) {
+                // A delete by _id goes to every shard, and every shard waits for its own
+                // majority even when it holds none of the buckets.  So the shard that could
+                // not confirm is not necessarily the one holding this PV; the server's
+                // message, quoted here, ends with its name ("... at <shard>").
                 const hint = /write ?concern/i.test(`${e.codeName} ${e.message}`)
-                    ? "  A majority did not confirm the write: check that every data-bearing "
-                      + `member of the shard holding PV "${pvName}" is up and not far behind. `
-                      + "On a shard of two data members and an arbiter, majority needs both."
+                    ? "  A majority did not confirm the write. The delete is sent to every "
+                      + "shard, so this can be any shard, not only the one holding this PV: "
+                      + "the message above ends with the name of the shard that timed out. "
+                      + "Check that every data-bearing member of that shard is up and not far "
+                      + "behind. On a shard of two data members and an arbiter, majority needs "
+                      + "both."
                     : "";
                 throw new Error(
-                    `delete failed for PV "${pvName}" after ${attempt + 1} attempts: `
+                    `${what} failed for PV "${pvName}" after ${attempt + 1} attempts: `
                     + `${e.codeName || e.name}: ${e.message}.${hint}`);
             }
-            log(`  delete for PV "${pvName}" failed (${e.codeName || e.name}: ${e.message}); `
+            log(`  ${what} for PV "${pvName}" failed (${e.codeName || e.name}: ${e.message}); `
                 + `retry ${attempt + 1} of ${RETRY_DELAYS_MS.length} in `
                 + `${RETRY_DELAYS_MS[attempt] / 1000}s`);
             totals.retries++;
@@ -357,30 +380,55 @@ function deleteBatch(buckets, config, ids, pvName, totals) {
     }
 }
 
+// Deletes one batch and adds what was removed to the run's and the PV's counts, as it goes:
+// a delete that fails for good has usually still removed its buckets.
+function deleteBatch(buckets, config, ids, pvName, totals, pv) {
+    const options = {writeConcern: {w: "majority", wtimeout: config.wtimeoutMillis}};
+    const count = n => {
+        totals.bucketsDeleted += n;
+        pv.deleted += n;
+    };
+    totals.batches++;
+    count(withRetries("delete", pvName, totals,
+        () => buckets.deleteMany({_id: {$in: ids}}, options).deletedCount,
+        e => {
+            // A write concern failure means the delete was applied on the primary and not yet
+            // confirmed by a majority.  The retry then matches nothing and waits again, so the
+            // buckets it removed are counted here.
+            // The driver's write concern error carries the server's count as "n".
+            count(e.result && typeof e.result.n === "number" ? e.result.n
+                : typeof e.n === "number" ? e.n : 0);
+        }));
+}
+
 function executePv(buckets, config, pvName, totals, progress) {
     let fromSeconds = null;
-    let deletedForPv = 0;
-    for (;;) {
-        // Oldest first.  With a filter this fetches the candidates to test them; the delete
-        // then finds them in cache.  Without one the fetch still happens on a sharded cluster.
-        const batch = buckets.find(selection(config, pvName, fromSeconds),
-            {_id: 1, [FIRST_SECONDS]: 1})
-            .sort(BUCKET_INDEX_KEYS).limit(config.batchSize).hint(BUCKET_INDEX_KEYS).toArray();
-        if (batch.length === 0) break;
-        const deleted = deleteBatch(buckets, config, batch.map(doc => doc._id), pvName, totals);
-        totals.bucketsDeleted += deleted;
-        totals.batches++;
-        deletedForPv += deleted;
-        // Later batches start at the second this one ended in, so buckets the filter keeps at
-        // the old end of a PV are not read again for every batch.
-        fromSeconds = Number(batch[batch.length - 1].dataTimestamps.firstTime.seconds);
-        progress();
-        if (config.pauseMillis > 0) sleep(config.pauseMillis);
-        if (batch.length < config.batchSize) break;
+    const pv = {deleted: 0};
+    try {
+        for (;;) {
+            // Oldest first.  With a filter this fetches the candidates to test them; the
+            // delete then finds them in cache.  Without one the fetch still happens on a
+            // sharded cluster.
+            const batch = withRetries("read", pvName, totals, () => buckets
+                .find(selection(config, pvName, fromSeconds), {_id: 1, [FIRST_SECONDS]: 1})
+                .sort(BUCKET_INDEX_KEYS).limit(config.batchSize).hint(BUCKET_INDEX_KEYS)
+                .toArray());
+            if (batch.length === 0) break;
+            deleteBatch(buckets, config, batch.map(doc => doc._id), pvName, totals, pv);
+            // Later batches start at the second this one ended in, so buckets the filter
+            // keeps at the old end of a PV are not read again for every batch.
+            fromSeconds = Number(batch[batch.length - 1].dataTimestamps.firstTime.seconds);
+            progress();
+            if (config.pauseMillis > 0) sleep(config.pauseMillis);
+            if (batch.length < config.batchSize) break;
+        }
+    } finally {
+        // Counted here so that a PV whose run stopped part-way is still reported.
+        totals.pvsVisited++;
+        if (pv.deleted > 0) totals.pvsWithCandidates++;
+        else totals.pvsWithNothingToTrim++;
+        if (config.perPv && pv.deleted > 0) log(`  ${pvName}: deleted ${pv.deleted}`);
     }
-    if (deletedForPv > 0) totals.pvsWithCandidates++;
-    else totals.pvsWithNothingToTrim++;
-    if (config.perPv && deletedForPv > 0) log(`  ${pvName}: deleted ${deletedForPv}`);
 }
 
 function main() {
@@ -419,7 +467,7 @@ function main() {
     trimLog.insertOne({
         _id: logId, scriptVersion: SCRIPT_VERSION, startedAt: startedAt, endedAt: null,
         host: require("os").hostname(), database: config.database,
-        cutoffSeconds: Long(config.cutoffSeconds), cutoffSource: config.cutoffSource,
+        cutoffSeconds: Long.fromNumber(config.cutoffSeconds), cutoffSource: config.cutoffSource,
         filter: config.filterText, slice: config.slice === null ? null : config.slice.text,
         dryRun: !config.execute, status: "running", error: null,
     });
@@ -449,9 +497,12 @@ function main() {
         };
 
         for (const pvName of pvNames) {
-            if (config.execute) executePv(buckets, config, pvName, totals, progress);
-            else dryRunPv(database, buckets, config, pvName, totals);
-            totals.pvsVisited++;
+            if (config.execute) {
+                executePv(buckets, config, pvName, totals, progress);
+            } else {
+                dryRunPv(database, buckets, config, pvName, totals);
+                totals.pvsVisited++;
+            }
             progress();
         }
     } catch (e) {
@@ -466,15 +517,15 @@ function main() {
     const update = {
         endedAt: endedAt, status: completed ? "completed" : "failed",
         error: completed ? null : String(failure.message || failure),
-        pvsVisited: totals.pvsVisited, bucketsDeleted: Long(totals.bucketsDeleted),
+        pvsVisited: totals.pvsVisited, bucketsDeleted: Long.fromNumber(totals.bucketsDeleted),
         batches: totals.batches, retries: totals.retries, deletesPerSecond: deletesPerSecond,
     };
-    if (!config.execute) update.bucketsMatchedByAge = Long(totals.bucketsMatchedByAge);
+    if (!config.execute) update.bucketsMatchedByAge = Long.fromNumber(totals.bucketsMatchedByAge);
     // The horizon says "nothing older than this remains", which only a run that finished, had
     // no filter and covered every PV can claim.  A sliced run sets none; the horizon holds for
     // its cutoff once every slice has a completed record.
     if (completed && config.execute && config.filter === null && config.slice === null) {
-        update.horizonSeconds = Long(config.cutoffSeconds);
+        update.horizonSeconds = Long.fromNumber(config.cutoffSeconds);
     }
     try {
         trimLog.updateOne({_id: logId}, {$set: update});
@@ -493,13 +544,17 @@ function main() {
     } else {
         log(`  buckets matched by age: ${totals.bucketsMatchedByAge}`);
         if (totals.bucketsMatchedByAge > 0) {
-            log(`  data that would be trimmed spans ${isoSeconds(totals.oldestCandidateSeconds)} `
-                + `to ${isoSeconds(totals.newestCandidateSeconds)}`);
+            log(`  buckets that would be trimmed start between `
+                + `${isoSeconds(totals.oldestCandidateSeconds)} and `
+                + `${isoSeconds(totals.newestCandidateSeconds)}`);
         }
         if (Number.isFinite(totals.newestDataSeconds)) {
-            const keptDays = (totals.newestDataSeconds - config.cutoffSeconds) / 86400;
-            log(`  newest data in these PVs: ${isoSeconds(totals.newestDataSeconds)}; the cutoff `
-                + `is ${isoSeconds(config.cutoffSeconds)}, so about ${keptDays.toFixed(1)} days `
+            // A lower bound: see indexEnd.
+            const keptDays = Math.max(
+                (totals.newestDataSeconds - config.cutoffSeconds) / 86400, 0);
+            log(`  newest data in these PVs is at least ${isoSeconds(totals.newestDataSeconds)} `
+                + `(the end of the latest-starting bucket); the cutoff is `
+                + `${isoSeconds(config.cutoffSeconds)}, so at least ${keptDays.toFixed(1)} days `
                 + "of data would remain");
         }
         if (config.filter !== null && config.exactFilterCount) {
