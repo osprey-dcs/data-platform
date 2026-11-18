@@ -59,14 +59,17 @@ can tune them, so the first stage at SLAC is where they are judged.
 ### Start-up checks, before any read of `buckets`
 
 1. Exactly one of the two cutoff settings; a parseable cutoff that is in the past.
-2. The filter parses as Extended JSON and is a document.
+2. The filter parses as Extended JSON and is a document; the retry delays are whole numbers.
 3. The slice is `i/n` with `0 <= i < n`.
 4. `hello` reports `mongos`, or the server is not a member of a sharded cluster
    (`shardingState`, falling back to the `clusterRole` start-up option; if the user may run
    neither, the run is refused, since it cannot tell). A direct connection to a shard is
    refused.
-6. No setting is present but empty. A blank filter or slice is refused, not read as none.
-5. The shipped compound index exists on `buckets`.
+5. No setting is present but empty. A blank filter or slice is refused, not read as none.
+6. The shipped compound index exists on `buckets`.
+7. The server accepts the filter: one query that names an `_id` no bucket has. Without this an
+   `--execute` run retried a refused filter on the full schedule, as if a primary had changed
+   (found in review).
 
 Any failure exits non-zero with no `trimLog` record and nothing deleted.
 
@@ -164,7 +167,8 @@ Cases, run on both the replica set and the sharded cluster unless noted:
   change what the wrapper does;
 - rejected with exit 2, no record and nothing deleted: a database with no `buckets`, both cutoffs, neither, zero or
   fractional days, a cutoff without a zone, in the future, or unparseable, a filter that is
-  not JSON or not an object, a bad slice, a zero batch size, an unknown flag, a flag missing
+  not JSON, not an object, or refused by the server (without being retried), malformed retry
+  delays, a bad slice, a zero batch size, an unknown flag, a flag missing
   its value, no connection string, a missing compound index;
 - exit 1 on an unreachable server;
 - a run killed part-way leaves a `running` record; the repeat run finishes the job;
@@ -176,7 +180,7 @@ Cases, run on both the replica set and the sharded cluster unless noted:
   a shard's secondary stopped the run retries, exits 1 with a `failed` record whose count
   matches what is gone, and the repeat run finishes once the secondary is back.
 
-214 checks pass. Each of five deliberate breaks of the script (filter merged instead of
+226 checks pass. Each of five deliberate breaks of the script (filter merged instead of
 ANDed, `lastTime <= cutoff`, no `lastTime` test, a wrong resume bound, a horizon on a filtered
 run) fails the test. The script was also run by hand under mongosh 2.6.0, the version inside
 the server image, which is what the Kubernetes examples use. CI is

@@ -35,6 +35,8 @@ environment:
   DP_TRIM_MONGODB_URI     required: the MongoDB connection string (a mongos, on a sharded
                           cluster)
   DP_TRIM_WTIMEOUT_MS     optional: write concern timeout per delete (default 60000)
+  DP_TRIM_RETRY_DELAYS_MS optional: delays before each retry of a failed batch, separated
+                          by commas (default 5000,15000,45000,120000); for testing
 
 Every other DP_TRIM_* variable is ignored: what a run does is decided by its flags alone, so
 a variable left exported in the shell cannot turn a dry run into a delete.

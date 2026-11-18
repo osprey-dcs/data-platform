@@ -399,6 +399,19 @@ function rejectedBeforeAnything(t) {
         ["blank slice", ["--before", CUTOFF_ISO, "--execute", "--slice", " "]],
         ["empty cutoff", ["--before", "", "--execute"]],
     ];
+    // A filter the server refuses is a mistake in the options: exit 2 at once, never retried
+    // as if the cluster had failed.
+    for (const args of [["--execute"], []]) {
+        const refused = trim(t.uri, ["--before", CUTOFF_ISO, "--filter", '{"pvName": {"$foo": 1}}'].concat(args));
+        check(refused.status === 2 && refused.out.includes("the server refused DP_TRIM_FILTER")
+            && !refused.out.includes("retry"),
+            `filter the server refuses${args.length ? ", execute" : ", dry run"}: exit 2, not retried `
+            + `(got ${refused.status}: ${refused.out.trim().slice(-200)})`);
+    }
+    for (const delays of ["abc", "100,,200", "-5", ""]) {
+        const run = trim(t.uri, ["--before", CUTOFF_ISO, "--execute"], {env: {DP_TRIM_RETRY_DELAYS_MS: delays}});
+        check(run.status === 2, `retry delays "${delays}": exit 2 (got ${run.status}: ${run.out.trim().slice(-160)})`);
+    }
     for (const [what, args] of cases) {
         const run = trim(t.uri, args);
         check(run.status === 2, `${what}: exit 2 (got ${run.status}: ${run.out.trim().slice(-160)})`);

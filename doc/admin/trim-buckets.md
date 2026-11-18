@@ -115,8 +115,8 @@ Without the wrapper, set the variables listed at the top of `mongodb-trim-bucket
 
 The wrapper goes by its flags alone. It clears the `DP_TRIM_` variables that the flags stand
 for before it reads them, so one left exported in your shell, `DP_TRIM_EXECUTE=true` for
-instance, does not turn a dry run into a delete. It keeps `DP_TRIM_MONGODB_URI` and
-`DP_TRIM_WTIMEOUT_MS`. Run directly under `mongosh`, the script has only the variables to go
+instance, does not turn a dry run into a delete. It keeps `DP_TRIM_MONGODB_URI` and the two
+tuning variables that have no flag, `DP_TRIM_WTIMEOUT_MS` and `DP_TRIM_RETRY_DELAYS_MS`. Run directly under `mongosh`, the script has only the variables to go
 by: check what is exported first (`env | grep DP_TRIM_`).
 
 ## The dry run

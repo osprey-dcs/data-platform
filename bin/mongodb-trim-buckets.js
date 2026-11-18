@@ -25,6 +25,8 @@
 //   DP_TRIM_DATABASE            database name (default "dp")
 //   DP_TRIM_WTIMEOUT_MS         write concern timeout per batch, and for the trimLog record
 //                               (default 60000)
+//   DP_TRIM_RETRY_DELAYS_MS     comma-separated delays before each retry of a failed batch
+//                               (default 5000,15000,45000,120000); it exists for the test
 //
 // A variable that is set but empty is an error, not "unset".
 
@@ -46,9 +48,9 @@ const BUCKET_INDEX_KEYS = {
 // In an --execute run a batch whose read or delete fails (a step-down, a write concern
 // timeout) is retried after each of these delays, then the run stops.  A dry run is not
 // retried: it changes nothing, so it is simply run again.  Re-running is always safe: a delete names bucket ids.
-// DP_TRIM_RETRY_DELAYS_MS (comma-separated) replaces the delays; it exists for the test.
-const RETRY_DELAYS_MS = (process.env.DP_TRIM_RETRY_DELAYS_MS || "5000,15000,45000,120000")
-    .split(",").map(Number);
+// DP_TRIM_RETRY_DELAYS_MS (comma-separated) replaces the delays; it exists for the test, and
+// readConfig checks it like every other setting.
+let RETRY_DELAYS_MS = [5000, 15000, 45000, 120000];
 const PROGRESS_INTERVAL_MS = 60000;
 
 // Reads that only need the index use read concern "available".  With the default read concern
@@ -112,6 +114,15 @@ function readConfig(nowMillis) {
         slice: null,
     };
     if (config.uri === null) throw new ConfigError("DP_TRIM_MONGODB_URI is required");
+
+    const delays = env("DP_TRIM_RETRY_DELAYS_MS");
+    if (delays !== null) {
+        if (!/^\d+(,\d+)*$/.test(delays)) {
+            throw new ConfigError(
+                `DP_TRIM_RETRY_DELAYS_MS must be whole milliseconds separated by commas, got "${delays}"`);
+        }
+        RETRY_DELAYS_MS = delays.split(",").map(Number);
+    }
 
     const days = env("DP_TRIM_OLDER_THAN_DAYS");
     const before = env("DP_TRIM_BEFORE");
@@ -248,6 +259,26 @@ function checkBucketIndex(buckets) {
         throw new ConfigError(
             `collection ${buckets.getFullName()} lacks the bucket query index ${wanted}; `
             + "is this a Data Platform database at version 1.16 or later?");
+    }
+}
+
+// Asks the server to parse the filter, before anything is recorded or deleted.  A filter it
+// refuses (an unknown operator, say) is a mistake in the options, not a failure of the
+// cluster: without this check an --execute run would retry it on the full schedule, as if it
+// were a primary changing.  The query names an _id no bucket has, so it reads nothing.  A
+// filter that parses can still fail on a particular bucket; that surfaces during the run.
+const FILTER_REFUSALS = /^(BadValue|FailedToParse|TypeMismatch|QueryFeatureNotAllowed|Location\d+)$/;
+
+function checkFilter(buckets, config) {
+    if (config.filter === null) return;
+    try {
+        // Not chained into a return: see withRetries.
+        const none = buckets.find({$and: [{_id: new ObjectId()}, config.filter]}, {_id: 1})
+            .limit(1).toArray();
+        return none.length;
+    } catch (e) {
+        if (!FILTER_REFUSALS.test(String(e.codeName))) throw e;
+        throw new ConfigError(`the server refused DP_TRIM_FILTER (${e.codeName}: ${e.message})`);
     }
 }
 
@@ -457,6 +488,7 @@ function main() {
 
     const deployment = checkDeployment(conn, database);
     checkBucketIndex(buckets);
+    checkFilter(buckets, config);
 
     log(`mongodb-trim-buckets ${SCRIPT_VERSION}: ${config.execute ? "EXECUTE" : "dry run"}`);
     log(`  database ${config.database} on ${deployment}`);
