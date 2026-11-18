@@ -44,8 +44,10 @@ jobs:
       - name: Install mongosh
         run: npm install --global mongosh@2.8.2
 
+      # --keep: the script otherwise removes the cluster as it exits, and the step below would
+      # find no containers to read logs from.  The runner is discarded, so nothing is left over.
       - name: Run the test
-        run: test/mongodb-trim-buckets/run-test.sh
+        run: test/mongodb-trim-buckets/run-test.sh --keep
 
       - name: Cluster logs
         if: failure()

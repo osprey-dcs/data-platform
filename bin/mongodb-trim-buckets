@@ -43,9 +43,11 @@ exit status: 0 completed, 1 failed part-way (safe to run again), 2 not started
 USAGE
 }
 
+# need_value FLAG $# "${2-}": the flag must be followed by a value that is not empty.  An empty
+# one is refused, not ignored: --filter "$FILTER" with FILTER unset must not run unfiltered.
 need_value() {
-    if [ "$2" -lt 2 ]; then
-        echo "mongodb-trim-buckets: $1 needs a value" >&2
+    if [ "$2" -lt 2 ] || [ -z "$3" ]; then
+        echo "mongodb-trim-buckets: $1 needs a value that is not empty" >&2
         exit 2
     fi
 }
@@ -60,13 +62,13 @@ unset DP_TRIM_OLDER_THAN_DAYS DP_TRIM_BEFORE DP_TRIM_FILTER DP_TRIM_EXECUTE \
 
 while [ $# -gt 0 ]; do
     case "$1" in
-        --older-than-days)    need_value "$1" $#; export DP_TRIM_OLDER_THAN_DAYS="$2"; shift 2 ;;
-        --before)             need_value "$1" $#; export DP_TRIM_BEFORE="$2"; shift 2 ;;
-        --filter)             need_value "$1" $#; export DP_TRIM_FILTER="$2"; shift 2 ;;
-        --batch-size)         need_value "$1" $#; export DP_TRIM_BATCH_SIZE="$2"; shift 2 ;;
-        --pause-ms)           need_value "$1" $#; export DP_TRIM_PAUSE_MS="$2"; shift 2 ;;
-        --slice)              need_value "$1" $#; export DP_TRIM_SLICE="$2"; shift 2 ;;
-        --database)           need_value "$1" $#; export DP_TRIM_DATABASE="$2"; shift 2 ;;
+        --older-than-days)    need_value "$1" $# "${2-}"; export DP_TRIM_OLDER_THAN_DAYS="$2"; shift 2 ;;
+        --before)             need_value "$1" $# "${2-}"; export DP_TRIM_BEFORE="$2"; shift 2 ;;
+        --filter)             need_value "$1" $# "${2-}"; export DP_TRIM_FILTER="$2"; shift 2 ;;
+        --batch-size)         need_value "$1" $# "${2-}"; export DP_TRIM_BATCH_SIZE="$2"; shift 2 ;;
+        --pause-ms)           need_value "$1" $# "${2-}"; export DP_TRIM_PAUSE_MS="$2"; shift 2 ;;
+        --slice)              need_value "$1" $# "${2-}"; export DP_TRIM_SLICE="$2"; shift 2 ;;
+        --database)           need_value "$1" $# "${2-}"; export DP_TRIM_DATABASE="$2"; shift 2 ;;
         --execute)            export DP_TRIM_EXECUTE=true; shift ;;
         --exact-filter-count) export DP_TRIM_EXACT_FILTER_COUNT=true; shift ;;
         --per-pv)             export DP_TRIM_PER_PV=true; shift ;;

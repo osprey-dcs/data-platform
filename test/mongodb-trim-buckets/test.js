@@ -138,7 +138,10 @@ function makeTarget(name, uri, sharded) {
         t.db.dropDatabase();
         if (sharded) {
             const admin = t.db.getSiblingDB("admin");
-            admin.runCommand({enableSharding: DB});
+            // The database's primary shard, where the unsharded trimLog lives, is s1: stopping
+            // s0's secondary then tests the deletes, and stopping s1's tests the run record.
+            const enabled = admin.runCommand({enableSharding: DB, primaryShard: "s1"});
+            if (!enabled.ok) throw new Error("enableSharding: " + EJSON.stringify(enabled));
             t.buckets.createIndex({[SHARD_KEY]: 1});
             admin.runCommand({shardCollection: `${DB}.buckets`, key: {[SHARD_KEY]: 1}});
             admin.runCommand({balancerStop: 1});
@@ -389,11 +392,20 @@ function rejectedBeforeAnything(t) {
         ["batch size zero", ["--before", CUTOFF_ISO, "--execute", "--batch-size", "0"]],
         ["unknown flag", ["--before", CUTOFF_ISO, "--execute", "--force"]],
         ["flag missing its value", ["--execute", "--before"]],
+        // A blank value must never be read as "no filter" or "every slice".
+        ["empty filter", ["--before", CUTOFF_ISO, "--execute", "--filter", ""]],
+        ["blank filter", ["--before", CUTOFF_ISO, "--execute", "--filter", "  "]],
+        ["empty slice", ["--before", CUTOFF_ISO, "--execute", "--slice", ""]],
+        ["blank slice", ["--before", CUTOFF_ISO, "--execute", "--slice", " "]],
+        ["empty cutoff", ["--before", "", "--execute"]],
     ];
     for (const [what, args] of cases) {
         const run = trim(t.uri, args);
         check(run.status === 2, `${what}: exit 2 (got ${run.status}: ${run.out.trim().slice(-160)})`);
     }
+    const blankVariable = trim(t.uri, ["--before", CUTOFF_ISO, "--execute"], {env: {DP_TRIM_WTIMEOUT_MS: ""}});
+    check(blankVariable.status === 2 && blankVariable.out.includes("is set but empty"),
+        `a variable set but empty: exit 2 (got ${blankVariable.status}: ${blankVariable.out.trim().slice(-160)})`);
     const noUri = trim(t.uri, ["--before", CUTOFF_ISO, "--execute"], {env: {DP_TRIM_MONGODB_URI: null}});
     check(noUri.status === 2, `missing connection string: exit 2 (got ${noUri.status})`);
 
@@ -491,6 +503,45 @@ function stopsWhenMajorityIsUnavailable(t) {
     sameList(t.ids(), expected, "the repeat run finishes the job");
 }
 
+// With a majority unavailable on the shard that holds trimLog, the run record cannot be
+// written.  The run must stop within the timeout (not wait without limit), delete nothing,
+// and say so in its exit status.
+function stopsWhenTheRecordCannotBeWritten(t) {
+    const docs = t.seed();
+    check(t.db.getSiblingDB("config").databases.findOne({_id: DB}).primary === "s1",
+        "trimLog is on shard s1");
+    compose(["stop", "s1b"]);
+    try {
+        for (const [what, args] of [["execute", ["--execute"]], ["dry run", []]]) {
+            const run = trim(t.uri, ["--before", CUTOFF_ISO].concat(args),
+                {env: {DP_TRIM_WTIMEOUT_MS: "1500"}, timeout: 60000});
+            check(run.signal === null && run.status === 1,
+                `${what}: exits 1 without hanging (status ${run.status}, signal ${run.signal}): ${run.out.slice(-300)}`);
+            check(run.out.includes("could not write the run record") && run.out.includes("nothing was deleted"),
+                `${what}: the message says the record could not be written`);
+            check(/ at s1\b/.test(run.out), `${what}: the message carries the name of the shard`);
+            const record = t.lastLog();
+            check(record && record.status === "failed" && /could not write/.test(record.error || ""),
+                `${what}: the record left on the primary is marked failed (${record && record.status})`);
+        }
+        check(t.ids().length === docs.length, "nothing deleted");
+    } finally {
+        compose(["start", "s1b"]);
+        // s1 is not published; it is back when a majority write through mongos succeeds.
+        for (let i = 0; i < 120; i++) {
+            try {
+                t.trimLog.insertOne({probe: true}, {writeConcern: {w: "majority", wtimeout: 1000}});
+                break;
+            } catch (e) {
+                sleep(500);
+            }
+        }
+    }
+    const rerun = trim(t.uri, ["--before", CUTOFF_ISO, "--execute"]);
+    check(rerun.status === 0, `the repeat run exits 0 once the secondary is back (got ${rerun.status}): ${rerun.out.slice(-300)}`);
+    sameList(t.ids(), expectedIds(docs, CUTOFF), "the repeat run does the job");
+}
+
 // ---------------------------------------------------------------------------------------
 
 const common = [
@@ -510,6 +561,7 @@ const shardedOnly = [
     ["fixture spans both shards", bothShardsHoldData],
     ["refuses a direct connection to a shard", refusesDirectShardConnection],
     ["stops when a majority is unavailable", stopsWhenMajorityIsUnavailable],
+    ["stops when the run record cannot be written", stopsWhenTheRecordCannotBeWritten],
 ];
 
 const only = process.env.TRIM_TEST_ONLY || "";

@@ -47,6 +47,10 @@ two data-bearing members and an arbiter) and the examples use that deployment's 
 - A user that can read and delete in `buckets`, read its indexes, and write to `trimLog`, in
   the Data Platform database (`dp` unless you use another name). A dry run also writes its
   record to `trimLog`.
+- When the connection is **not** through a mongos (an unsharded deployment), the user must
+  also be able to run `shardingState` or `getCmdLineOpts`; the `clusterMonitor` role allows
+  both. The script uses them to confirm the server is not a member of a sharded cluster, and
+  does not start if it cannot tell.
 - The Data Platform at 1.16.0 or later: the script uses the bucket index that release creates
   and stops if it is missing.
 
@@ -98,6 +102,10 @@ The script needs only the two files `bin/mongodb-trim-buckets` and
 
 Give exactly one of `--older-than-days` and `--before`. The cutoff is cut down to a whole
 second.
+
+An empty value is an error, for a flag and for a `DP_TRIM_` variable alike. It is never read
+as "not given": `--filter "$FILTER"` with `FILTER` unset stops with exit status 2 and does not
+run unfiltered.
 
 Exit status: `0` the run completed; `1` it failed part-way and is safe to run again; `2` it
 did not start (bad options, wrong server, missing index) and changed nothing.
@@ -315,6 +323,14 @@ deletes it. It does not repeat or undo anything.
   of the buckets. So one secondary down anywhere in the cluster stops every trim, every slice
   included. MongoDB's own message, which the script quotes, ends with the name of the shard
   that timed out (`... at shard-3`); that is the one to look at.
+- **"could not write the run record to trimLog".** The record is written with the same
+  `majority` and timeout as the deletes, so when a secondary of the shard holding `trimLog` is
+  down the run stops at the start, with exit status 1 and nothing deleted. This applies to a
+  dry run too.
+- **"the run finished its work, but its trimLog record ... could not be updated".** The
+  deletes are done; the record does not say so. The exit status is 1 so that this is not
+  taken for a completed run. Run the command again: it finds nothing to delete and leaves a
+  completed record.
 - **A primary changes during an `--execute` run.** The read or delete in progress fails and is
   retried, on the same schedule; the run normally carries on. A dry run is not retried. It
   changes nothing, so run it again.

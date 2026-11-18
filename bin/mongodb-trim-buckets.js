@@ -23,7 +23,10 @@
 //   DP_TRIM_EXACT_FILTER_COUNT  "true": dry run counts the filter exactly (reads every candidate)
 //   DP_TRIM_PER_PV              "true"/"false": a line per PV (default: dry run yes, execute no)
 //   DP_TRIM_DATABASE            database name (default "dp")
-//   DP_TRIM_WTIMEOUT_MS         write concern timeout per batch (default 60000)
+//   DP_TRIM_WTIMEOUT_MS         write concern timeout per batch, and for the trimLog record
+//                               (default 60000)
+//
+// A variable that is set but empty is an error, not "unset".
 
 const SCRIPT_VERSION = "1.0.0";
 
@@ -65,9 +68,16 @@ function log(message) {
     print(`${new Date().toISOString()}  ${message}`);
 }
 
+// A variable that is set but blank is refused, never read as "not set": an empty
+// DP_TRIM_FILTER (--filter "$FILTER" with FILTER unset, say) would otherwise run with no
+// filter and delete everything old enough.
 function env(name) {
     const value = process.env[name];
-    return value === undefined || value.trim() === "" ? null : value.trim();
+    if (value === undefined) return null;
+    if (value.trim() === "") {
+        throw new ConfigError(`${name} is set but empty; give it a value or unset it`);
+    }
+    return value.trim();
 }
 
 function envInt(name, fallback, min) {
@@ -207,8 +217,13 @@ function checkDeployment(conn, database) {
             const parsed = database.serverCmdLineOpts().parsed;
             clusterRole = (parsed.sharding && parsed.sharding.clusterRole) || null;
         } catch (e2) {
-            log("warning: could not determine whether this server belongs to a sharded cluster "
-                + `(${e2.codeName || e2.message}); continuing`);
+            // Refused, not assumed: trimming one shard directly would skip the others and
+            // could still record a horizon for the whole archive.
+            throw new ConfigError(
+                "could not determine whether this server belongs to a sharded cluster "
+                + `(${e2.codeName || e2.message}). Connect to a mongos, or, for an unsharded `
+                + "deployment, give the user a role that may run shardingState or "
+                + "getCmdLineOpts, such as clusterMonitor");
         }
     }
     if (clusterRole !== null) {
@@ -463,14 +478,37 @@ function main() {
         newestDataSeconds: -Infinity,
     };
 
+    // The record's writes state their write concern and a timeout, like the deletes.  With
+    // none, a cluster whose default is majority would make them wait without limit while a
+    // secondary is down, before the run had printed anything to say why.
+    const logWrite = {writeConcern: {w: "majority", wtimeout: config.wtimeoutMillis}};
     const logId = new ObjectId();
-    trimLog.insertOne({
+    const logRecord = {
         _id: logId, scriptVersion: SCRIPT_VERSION, startedAt: startedAt, endedAt: null,
         host: require("os").hostname(), database: config.database,
         cutoffSeconds: Long.fromNumber(config.cutoffSeconds), cutoffSource: config.cutoffSource,
         filter: config.filterText, slice: config.slice === null ? null : config.slice.text,
         dryRun: !config.execute, status: "running", error: null,
-    });
+    };
+    try {
+        trimLog.insertOne(logRecord, logWrite);
+    } catch (e) {
+        const reason = `could not write the run record to ${TRIM_LOG} `
+            + `(${e.codeName || e.name}: ${e.message}); nothing was deleted`;
+        // A write concern timeout leaves the record on the primary, marked running.  Say how
+        // it ended, as far as that can be done without waiting for the same majority again.
+        try {
+            trimLog.updateOne({_id: logId},
+                {$set: {status: "failed", error: reason, endedAt: new Date()}},
+                {writeConcern: {w: 1, wtimeout: config.wtimeoutMillis}});
+        } catch (e2) {
+            // Nothing more to do; the reason is reported below.
+        }
+        throw new Error(reason + (/write ?concern/i.test(`${e.codeName} ${e.message}`)
+            ? ". A majority did not confirm it: check that every data-bearing member of the "
+              + "shard named at the end of that message is up and not far behind"
+            : ""));
+    }
 
     let failure = null;
     const workStarted = Date.now();
@@ -527,10 +565,11 @@ function main() {
     if (completed && config.execute && config.filter === null && config.slice === null) {
         update.horizonSeconds = Long.fromNumber(config.cutoffSeconds);
     }
+    let recordFailure = null;
     try {
-        trimLog.updateOne({_id: logId}, {$set: update});
+        trimLog.updateOne({_id: logId}, {$set: update}, logWrite);
     } catch (e) {
-        log(`warning: could not update the ${TRIM_LOG} record ${logId}: ${e.message}`);
+        recordFailure = `${e.codeName || e.name}: ${e.message}`;
     }
 
     log("");
@@ -581,7 +620,22 @@ function main() {
         }
         log("  nothing was deleted; set DP_TRIM_EXECUTE=true (--execute) to delete");
     }
-    if (!completed) throw failure;
+    if (!completed) {
+        if (recordFailure !== null) {
+            log(`  the ${TRIM_LOG} record ${logId} could not be updated (${recordFailure}) and `
+                + "may still be marked running");
+        }
+        throw failure;
+    }
+    // A run whose record does not say how it ended has not succeeded: whoever reads trimLog,
+    // or the exit status, must not take it for a completed run.
+    if (recordFailure !== null) {
+        throw new Error(
+            `the run finished its work, but its ${TRIM_LOG} record ${logId} could not be `
+            + `updated (${recordFailure}). The record may still be marked running and holds no `
+            + "counts. Nothing needs deleting again; run the command again to leave a "
+            + "completed record");
+    }
 }
 
 try {

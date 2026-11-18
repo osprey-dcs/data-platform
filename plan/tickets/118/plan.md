@@ -63,7 +63,9 @@ can tune them, so the first stage at SLAC is where they are judged.
 3. The slice is `i/n` with `0 <= i < n`.
 4. `hello` reports `mongos`, or the server is not a member of a sharded cluster
    (`shardingState`, falling back to the `clusterRole` start-up option; if the user may run
-   neither, a warning and the run continues). A direct connection to a shard is refused.
+   neither, the run is refused, since it cannot tell). A direct connection to a shard is
+   refused.
+6. No setting is present but empty. A blank filter or slice is refused, not read as none.
 5. The shipped compound index exists on `buckets`.
 
 Any failure exits non-zero with no `trimLog` record and nothing deleted.
@@ -122,7 +124,10 @@ through `mongos` is sent to every shard; the ones that do not hold the PV answer
 
 ### `trimLog` record
 
-Inserted before the PV walk, updated at the end and on failure.
+Inserted before the PV walk, updated at the end and on failure. Both writes use write concern
+`majority` with the same timeout as the deletes, so neither can wait without limit. A failed
+insert ends the run with exit 1 and nothing deleted; a failed final update ends an otherwise
+completed run with exit 1.
 
 ```
 { _id, scriptVersion, startedAt, endedAt, host, database,
@@ -164,18 +169,24 @@ Cases, run on both the replica set and the sharded cluster unless noted:
 - exit 1 on an unreachable server;
 - a run killed part-way leaves a `running` record; the repeat run finishes the job;
 - `horizonSeconds` set only for a completed, unfiltered, unsliced, executed run;
+- an empty or blank value for a flag or a variable is rejected with exit 2;
+- sharded only: with the secondary of the shard holding `trimLog` stopped, a run and a dry
+  run exit 1 within the timeout, delete nothing, and leave a `failed` record;
 - sharded only: the fixture spans both shards; a direct connection to a shard is refused; with
   a shard's secondary stopped the run retries, exits 1 with a `failed` record whose count
   matches what is gone, and the repeat run finishes once the secondary is back.
 
-190 checks pass. Each of five deliberate breaks of the script (filter merged instead of
+214 checks pass. Each of five deliberate breaks of the script (filter merged instead of
 ANDed, `lastTime <= cutoff`, no `lastTime` test, a wrong resume bound, a horizon on a filtered
 run) fails the test. The script was also run by hand under mongosh 2.6.0, the version inside
 the server image, which is what the Kubernetes examples use. CI is
 `.github/workflows/trim-buckets-test.yml`.
 
 Not tested: anything at scale (rates, the cost of listing PVs on 1.3 billion buckets, the
-effect on replication lag), authentication, and the Kubernetes manifests against a cluster.
+effect on replication lag), and the Kubernetes manifests against a cluster. Authentication is
+not in the test; the refusal when the topology cannot be determined was checked by hand
+against a standalone server with authentication (a user without `clusterMonitor` is refused,
+one with it runs). A failed final update of the record is not tested.
 
 ## Findings from implementation
 
