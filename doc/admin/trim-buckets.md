@@ -210,8 +210,82 @@ tests the filter on two buckets per PV, the oldest and the newest candidate, and
   is possible for your filter, run the dry run with `--exact-filter-count` on a small cutoff
   first, and accept the read load.
 
-**SLAC's Archiver test data.** A filter that preserves it will be added here once it is known
-how that data is marked. Do not run with `--execute` at SLAC before then.
+### Keeping one provider's data
+
+SLAC's archive holds a small amount of data ingested from the Archiver for user testing, which
+must survive trimming. It was ingested under its own provider, so the filter selects on the
+provider. The same recipe keeps any provider's data at any site.
+
+**Find the provider ids.** A bucket's `providerId` is the `_id` of the provider's document in
+the `providers` collection, stored as a plain string:
+
+```javascript
+db.providers.find({}, {name: 1})
+// { _id: ObjectId('66f1c0a7e4b0a1b2c3d4e5f6'), name: 'bsas_gen1_reader' }
+// { _id: ObjectId('6701d2b8e4b0a1b2c3d4e5f7'), name: 'archiver' }
+```
+
+The ids differ between deployments, so look them up on each cluster you trim. Write the id in
+the filter as a string of 24 hex characters, without `ObjectId(...)`.
+
+**Name the providers to trim.** This is the safe form: a mistyped id matches nothing, and a
+provider registered later is kept until you add it.
+
+```bash
+--filter '{"providerId": {"$in": ["66f1c0a7e4b0a1b2c3d4e5f6"]}}'
+```
+
+List every provider whose old data should go. If naming them is not practical, the other form
+names the provider to keep:
+
+```bash
+--filter '{"providerId": {"$ne": "6701d2b8e4b0a1b2c3d4e5f7"}}'
+```
+
+With `$ne`, a mistyped id matches every bucket, and the data you meant to keep is deleted with
+the rest. Copy the id from the `providers` output, do not retype it, and check the dry run
+before every change to the filter.
+
+`providerId` and `providerName` cost the same in a filter. The `providerId_1` index is not
+used by the trim, which reads each PV's old buckets through the five-field index and tests the
+filter on the buckets it reads. Prefer `providerId` because a provider's id never changes.
+
+**Check it before `--execute`:**
+
+1. Count the buckets to keep. This count does use the `providerId_1` index:
+
+   ```javascript
+   db.buckets.countDocuments({providerId: "6701d2b8e4b0a1b2c3d4e5f7"})
+   ```
+
+2. Dry run with the filter. PVs written only by the kept provider must appear under "neither
+   matches". If the count there is 0, or you see "NOTE: the filter excluded nothing in the
+   sample", the filter is wrong: stop.
+3. A PV that both the kept provider and another provider wrote shows under "one matches"
+   only if its oldest and newest old buckets come from different providers. Otherwise it is
+   counted under "both match" or "neither matches", like a PV with one provider. The filter
+   still keeps the right buckets of such a PV. To see the exact number the filter
+   keeps, add `--exact-filter-count` to the dry run and compare it with the count from step 1,
+   keeping in mind that the dry run only counts buckets older than the cutoff.
+4. After the first `--execute` run, repeat the count from step 1. It must not have changed.
+
+Every later run must carry the same filter, including the daily CronJob. A run without it
+deletes the kept provider's data as soon as it is older than the cutoff.
+
+A run with a filter reads the kept buckets that are older than the cutoff each time, to test
+the filter on them. For a small amount of kept data this costs little.
+
+**Rehearsing on a development cluster.** SLAC's development cluster ingests live data
+continuously and holds the older data that must be kept, so a one-day window exercises the
+whole procedure there:
+
+```bash
+bin/mongodb-trim-buckets --older-than-days 1 --filter '{"providerId": {"$in": ["<live provider id>"]}}'
+bin/mongodb-trim-buckets --older-than-days 1 --filter '{"providerId": {"$in": ["<live provider id>"]}}' --execute
+```
+
+Do the four checks above around these two runs, then schedule the second command daily (see
+[The daily run](#the-daily-run)) and repeat the count after a few days.
 
 ## The first trim, in stages
 
