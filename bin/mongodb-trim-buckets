@@ -1,0 +1,89 @@
+#!/bin/bash
+#
+# mongodb-trim-buckets: delete PV time-series buckets older than a cutoff.
+#
+# A wrapper that turns flags into the environment variables read by mongodb-trim-buckets.js,
+# which does the work and is documented in doc/admin/trim-buckets.md.  It does not need
+# ~/.dp.env or DP_HOME.  The connection string is taken from the environment, never from a
+# flag, so that the password is not visible in the process list:
+#
+#     export DP_TRIM_MONGODB_URI='mongodb://user:password@mongos-host:27017/?authSource=admin'
+#     bin/mongodb-trim-buckets --older-than-days 60              # dry run
+#     bin/mongodb-trim-buckets --older-than-days 60 --execute    # delete
+
+usage() {
+    cat <<'USAGE'
+usage: mongodb-trim-buckets (--older-than-days N | --before TIMESTAMP) [options]
+
+  --older-than-days N     trim buckets whose last sample is more than N days old
+  --before TIMESTAMP      trim buckets whose last sample is before TIMESTAMP, which must
+                          end in Z or a UTC offset, e.g. 2026-09-01T00:00:00Z
+  --filter JSON           also require this MongoDB filter (Extended JSON); it can only
+                          narrow what is trimmed
+  --execute               delete; without this the run is a dry run and deletes nothing
+  --batch-size N          buckets per delete (default 1000)
+  --pause-ms N            pause after each delete (default 0)
+  --slice I/N             handle only slice I of N of the PV names (0 <= I < N), so that
+                          N instances can share a run
+  --exact-filter-count    dry run: count the filter exactly instead of sampling; this reads
+                          every candidate bucket
+  --per-pv, --no-per-pv   print a line per PV (default: dry run yes, execute no)
+  --database NAME         database name (default dp)
+  -h, --help              this text
+
+environment:
+  DP_TRIM_MONGODB_URI     required: the MongoDB connection string (a mongos, on a sharded
+                          cluster)
+  DP_TRIM_WTIMEOUT_MS     optional: write concern timeout per delete (default 60000)
+  DP_TRIM_RETRY_DELAYS_MS optional: delays before each retry of a failed batch, separated
+                          by commas (default 5000,15000,45000,120000); for testing
+
+Every other DP_TRIM_* variable is ignored: what a run does is decided by its flags alone, so
+a variable left exported in the shell cannot turn a dry run into a delete.
+
+exit status: 0 completed, 1 failed part-way (safe to run again), 2 not started
+USAGE
+}
+
+# need_value FLAG $# "${2-}": the flag must be followed by a value that is not empty.  An empty
+# one is refused, not ignored: --filter "$FILTER" with FILTER unset must not run unfiltered.
+need_value() {
+    if [ "$2" -lt 2 ] || [ -z "$3" ]; then
+        echo "mongodb-trim-buckets: $1 needs a value that is not empty" >&2
+        exit 2
+    fi
+}
+
+# Only the flags decide what this run does.  The variables the flags stand for are cleared
+# first, so that one left exported in the shell (DP_TRIM_EXECUTE=true from running the .js
+# file directly, say) cannot turn a dry run into a delete or change what is selected.  The
+# connection string and the two tuning variables that have no flag are left alone.
+unset DP_TRIM_OLDER_THAN_DAYS DP_TRIM_BEFORE DP_TRIM_FILTER DP_TRIM_EXECUTE \
+      DP_TRIM_BATCH_SIZE DP_TRIM_PAUSE_MS DP_TRIM_SLICE DP_TRIM_EXACT_FILTER_COUNT \
+      DP_TRIM_PER_PV DP_TRIM_DATABASE
+
+while [ $# -gt 0 ]; do
+    case "$1" in
+        --older-than-days)    need_value "$1" $# "${2-}"; export DP_TRIM_OLDER_THAN_DAYS="$2"; shift 2 ;;
+        --before)             need_value "$1" $# "${2-}"; export DP_TRIM_BEFORE="$2"; shift 2 ;;
+        --filter)             need_value "$1" $# "${2-}"; export DP_TRIM_FILTER="$2"; shift 2 ;;
+        --batch-size)         need_value "$1" $# "${2-}"; export DP_TRIM_BATCH_SIZE="$2"; shift 2 ;;
+        --pause-ms)           need_value "$1" $# "${2-}"; export DP_TRIM_PAUSE_MS="$2"; shift 2 ;;
+        --slice)              need_value "$1" $# "${2-}"; export DP_TRIM_SLICE="$2"; shift 2 ;;
+        --database)           need_value "$1" $# "${2-}"; export DP_TRIM_DATABASE="$2"; shift 2 ;;
+        --execute)            export DP_TRIM_EXECUTE=true; shift ;;
+        --exact-filter-count) export DP_TRIM_EXACT_FILTER_COUNT=true; shift ;;
+        --per-pv)             export DP_TRIM_PER_PV=true; shift ;;
+        --no-per-pv)          export DP_TRIM_PER_PV=false; shift ;;
+        -h|--help)            usage; exit 0 ;;
+        *)                    echo "mongodb-trim-buckets: unknown argument: $1" >&2; usage >&2; exit 2 ;;
+    esac
+done
+
+if ! command -v mongosh >/dev/null 2>&1; then
+    echo "mongodb-trim-buckets: mongosh is not on the PATH" >&2
+    exit 2
+fi
+
+SCRIPT_DIR="$(cd "$(dirname "$0")" && pwd)"
+exec mongosh --nodb --quiet --file "$SCRIPT_DIR/mongodb-trim-buckets.js"

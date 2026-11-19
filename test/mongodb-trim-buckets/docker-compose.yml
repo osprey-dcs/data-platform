@@ -1,0 +1,52 @@
+# Throwaway sharded MongoDB cluster for testing bin/mongodb-trim-buckets.
+#
+# Two shards, each a replica set of a primary, a secondary and an arbiter (the layout of the
+# deployment the script was written for), one config server, and one mongos published on
+# localhost:27117.  Shard s0's primary is also published, on 27119, only so the test can check
+# that the script refuses a direct connection to a shard.  A separate one-member replica set
+# on 27118 stands in for an unsharded deployment.  No authentication and no volumes:
+# everything is discarded by `down -v`.  The image is the server build that deployment runs.
+
+name: dp-trim-test
+
+x-mongod: &mongod
+  image: percona/percona-server-mongodb:8.0.19-7
+  restart: "no"
+  environment:
+    PERCONA_TELEMETRY_DISABLE: "1"
+
+services:
+  cfg1:
+    <<: *mongod
+    command: mongod --configsvr --replSet cfg --port 27017 --bind_ip_all --dbpath /data/db
+  s0a:
+    <<: *mongod
+    command: mongod --shardsvr --replSet s0 --port 27017 --bind_ip_all --wiredTigerCacheSizeGB 0.5
+    ports:
+      - "127.0.0.1:27119:27017"
+  s0b:
+    <<: *mongod
+    command: mongod --shardsvr --replSet s0 --port 27017 --bind_ip_all --wiredTigerCacheSizeGB 0.5
+  s0arb:
+    <<: *mongod
+    command: mongod --shardsvr --replSet s0 --port 27017 --bind_ip_all
+  s1a:
+    <<: *mongod
+    command: mongod --shardsvr --replSet s1 --port 27017 --bind_ip_all --wiredTigerCacheSizeGB 0.5
+  s1b:
+    <<: *mongod
+    command: mongod --shardsvr --replSet s1 --port 27017 --bind_ip_all --wiredTigerCacheSizeGB 0.5
+  s1arb:
+    <<: *mongod
+    command: mongod --shardsvr --replSet s1 --port 27017 --bind_ip_all
+  mongos:
+    <<: *mongod
+    command: mongos --configdb cfg/cfg1:27017 --port 27017 --bind_ip_all
+    ports:
+      - "127.0.0.1:27117:27017"
+    depends_on: [cfg1, s0a, s0b, s0arb, s1a, s1b, s1arb]
+  single:
+    <<: *mongod
+    command: mongod --replSet single --port 27017 --bind_ip_all --wiredTigerCacheSizeGB 0.5
+    ports:
+      - "127.0.0.1:27118:27017"

@@ -1,0 +1,57 @@
+# EXAMPLE: a daily trim of PV time-series buckets.  See doc/admin/trim-buckets.md.
+#
+# Not tested against any production cluster.  Adjust the namespace, image, schedule, Secret
+# and retention before use, and run it once by hand with DP_TRIM_EXECUTE removed (a dry run)
+# to check what it would delete.
+#
+# Setup:
+#
+#   kubectl -n mldp create configmap trim-buckets-script \
+#       --from-file=mongodb-trim-buckets.js=bin/mongodb-trim-buckets.js
+#   kubectl -n mldp create secret generic trim-buckets-mongodb \
+#       --from-literal=uri='mongodb://USER:PASSWORD@MONGOS-SERVICE:27017/?authSource=admin'
+#
+# The connection string must point at mongos, not at a shard.
+apiVersion: batch/v1
+kind: CronJob
+metadata:
+  name: trim-buckets
+  namespace: mldp
+spec:
+  schedule: "30 9 * * *"          # daily, in the cluster's time zone (usually UTC)
+  concurrencyPolicy: Forbid       # never start a run while the previous one is still going
+  startingDeadlineSeconds: 3600
+  successfulJobsHistoryLimit: 7
+  failedJobsHistoryLimit: 7
+  jobTemplate:
+    spec:
+      backoffLimit: 0             # a failed run waits for a person; the next day's run retries
+      template:
+        spec:
+          restartPolicy: Never
+          containers:
+            - name: trim-buckets
+              # Any image with mongosh 2.x.  This one is the server image, which includes it.
+              image: percona/percona-server-mongodb:8.0.19-7
+              command: ["mongosh", "--nodb", "--quiet", "--file", "/scripts/mongodb-trim-buckets.js"]
+              env:
+                - name: DP_TRIM_MONGODB_URI
+                  valueFrom:
+                    secretKeyRef:
+                      name: trim-buckets-mongodb
+                      key: uri
+                - name: DP_TRIM_OLDER_THAN_DAYS
+                  value: "60"
+                - name: DP_TRIM_EXECUTE
+                  value: "true"
+                # Optional.  See "Writing a filter" in the runbook.
+                # - name: DP_TRIM_FILTER
+                #   value: '{"dataColumn.columnMetadata.attributes.source": "bsas_gen1_reader"}'
+              volumeMounts:
+                - name: script
+                  mountPath: /scripts
+                  readOnly: true
+          volumes:
+            - name: script
+              configMap:
+                name: trim-buckets-script

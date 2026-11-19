@@ -1,0 +1,54 @@
+# EXAMPLE: one stage of a trim, run as six instances over disjoint slices of the PV names.
+# See "The first trim, in stages" and "Running several instances" in doc/admin/trim-buckets.md.
+#
+# Not tested against any production cluster.  Uses the ConfigMap and Secret described in
+# cronjob.yaml.  For each stage, change DP_TRIM_BEFORE and the Job name (a Job cannot be
+# re-applied under the same name once it has run), dry-run first by removing DP_TRIM_EXECUTE,
+# then apply.
+#
+# The slice count appears three times and they must agree: completions, parallelism, and the
+# "/6" in the command.
+apiVersion: batch/v1
+kind: Job
+metadata:
+  name: trim-buckets-stage-2026-08-01
+  namespace: mldp
+spec:
+  completionMode: Indexed         # each pod gets JOB_COMPLETION_INDEX = 0..5
+  completions: 6
+  parallelism: 6
+  # No retries.  Note what this means for an Indexed Job: when one slice fails, Kubernetes
+  # fails the whole Job and stops the other slices too, leaving their trimLog records marked
+  # "running".  That is safe (fix the cause, then apply the stage again under a new name),
+  # and a write concern timeout stops every slice anyway, since it is cluster-wide.
+  backoffLimit: 0
+  template:
+    spec:
+      restartPolicy: Never
+      containers:
+        - name: trim-buckets
+          image: percona/percona-server-mongodb:8.0.19-7
+          command:
+            - bash
+            - -c
+            - >-
+              DP_TRIM_SLICE="${JOB_COMPLETION_INDEX}/6"
+              exec mongosh --nodb --quiet --file /scripts/mongodb-trim-buckets.js
+          env:
+            - name: DP_TRIM_MONGODB_URI
+              valueFrom:
+                secretKeyRef:
+                  name: trim-buckets-mongodb
+                  key: uri
+            - name: DP_TRIM_BEFORE
+              value: "2026-08-01T00:00:00Z"
+            - name: DP_TRIM_EXECUTE
+              value: "true"
+          volumeMounts:
+            - name: script
+              mountPath: /scripts
+              readOnly: true
+      volumes:
+        - name: script
+          configMap:
+            name: trim-buckets-script

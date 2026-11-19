@@ -21,6 +21,20 @@ from the tag and fails the job with a clear error if the file is missing, so a f
 fails within seconds of the tag push rather than after the sibling-repo JARs have been downloaded
 and the tarball published.
 
+### notes accumulate in NEXT.md
+
+During a cycle the notes are drafted in [`doc/release-notes/NEXT.md`](../release-notes/NEXT.md).
+A PR that lands a user-visible change in this repo adds its own ticket-organized section there,
+so the content is written while it is fresh and reviewed in the PR that causes it.  At release
+time `NEXT.md` is renamed to `rel-<version>.md` and finished: the summary, the repository table,
+the sections for the four child repos, and the "Upgrading from &lt;previous&gt;" checklist are written
+then, because only then is it known what the release contains.  `NEXT.md` carries its own
+"Cutting the release" checklist.
+
+Never name the upcoming version in `NEXT.md`, in its filename or its prose, and do not assert
+there what else the release contains.  Links in `NEXT.md` are absolute and stay on `main`; they
+are repointed to the tag at the cut.
+
 ### links in the notes
 
 Because the notes are the release body, every cross-file link must be absolute and pinned to the
@@ -57,7 +71,7 @@ git push -f origin rel-1.16.0
 
 ## release process steps
 
-* update the release notes as described above, in e.g., doc/release-notes/rel-1.16.0, making sure to cover all the PRs / issues / features since the previous release
+* finish the release notes as described above: rename doc/release-notes/NEXT.md to e.g., doc/release-notes/rel-1.16.0.md and follow its "Cutting the release" checklist, making sure to cover all the PRs / issues / features since the previous release
   * the release.yml workflow in each repo assumes this file exists, and uses it for the body of the published release
   * release notes must be merged to main before the release workflow runs
   * `python3 .github/scripts/check-release-notes.py` must pass (CI enforces it on the notes PR)

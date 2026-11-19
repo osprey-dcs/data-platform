@@ -23,6 +23,24 @@ This is dp-support, a utilities repository for managing the Data Platform ecosys
 - `./bin/mongodb-docker-shell` - Access mongosh shell
 - `./bin/mongodb-compass-start` - Launch GUI with default connection
 
+**Trimming old PV time-series data:**
+- `./bin/mongodb-trim-buckets (--older-than-days N | --before TIMESTAMP) [--filter JSON] [--execute]`
+  deletes buckets whose last sample is before a cutoff; a dry run unless `--execute` is given.
+  The connection string comes from `DP_TRIM_MONGODB_URI`, and it does not need `DP_HOME`.
+- The work is done by `bin/mongodb-trim-buckets.js` (mongosh), configured by `DP_TRIM_*`
+  environment variables; the bash wrapper only translates flags. It first unsets every
+  variable a flag stands for, so a stale `DP_TRIM_EXECUTE=true` in the shell cannot make a
+  run without `--execute` delete; keep that list in step when adding a flag.
+- In mongosh, write `const r = f(); return r;` inside a `try`, never `return f();`, when `f`
+  makes a database call: the failure otherwise bypasses the `catch`.
+- Runbook: `doc/admin/trim-buckets.md`. Design: `plan/tickets/118/plan.md`.
+- Test: `test/mongodb-trim-buckets/run-test.sh` (Docker and mongosh; `--keep` leaves the
+  cluster up). Run it after any change to the script.
+- Every read that should stay on the index uses read concern `available`. On a sharded cluster
+  the default read concern makes each shard fetch the document to check it owns it, because
+  the shard key is not in the bucket index, which turns an index count into a read of every
+  bucket counted.
+
 **Single-node replica set (docker-compose):**
 ```bash
 cd docker/docker-compose/mongo-replica-set-single/
