@@ -312,6 +312,37 @@ function filterNarrows(t) {
     check(Number(record.bucketsDeleted) === byFilter, "record counts the filtered deletes");
 }
 
+// The runbook's filters for keeping one provider's data (SLAC's Archiver test data): both the
+// form that names the providers to trim and the form that names the provider to keep.
+function providerFilterKeepsAnotherProvider(t) {
+    const LIVE = "provider-1";
+    const KEPT = "provider-archiver";
+    const cases = [
+        ["$in the providers to trim", JSON.stringify({providerId: {$in: [LIVE]}})],
+        ["$ne the provider to keep", JSON.stringify({providerId: {$ne: KEPT}})],
+    ];
+    for (const [name, filter] of cases) {
+        const docs = t.seed();
+        // PV:ARCH becomes wholly the kept provider's; PV:SPLIT holds both providers' buckets.
+        const moved = t.buckets.updateMany({[SOURCE]: "archiver"},
+            {$set: {providerId: KEPT, providerName: "archiver"}}, {writeConcern: {w: "majority"}});
+        check(moved.modifiedCount === 15, `fixture moves 15 buckets to the kept provider (got ${moved.modifiedCount})`);
+        const expected = expectedIds(docs, CUTOFF, isBsas);
+        const keptBefore = t.buckets.countDocuments({providerId: KEPT});
+
+        const dry = trim(t.uri, ["--before", CUTOFF_ISO, "--filter", filter]);
+        check(dry.status === 0, `${name}: dry run exits 0 (got ${dry.status}): ${dry.out.slice(-300)}`);
+        check(dry.out.includes("1 PVs where neither matches"), `${name}: sample shows the kept provider's PV`);
+        check(dry.out.includes("1 PVs where one matches"), `${name}: sample shows the PV both providers wrote`);
+
+        const run = trim(t.uri, ["--before", CUTOFF_ISO, "--filter", filter, "--execute", "--batch-size", "3"]);
+        check(run.status === 0, `${name}: execute exits 0 (got ${run.status}): ${run.out.slice(-300)}`);
+        sameList(t.ids(), expected, `${name}: only the other provider's old buckets are trimmed`);
+        check(t.buckets.countDocuments({providerId: KEPT}) === keptBefore && keptBefore === 15,
+            `${name}: the kept provider's bucket count is unchanged`);
+    }
+}
+
 function filterCannotWiden(t) {
     let docs = t.seed();
     let run = trim(t.uri, ["--before", CUTOFF_ISO, "--execute", "--filter", '{"pvName": "PV:NEW"}']);
@@ -563,6 +594,7 @@ const common = [
     ["cutoff is truncated to whole seconds", cutoffIsTruncatedToSeconds],
     ["small batches", smallBatches],
     ["filter narrows what is trimmed", filterNarrows],
+    ["provider filter keeps another provider's data", providerFilterKeepsAnotherProvider],
     ["filter cannot widen what is trimmed", filterCannotWiden],
     ["filter that excludes nothing is flagged", filterThatExcludesNothingIsFlagged],
     ["slices partition the work", slicesPartitionTheWork],

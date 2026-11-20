@@ -44,7 +44,8 @@ spec:
                   value: "60"
                 - name: DP_TRIM_EXECUTE
                   value: "true"
-                # Optional.  See "Writing a filter" in the runbook.
+                # Optional.  See "Writing a filter" in the runbook.  If earlier runs kept a
+                # provider's data with a filter, this run needs the same filter.
                 # - name: DP_TRIM_FILTER
                 #   value: '{"dataColumn.columnMetadata.attributes.source": "bsas_gen1_reader"}'
               volumeMounts:

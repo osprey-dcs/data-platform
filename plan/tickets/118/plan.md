@@ -180,7 +180,7 @@ Cases, run on both the replica set and the sharded cluster unless noted:
   a shard's secondary stopped the run retries, exits 1 with a `failed` record whose count
   matches what is gone, and the repeat run finishes once the secondary is back.
 
-226 checks pass. Each of five deliberate breaks of the script (filter merged instead of
+254 checks pass. Each of five deliberate breaks of the script (filter merged instead of
 ANDed, `lastTime <= cutoff`, no `lastTime` test, a wrong resume bound, a horizon on a filtered
 run) fails the test. The script was also run by hand under mongosh 2.6.0, the version inside
 the server image, which is what the Kubernetes examples use. CI is
@@ -254,6 +254,6 @@ a checkpoint or resume file.
 ## Dependencies and sequencing
 
 - Nothing blocks writing and testing the script.
-- The tested Archiver filter in the runbook blocks on SLAC's answer, and SLAC's first
-  `--execute` run blocks on that filter.
+- The Archiver filter was added to the runbook on 2026-11-19, after SLAC said the data is
+  identified by its provider. SLAC's first `--execute` run needs that filter.
 - The CI workflow may land in a following PR.

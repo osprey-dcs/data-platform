@@ -109,7 +109,8 @@ Checked against dp-service `main` (`fd806c9`) on 2026-11-12 and SLAC's replies o
   insert and every delete.
 - Data is loaded in batches today; live continuous ingestion may start in March 2027.
 - A small amount of data ingested from the Archiver for user testing must survive trimming.
-  How it is identified is not yet known.
+  It is identified by its provider (`providerId` or `providerName`); rules on column metadata
+  may be wanted later (SLAC, 2026-11-19, on #118).
 
 **Size of the job**
 
@@ -307,8 +308,9 @@ document by document, and building one on the existing collection is itself a la
 ## Sequencing
 
 - Writing and testing the phase 1a script blocks on nothing.
-- **SLAC's first `--execute` run blocks on open question 1**: until the Archiver data can be
-  identified there is no tested filter that protects it.
+- **SLAC's first `--execute` run needs the provider filter** from the runbook, with the
+  provider ids looked up on the cluster being trimmed, and a dry run that shows the Archiver
+  PVs as kept.
 - Phase 1a does **not** depend on a dp-service release, and no dp-service change is needed for
   it.
 - Phase 2 is planned after 1a is in SLAC's hands. The time-partitioning decision comes before
@@ -316,11 +318,18 @@ document by document, and building one on the existing collection is itself a la
 
 ## Open questions
 
-1. **How the Archiver data is identified**, so the runbook can give SLAC a tested filter.
-   Blocks the first real run at SLAC. If it is identifiable by PV name, protecting it needs no
-   document reads. (Asked 2026-11-16.)
-2. **Is a rehearsal in SLAC's test environment practical?** (Asked.)
-3. **Per-PV or per-provider retention** — wanted for the script, or only in phase 2? (Asked.)
+1. **Per-PV or per-provider retention** — wanted for the script, or only in phase 2? (Asked
+   2026-11-16 and again 2026-11-19.)
+2. **Does any PV hold both Archiver and live data, what time range does the Archiver data
+   cover, and how long is it kept?** (Asked 2026-11-19.) None of these changes the filter: it
+   is correct for a PV with both providers, and it keeps the data for as long as it is passed.
+
+Answered 2026-11-19 (SLAC, on #118): the Archiver data is identified by its provider, so the
+runbook's filter selects on `providerId` (section "Keeping one provider's data", with a test
+case for both forms of the filter). The provider's id was not given and differs per cluster,
+so the runbook shows how to look it up. A rehearsal on SLAC's development cluster is
+practical: it will ingest live data continuously with a one-day window, and its older data
+must be kept.
 
 Answered since the first draft: the shard key and data distribution (confirmed, see
 Background); the archive's size (1.34 billion buckets, not 35 million); phase 1b (folded into
